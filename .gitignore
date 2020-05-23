@@ -1,4 +1,4 @@
-generator/generator
-generator/tbc
+tbc.exe
+tbc
 test/generated
 test/site

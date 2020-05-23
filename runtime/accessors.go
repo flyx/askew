@@ -1,4 +1,4 @@
-package tbc
+package runtime
 
 import (
 	"github.com/gopherjs/gopherjs/js"

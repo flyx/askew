@@ -214,7 +214,7 @@ func (p *processor) dump(htmlPath, packagePath string) {
 		}
 		b := strings.Builder{}
 		fmt.Fprintf(&b, "package %s\n\n", packageName)
-		b.WriteString("import (\n\"github.com/flyx/tbc\"\n\"github.com/gopherjs/gopherjs/js\"\n)\n")
+		b.WriteString("import (\n\"github.com/flyx/tbc/runtime\"\n\"github.com/gopherjs/gopherjs/js\"\n)\n")
 		fmt.Fprintf(&b, "type %s struct {\n", t.goName)
 		b.WriteString("root *js.Object\n")
 		for j := range t.objects {
@@ -223,15 +223,15 @@ func (p *processor) dump(htmlPath, packagePath string) {
 			b.WriteByte(' ')
 			switch o.goType {
 			case reflect.Int:
-				b.WriteString("tbc.IntValue\n")
+				b.WriteString("runtime.IntValue\n")
 			case reflect.String:
-				b.WriteString("tbc.StringValue\n")
+				b.WriteString("runtime.StringValue\n")
 			default:
 				panic("unexpected type of dynamic object")
 			}
 		}
 		fmt.Fprintf(&b, "}\nfunc New%s() *%s {\n", t.goName, t.goName)
-		fmt.Fprintf(&b, "root := tbc.InstantiateTemplate(\"%s\")\n", t.id)
+		fmt.Fprintf(&b, "root := runtime.InstantiateTemplate(\"%s\")\n", t.id)
 		fmt.Fprintf(&b, "return &%s{\n", t.goName)
 		b.WriteString("root: root,\n")
 		for j := range t.objects {
@@ -239,9 +239,9 @@ func (p *processor) dump(htmlPath, packagePath string) {
 			fmt.Fprintf(&b, "%s: ", o.goName)
 			switch o.goType {
 			case reflect.Int:
-				b.WriteString("tbc.IntValue{")
+				b.WriteString("runtime.IntValue{")
 			case reflect.String:
-				b.WriteString("tbc.StringValue{")
+				b.WriteString("runtime.StringValue{")
 			}
 			var propertyName string
 			switch o.kind {
@@ -250,7 +250,7 @@ func (p *processor) dump(htmlPath, packagePath string) {
 			case inputValue:
 				propertyName = "value"
 			}
-			b.WriteString("tbc.NewPropertyAccessor(root, []int{")
+			b.WriteString("runtime.NewPropertyAccessor(root, []int{")
 			for k := range o.path {
 				fmt.Fprintf(&b, "%d, ", o.path[k])
 			}
