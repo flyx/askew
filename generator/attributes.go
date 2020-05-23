@@ -21,18 +21,18 @@ const (
 	inactive
 )
 
-type tdcAttribs struct {
+type tbcAttribs struct {
 	kind        templateKind
 	list        bool
 	name        string
 	interactive interactivity
 }
 
-func extractTdcAttribs(n *html.Node) (ret tdcAttribs) {
+func extractTbcAttribs(n *html.Node) (ret tbcAttribs) {
 	i := 0
 	for i < len(n.Attr) {
 		attr := n.Attr[i]
-		if attr.Namespace != "tdc" {
+		if len(attr.Key) < 4 || attr.Key[0:4] != "tbc:" {
 			i++
 			continue
 		}
@@ -40,13 +40,15 @@ func extractTdcAttribs(n *html.Node) (ret tdcAttribs) {
 		copy(n.Attr[i:], n.Attr[i+1:])
 		n.Attr = n.Attr[:len(n.Attr)-1]
 
-		switch attr.Key {
+		key := attr.Key[4:]
+
+		switch key {
 		case "kind":
 			if n.DataAtom != atom.Template {
-				panic("tdc:kind on non-template element <" + n.Data + ">")
+				panic("tbc:kind on non-template element <" + n.Data + ">")
 			}
 			if ret.kind != noTmpl {
-				panic("duplicate tdc:kind")
+				panic("duplicate tbc:kind")
 			}
 			switch attr.Val {
 			case "component":
@@ -54,30 +56,30 @@ func extractTdcAttribs(n *html.Node) (ret tdcAttribs) {
 			case "macro":
 				ret.kind = macroTmpl
 			default:
-				panic("unknown tdc:kind: " + attr.Val)
+				panic("unknown tbc:kind: " + attr.Val)
 			}
 		case "list":
 			if n.DataAtom == atom.Template {
-				panic("tdc:list not allowed on <template>")
+				panic("tbc:list not allowed on <template>")
 			}
 			ret.list = true
 		case "name":
 			if len(ret.name) != 0 {
-				panic("duplicate tdc:name: " + attr.Val)
+				panic("duplicate tbc:name: " + attr.Val)
 			}
 			ret.name = attr.Val
 		case "ignore":
 			if n.DataAtom == atom.Template {
-				panic("tdc:ignore invalid on <template>")
+				panic("tbc:ignore invalid on <template>")
 			}
 			ret.interactive = inactive
 		case "dynamic":
 			if n.DataAtom == atom.Template {
-				panic("tdc:dynamic invalid on <template>")
+				panic("tbc:dynamic invalid on <template>")
 			}
 			ret.interactive = forceActive
 		default:
-			panic("unknown attribute: tdc:" + attr.Key)
+			panic("unknown attribute: tbc:" + key)
 		}
 	}
 	return

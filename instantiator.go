@@ -1,4 +1,4 @@
-package tdc
+package tbc
 
 import "github.com/gopherjs/gopherjs/js"
 
