@@ -18,4 +18,9 @@ func main() {
 	body.Call("appendChild", second.Root())
 	second.Name.Set("Second")
 	second.Age.Set(23)
+
+	mt := ui.NewMacroTest()
+	body.Call("appendChild", mt.Root())
+	mt.A.Set("AAA")
+	mt.B.Set("BBB")
 }

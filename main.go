@@ -30,7 +30,7 @@ func main() {
 		panic("must give at least one input file")
 	}
 
-	p := processor{}
+	p := processor{templates: make(templateSet)}
 	for i := range args {
 		p.process(args[i])
 	}

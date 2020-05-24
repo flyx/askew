@@ -1,9 +1,35 @@
-<template tbc:kind="component" tbc:name="NameForm">
-  <form class="form">
-    <label for="Name">Name:</label>
-    <input name="Name" /><br/>
-    <label for="age">Age:</label>
-    <input type="number" min="0" max="100" name="Age" />
-    <input type="submit" value="Submit" name="Submit" />
-  </form>
+<template tbc:name="NameForm">
+  <h1>Test</h1>
+  <section>
+    <h2>NameForm</h2>
+    <form class="form">
+      <label for="Name">Name:</label>
+      <input name="Name" /><br/>
+      <label for="age">Age:</label>
+      <input type="number" min="0" max="100" name="Age" />
+      <input type="submit" value="Submit" name="Submit" />
+    </form>
+  </section>
+</template>
+
+<tbc:macro name="inputs">
+  <table>
+    <tr>
+      <th><tbc:slot name="col1"/></th><th><tbc:slot name="col2">R</tbc:slot></th>
+    </tr>
+    <tr>
+      <td><input name="A" /></td>
+      <td><input name="B" /></td>
+    </tr>
+  </table>
+</tbc:macro>
+
+<template tbc:name="MacroTest">
+  <section>
+    <h2>MacroTest</h2>
+    <tbc:include name="inputs">
+      <span slot="col1">A</span>
+      <span slot="col2">B</span>
+    </tbc:include>
+  </section>
 </template>

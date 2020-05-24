@@ -5,14 +5,6 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-type templateKind int
-
-const (
-	noTmpl templateKind = iota
-	componentTmpl
-	macroTmpl
-)
-
 type interactivity int
 
 const (
@@ -22,7 +14,6 @@ const (
 )
 
 type tbcAttribs struct {
-	kind        templateKind
 	list        bool
 	name        string
 	interactive interactivity
@@ -43,21 +34,6 @@ func extractTbcAttribs(n *html.Node) (ret tbcAttribs) {
 		key := attr.Key[4:]
 
 		switch key {
-		case "kind":
-			if n.DataAtom != atom.Template {
-				panic("tbc:kind on non-template element <" + n.Data + ">")
-			}
-			if ret.kind != noTmpl {
-				panic("duplicate tbc:kind")
-			}
-			switch attr.Val {
-			case "component":
-				ret.kind = componentTmpl
-			case "macro":
-				ret.kind = macroTmpl
-			default:
-				panic("unknown tbc:kind: " + attr.Val)
-			}
 		case "list":
 			if n.DataAtom == atom.Template {
 				panic("tbc:list not allowed on <template>")

@@ -22,7 +22,7 @@ type PropertyAccessor struct {
 // given path (relative to root) and the given property name.
 func NewPropertyAccessor(root *js.Object, path []int, pName string) *PropertyAccessor {
 	return &PropertyAccessor{
-		node: walkPath(root, path), pName: pName}
+		node: WalkPath(root, path), pName: pName}
 }
 
 func (pa *PropertyAccessor) get() *js.Object {
