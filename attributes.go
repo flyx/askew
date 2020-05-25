@@ -55,6 +55,7 @@ func (e *embedAttribs) collect(name, val string) bool {
 type generalAttribs struct {
 	interactive interactivity
 	name        string
+	classSwitch string
 }
 
 func (g *generalAttribs) collect(name, val string) bool {
@@ -71,6 +72,8 @@ func (g *generalAttribs) collect(name, val string) bool {
 		g.interactive = inactive
 	case "name":
 		g.name = val
+	case "classswitch":
+		g.classSwitch = val
 	default:
 		return false
 	}

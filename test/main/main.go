@@ -22,6 +22,7 @@ func main() {
 
 	mt := ui.NewMacroTest()
 	body.Call("appendChild", mt.Root())
+	mt.MonospaceTitle.Set(true)
 	mt.A.Set("AAA")
 	mt.B.Set("BBB")
 }

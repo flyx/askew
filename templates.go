@@ -14,13 +14,15 @@ type dynamicObjectKind int
 const (
 	textContent dynamicObjectKind = iota
 	inputValue
+	classSwitch
 )
 
 type dynamicObject struct {
-	kind   dynamicObjectKind
-	path   []int
-	goType reflect.Kind
-	goName string
+	kind      dynamicObjectKind
+	path      []int
+	goType    reflect.Kind
+	goName    string
+	className string
 }
 
 type embed struct {
@@ -97,6 +99,9 @@ func (t *template) process(set templateSet, n *html.Node, indexList []int) {
 			panic("unknown element: <" + n.Data + ">")
 		}
 	case atom.Input:
+		if tbcAttrs.classSwitch != "" {
+			panic("tbc:classSwitch not allowed on <input>")
+		}
 		if tbcAttrs.interactive == inactive {
 			return
 		}
@@ -131,6 +136,15 @@ func (t *template) process(set templateSet, n *html.Node, indexList []int) {
 			goType: goType, goName: goName})
 	default:
 		if tbcAttrs.interactive != forceActive {
+			if tbcAttrs.classSwitch != "" {
+				if tbcAttrs.name == "" {
+					panic("tbc:classSwitch requires tbc:name!")
+				}
+				t.objects = append(t.objects, dynamicObject{
+					kind: classSwitch, path: append([]int(nil), indexList...),
+					goType: reflect.Bool, goName: tbcAttrs.name,
+					className: tbcAttrs.classSwitch})
+			}
 			indexList = append(indexList, 0)
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				t.process(set, c, indexList)

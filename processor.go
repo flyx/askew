@@ -146,6 +146,12 @@ func (r *goRenderer) writeFormatted(goCode string, file string) {
 	ioutil.WriteFile(file, []byte(stdout.String()), os.ModePerm)
 }
 
+func genPropertyAccessor(b *strings.Builder, path []int, propName string) {
+	b.WriteString("runtime.NewPropertyAccessor(root, ")
+	writePathLiteral(b, path)
+	fmt.Fprintf(b, ", \"%s\")", propName)
+}
+
 func (r *goRenderer) writeComponentFile(name string, c *template) {
 	b := strings.Builder{}
 	r.writeFileHeader(&b)
@@ -160,6 +166,8 @@ func (r *goRenderer) writeComponentFile(name string, c *template) {
 			b.WriteString("runtime.IntValue\n")
 		case reflect.String:
 			b.WriteString("runtime.StringValue\n")
+		case reflect.Bool:
+			b.WriteString("runtime.BoolValue\n")
 		default:
 			panic("unexpected type of dynamic object")
 		}
@@ -180,17 +188,20 @@ func (r *goRenderer) writeComponentFile(name string, c *template) {
 			b.WriteString("runtime.IntValue{")
 		case reflect.String:
 			b.WriteString("runtime.StringValue{")
+		case reflect.Bool:
+			b.WriteString("runtime.BoolValue{")
 		}
-		var propertyName string
 		switch o.kind {
 		case textContent:
-			propertyName = "textContent"
+			genPropertyAccessor(&b, o.path, "textContent")
 		case inputValue:
-			propertyName = "value"
+			genPropertyAccessor(&b, o.path, "value")
+		case classSwitch:
+			b.WriteString("runtime.NewClassSwitcher(root, ")
+			writePathLiteral(&b, o.path)
+			fmt.Fprintf(&b, ", \"%s\")", o.className)
 		}
-		b.WriteString("runtime.NewPropertyAccessor(root, ")
-		writePathLiteral(&b, o.path)
-		fmt.Fprintf(&b, ", \"%s\")}\n", propertyName)
+		b.WriteString("}\n")
 	}
 	for i := range c.embeds {
 		e := c.embeds[i]
