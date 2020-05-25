@@ -142,6 +142,10 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 				last = cLast
 			}
 			return
+		case "tbc:embed":
+			break
+		case "tbc:macro":
+			panic("<tbc:macro> must be at top level")
 		default:
 			panic("unknown element: <" + n.Data + ">")
 		}

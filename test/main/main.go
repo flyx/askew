@@ -7,21 +7,20 @@ import (
 
 func main() {
 	body := js.Global.Get("document").Get("body")
-
-	first := ui.NewNameForm()
-	body.Call("appendChild", first.Root())
+	forms := ui.NewNameForms()
+	forms.Insert(body, nil)
+	first := forms.Forms.Append()
 	first.Heading.Set("First Form")
 	first.Name.Set("First")
 	first.Age.Set(42)
 
-	second := ui.NewNameForm()
-	body.Call("appendChild", second.Root())
+	second := forms.Forms.Append()
 	second.Heading.Set("Second Form")
 	second.Name.Set("Second")
 	second.Age.Set(23)
 
 	mt := ui.NewMacroTest()
-	body.Call("appendChild", mt.Root())
+	mt.Insert(body, nil)
 	mt.MonospaceTitle.Set(true)
 	mt.A.Set("AAA")
 	mt.B.Set("BBB")

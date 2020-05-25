@@ -28,6 +28,7 @@ type dynamicObject struct {
 type embed struct {
 	path              []int
 	fieldName, goName string
+	list              bool
 }
 
 type template struct {
@@ -38,6 +39,7 @@ type template struct {
 	objects      []dynamicObject
 	embeds       []embed
 	strippedHTML *html.Node
+	needsList    bool
 }
 
 // maps name to template. For components, the string key is its Go name; for
@@ -74,26 +76,30 @@ func (t *template) process(set templateSet, n *html.Node, indexList []int) {
 	switch n.DataAtom {
 	case 0:
 		if n.Data == "tbc:embed" {
-			targetName := attrVal(n.Attr, "name")
-			if len(targetName) == 0 {
-				panic("tbc:embed misses `name` attribute")
+			targetType := attrVal(n.Attr, "type")
+			if len(targetType) == 0 {
+				panic("tbc:embed misses `type` attribute")
 			}
-			_, ok := set[targetName]
+			tmpl, ok := set[targetType]
 			if !ok {
-				panic("tbc:embed includes unknown name `" + targetName + "`")
+				panic("tbc:embed references unknown type `" + targetType + "`")
 			}
-			e := embed{path: append([]int(nil), indexList...)}
-			e.fieldName = attrVal(n.Attr, "field")
+			e := embed{path: append([]int(nil), indexList...),
+				list: attrExists(n.Attr, "list")}
+			if e.list {
+				tmpl.needsList = true
+			}
+			e.fieldName = attrVal(n.Attr, "name")
 			if len(e.fieldName) == 0 {
-				panic("tbc:embed on a component must give a `field` attribute!")
+				panic("tbc:embed must give a `name` attribute!")
 			}
-			e.goName = targetName
+			e.goName = targetType
 			if n.FirstChild != nil {
-				panic("tbc:embed of component may not have content")
+				panic("tbc:embed may not have content")
 			}
 			t.embeds = append(t.embeds, e)
-			n.Data = "template"
-			n.DataAtom = atom.Template
+			n.Type = html.CommentNode
+			n.Data = "embed(" + e.fieldName + "=" + e.goName + ")"
 			n.Attr = nil
 		} else {
 			panic("unknown element: <" + n.Data + ">")
