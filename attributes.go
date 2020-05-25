@@ -2,7 +2,6 @@ package main
 
 import (
 	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 )
 
 type interactivity int
@@ -13,13 +12,80 @@ const (
 	inactive
 )
 
+type tbcAttribCollector interface {
+	collect(name string, val string) bool
+}
+
+type templateAttribs struct {
+	name string
+}
+
+func (t *templateAttribs) collect(name, val string) bool {
+	if name == "name" {
+		t.name = val
+		return true
+	}
+	return false
+}
+
+type includeChildAttribs struct {
+	slot string
+}
+
+func (i *includeChildAttribs) collect(name, val string) bool {
+	if name == "slot" {
+		i.slot = val
+		return true
+	}
+	return false
+}
+
+type embedAttribs struct {
+	list bool
+}
+
+func (e *embedAttribs) collect(name, val string) bool {
+	if name == "list" {
+		e.list = true
+		return true
+	}
+	return false
+}
+
+type generalAttribs struct {
+	interactive interactivity
+	name        string
+}
+
+func (g *generalAttribs) collect(name, val string) bool {
+	switch name {
+	case "dynamic":
+		if g.interactive != defaultInter {
+			panic("cannot mix tbc:dynamic with dbc:ignore")
+		}
+		g.interactive = forceActive
+	case "ignore":
+		if g.interactive != defaultInter {
+			panic("cannot mix tbc:dynamic with dbc:ignore")
+		}
+		g.interactive = inactive
+	case "name":
+		g.name = val
+	default:
+		return false
+	}
+	return true
+}
+
 type tbcAttribs struct {
 	list        bool
 	name        string
 	interactive interactivity
 }
 
-func extractTbcAttribs(n *html.Node) (ret tbcAttribs) {
+func extractTbcAttribs(n *html.Node, target tbcAttribCollector) {
+	seen := make(map[string]struct{})
+
 	i := 0
 	for i < len(n.Attr) {
 		attr := n.Attr[i]
@@ -33,29 +99,12 @@ func extractTbcAttribs(n *html.Node) (ret tbcAttribs) {
 
 		key := attr.Key[4:]
 
-		switch key {
-		case "list":
-			if n.DataAtom == atom.Template {
-				panic("tbc:list not allowed on <template>")
-			}
-			ret.list = true
-		case "name":
-			if len(ret.name) != 0 {
-				panic("duplicate tbc:name: " + attr.Val)
-			}
-			ret.name = attr.Val
-		case "ignore":
-			if n.DataAtom == atom.Template {
-				panic("tbc:ignore invalid on <template>")
-			}
-			ret.interactive = inactive
-		case "dynamic":
-			if n.DataAtom == atom.Template {
-				panic("tbc:dynamic invalid on <template>")
-			}
-			ret.interactive = forceActive
-		default:
-			panic("unknown attribute: tbc:" + key)
+		if _, ok := seen[key]; ok {
+			panic("duplicate attribute: " + attr.Key)
+		}
+		seen[key] = struct{}{}
+		if !target.collect(key, attr.Val) {
+			panic("element <" + n.Data + "> does not allow attribute " + attr.Key)
 		}
 	}
 	return

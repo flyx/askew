@@ -23,8 +23,9 @@ type processor struct {
 }
 
 func (p *processor) processTemplate(n *html.Node) {
-	meta := extractTbcAttribs(n)
-	if len(meta.name) == 0 {
+	var tmplAttrs templateAttribs
+	extractTbcAttribs(n, &tmplAttrs)
+	if len(tmplAttrs.name) == 0 {
 		panic("<template> must have tbc:name!")
 	}
 	if attrExists(n.Attr, "id") {
@@ -33,14 +34,14 @@ func (p *processor) processTemplate(n *html.Node) {
 
 	tmpl := &template{strippedHTML: n}
 	p.counter++
-	tmpl.id = fmt.Sprintf("tbc-component-%d-%s", p.counter, strings.ToLower(meta.name))
+	tmpl.id = fmt.Sprintf("tbc-component-%d-%s", p.counter, strings.ToLower(tmplAttrs.name))
 	n.Attr = append(n.Attr, html.Attribute{Key: "id", Val: tmpl.id})
 	indexList := make([]int, 1, 32)
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		tmpl.process(p.templates, c, indexList)
 		indexList[0]++
 	}
-	p.templates[meta.name] = tmpl
+	p.templates[tmplAttrs.name] = tmpl
 }
 
 // dummy body node to be used for fragment parsing

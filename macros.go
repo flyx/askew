@@ -109,15 +109,17 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 				if c.Type != html.ElementNode {
 					continue
 				}
-				slotName := attrVal(c.Attr, "slot")
-				if slotName == "" {
-					panic("child of tbc:include has no attribute `slot`")
+				var iAttrs includeChildAttribs
+				extractTbcAttribs(c, &iAttrs)
+
+				if iAttrs.slot == "" {
+					panic("child of tbc:include has no attribute `tbc:slot`")
 				}
 				found := false
 				for i := range m.slots {
-					if m.slots[i].name == slotName {
+					if m.slots[i].name == iAttrs.slot {
 						if instantiator.values[i] != nil {
-							panic("dupicate value for slot `" + slotName + "`")
+							panic("dupicate value for slot `" + iAttrs.slot + "`")
 						}
 						instantiator.values[i] = c
 						found = true
@@ -125,7 +127,7 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 					}
 				}
 				if !found {
-					panic("unknown slot `" + slotName + "`")
+					panic("unknown slot `" + iAttrs.slot + "`")
 				}
 			}
 

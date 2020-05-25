@@ -67,7 +67,8 @@ func (t *template) process(set templateSet, n *html.Node, indexList []int) {
 	if n.Type != html.ElementNode {
 		return
 	}
-	meta := extractTbcAttribs(n)
+	var tbcAttrs generalAttribs
+	extractTbcAttribs(n, &tbcAttrs)
 	switch n.DataAtom {
 	case 0:
 		if n.Data == "tbc:embed" {
@@ -96,7 +97,7 @@ func (t *template) process(set templateSet, n *html.Node, indexList []int) {
 			panic("unknown element: <" + n.Data + ">")
 		}
 	case atom.Input:
-		if meta.interactive == inactive {
+		if tbcAttrs.interactive == inactive {
 			return
 		}
 		var goType reflect.Kind
@@ -118,8 +119,8 @@ func (t *template) process(set templateSet, n *html.Node, indexList []int) {
 			panic("<input> misses a name!")
 		}
 		goName := htmlName
-		if len(meta.name) > 0 {
-			goName = meta.name
+		if len(tbcAttrs.name) > 0 {
+			goName = tbcAttrs.name
 		}
 		if !isValidIdentifier(goName) {
 			panic("not a valid identifier: " + goName)
@@ -129,7 +130,7 @@ func (t *template) process(set templateSet, n *html.Node, indexList []int) {
 			kind: inputValue, path: append([]int(nil), indexList...),
 			goType: goType, goName: goName})
 	default:
-		if meta.interactive != forceActive {
+		if tbcAttrs.interactive != forceActive {
 			indexList = append(indexList, 0)
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				t.process(set, c, indexList)
@@ -141,14 +142,14 @@ func (t *template) process(set templateSet, n *html.Node, indexList []int) {
 			n.FirstChild.NextSibling != nil) {
 			panic("tbc:dynamic on a node with child nodes")
 		}
-		if len(meta.name) == 0 {
+		if len(tbcAttrs.name) == 0 {
 			panic("tbc:dynamic on a node without tbc:name")
 		}
-		if !isValidIdentifier(meta.name) {
-			panic("not a valid identifier: " + meta.name)
+		if !isValidIdentifier(tbcAttrs.name) {
+			panic("not a valid identifier: " + tbcAttrs.name)
 		}
 		t.objects = append(t.objects, dynamicObject{
 			kind: textContent, path: append([]int(nil), indexList...),
-			goType: reflect.String, goName: meta.name})
+			goType: reflect.String, goName: tbcAttrs.name})
 	}
 }

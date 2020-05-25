@@ -10,12 +10,13 @@ func main() {
 
 	first := ui.NewNameForm()
 	body.Call("appendChild", first.Root())
-
+	first.Heading.Set("First Form")
 	first.Name.Set("First")
 	first.Age.Set(42)
 
 	second := ui.NewNameForm()
 	body.Call("appendChild", second.Root())
+	second.Heading.Set("Second Form")
 	second.Name.Set("Second")
 	second.Age.Set(23)
 

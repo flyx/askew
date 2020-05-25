@@ -1,7 +1,6 @@
 <template tbc:name="NameForm">
-  <h1>Test</h1>
   <section>
-    <h2>NameForm</h2>
+    <h2 tbc:dynamic tbc:name="Heading">Test</h2>
     <form class="form">
       <label for="Name">Name:</label>
       <input name="Name" /><br/>
@@ -10,6 +9,7 @@
       <input type="submit" value="Submit" name="Submit" />
     </form>
   </section>
+  <hr/>
 </template>
 
 <tbc:macro name="inputs">
@@ -28,8 +28,8 @@
   <section>
     <h2>MacroTest</h2>
     <tbc:include name="inputs">
-      <span slot="col1">A</span>
-      <span slot="col2">B</span>
+      <span tbc:slot="col1">A</span>
+      <span tbc:slot="col2">B</span>
     </tbc:include>
   </section>
 </template>
