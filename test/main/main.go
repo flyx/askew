@@ -5,6 +5,18 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 )
 
+type handler struct{}
+
+func (*handler) Reset(foo string) bool {
+	js.Global.Call("alert", "reset: "+foo)
+	return true
+}
+
+func (*handler) Submit() bool {
+	js.Global.Call("alert", "submit!")
+	return true
+}
+
 func main() {
 	body := js.Global.Get("document").Get("body")
 	forms := ui.NewNameForms()
@@ -13,6 +25,7 @@ func main() {
 	first.Heading.Set("First Form")
 	first.Name.Set("First")
 	first.Age.Set(42)
+	first.SetController(&handler{})
 
 	second := forms.Forms.Append()
 	second.Heading.Set("Second Form")

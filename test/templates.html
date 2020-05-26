@@ -1,12 +1,15 @@
 <template tbc:name="NameForm">
+  <tbc:handler>Submit()</tbc:handler>
+  <tbc:handler>Reset(foo string)</tbc:handler>
   <section>
     <h2 tbc:dynamic tbc:name="Heading">Test</h2>
-    <form class="form">
+    <form data-foo="bar" class="form" tbc:capture="submit=Submit,reset=Reset">
       <label for="Name">Name:</label>
       <input name="Name" /><br/>
       <label for="age">Age:</label>
       <input type="number" min="0" max="100" name="Age" />
       <input type="submit" value="Submit" name="Submit" />
+      <input type="reset" value="Reset" name="Reset" />
     </form>
   </section>
   <hr/>

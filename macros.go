@@ -142,7 +142,7 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 				last = cLast
 			}
 			return
-		case "tbc:embed":
+		case "tbc:embed", "tbc:handler":
 			break
 		case "tbc:macro":
 			panic("<tbc:macro> must be at top level")

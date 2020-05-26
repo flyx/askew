@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strings"
+
 	"golang.org/x/net/html"
 )
 
@@ -56,6 +58,7 @@ type generalAttribs struct {
 	interactive interactivity
 	name        string
 	classSwitch string
+	capture     map[string]string
 }
 
 func (g *generalAttribs) collect(name, val string) bool {
@@ -74,6 +77,22 @@ func (g *generalAttribs) collect(name, val string) bool {
 		g.name = val
 	case "classswitch":
 		g.classSwitch = val
+	case "capture":
+		items := strings.Split(strings.TrimSpace(val), ",")
+		g.capture = make(map[string]string)
+		for i := range items {
+			item := strings.TrimSpace(items[i])
+			tmp := strings.Split(item, "=")
+			if len(tmp) != 2 {
+				panic("illegal capture item: " + item)
+			}
+			event := strings.TrimSpace(tmp[0])
+			_, ok := g.capture[event]
+			if ok {
+				panic("duplicate event in capture: " + event)
+			}
+			g.capture[event] = strings.TrimSpace(tmp[1])
+		}
 	default:
 		return false
 	}
