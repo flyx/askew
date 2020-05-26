@@ -104,7 +104,7 @@ func (lm ListManager) Append(o *js.Object) {
 	lm.parent.Call("insertBefore", o, lm.end)
 }
 
-// Insert inserts the given object before the object `before`.
+// Insert inserts the given object in front of the object `before`.
 func (lm ListManager) Insert(o *js.Object, before *js.Object) {
 	lm.parent.Call("insertBefore", o, before)
 }

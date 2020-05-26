@@ -8,7 +8,7 @@ import (
 func main() {
 	body := js.Global.Get("document").Get("body")
 	forms := ui.NewNameForms()
-	forms.Insert(body, nil)
+	forms.InsertInto(body, nil)
 	first := forms.Forms.Append()
 	first.Heading.Set("First Form")
 	first.Name.Set("First")
@@ -19,9 +19,9 @@ func main() {
 	second.Name.Set("Second")
 	second.Age.Set(23)
 
-	mt := ui.NewMacroTest()
-	mt.Insert(body, nil)
-	mt.MonospaceTitle.Set(true)
-	mt.A.Set("AAA")
-	mt.B.Set("BBB")
+	et := ui.NewEmbedTest()
+	et.InsertInto(body, nil)
+	et.Content.MonospaceTitle.Set(true)
+	et.Content.A.Set("AAA")
+	et.Content.B.Set("BBB")
 }

@@ -210,14 +210,20 @@ func (r *goRenderer) writeComponentFile(name string, c *template) {
 		e := c.embeds[i]
 		b.WriteString("{\ncontainer := runtime.WalkPath(o.root, ")
 		writePathLiteral(&b, e.path[:len(e.path)-1])
-		fmt.Fprintf(&b, ")\no.%s.Init(container, %d)\n", e.fieldName, e.path[len(e.path)-1])
+		if e.list {
+			fmt.Fprintf(&b, ")\no.%s.Init(container, %d)\n", e.fieldName, e.path[len(e.path)-1])
+		} else {
+			fmt.Fprintf(&b, ")\no.%s = New%s()\n", e.fieldName, e.goName)
+			fmt.Fprintf(&b, "o.%s.InsertInto(container, container.Get(\"childNodes\").Index(%d))\n",
+				e.fieldName, e.path[len(e.path)-1])
+		}
 		b.WriteString("}\n")
 	}
 
 	b.WriteString("}\n// Insert inserts this component into the given object. This can only\n")
 	b.WriteString("// be done once. The nodes will be inserted in front of `before`, or\n")
 	b.WriteString("// at the end if `before` is `nil`.")
-	fmt.Fprintf(&b, "\nfunc (o *%s) Insert(parent *js.Object, before *js.Object) {\n", name)
+	fmt.Fprintf(&b, "\nfunc (o *%s) InsertInto(parent *js.Object, before *js.Object) {\n", name)
 	b.WriteString("parent.Call(\"insertBefore\", o.root, before)\n")
 	for i := range c.embeds {
 		e := c.embeds[i]
