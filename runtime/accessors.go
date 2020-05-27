@@ -20,9 +20,9 @@ type PropertyAccessor struct {
 
 // NewPropertyAccessor creates a PropertyAccessor for the node found at the
 // given path (relative to root) and the given property name.
-func NewPropertyAccessor(root *js.Object, path []int, pName string) *PropertyAccessor {
+func NewPropertyAccessor(root *js.Object, pName string, path ...int) *PropertyAccessor {
 	return &PropertyAccessor{
-		node: WalkPath(root, path), pName: pName}
+		node: WalkPath(root, path...), pName: pName}
 }
 
 func (pa *PropertyAccessor) get() *js.Object {
@@ -43,9 +43,9 @@ type ClassSwitcher struct {
 
 // NewClassSwitcher creates a ClassSwitcher for the node at the given path,
 // which switches the class with the given name.
-func NewClassSwitcher(root *js.Object, path []int, className string) *ClassSwitcher {
+func NewClassSwitcher(root *js.Object, className string, path ...int) *ClassSwitcher {
 	return &ClassSwitcher{
-		node: WalkPath(root, path), className: className}
+		node: WalkPath(root, path...), className: className}
 }
 
 func (cs *ClassSwitcher) get() *js.Object {

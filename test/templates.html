@@ -1,4 +1,4 @@
-<template tbc:name="NameForm">
+<template tbc:name="NameForm" tbc:controller>
   <tbc:handler>Submit()</tbc:handler>
   <tbc:handler>Reset(foo string)</tbc:handler>
   <section>
@@ -27,15 +27,17 @@
       <th><tbc:slot name="col1"/></th><th><tbc:slot name="col2">R</tbc:slot></th>
     </tr>
     <tr>
-      <td><input name="A" /></td>
+      <td><input name="A" tbc:capture="change=SetTitle(v=prop(value))" /></td>
       <td><input name="B" /></td>
     </tr>
   </table>
 </tbc:macro>
 
 <template tbc:name="MacroTest">
+  <tbc:handler>SetTitle(v string)</tbc:handler>
   <section>
     <h2 tbc:classSwitch="teletype" tbc:name="MonospaceTitle">MacroTest</h2>
+    <h3 tbc:dynamic tbc:name="Title">Changeable Title</h3>
     <tbc:include name="inputs">
       <span tbc:slot="col1">A</span>
       <span tbc:slot="col2">B</span>

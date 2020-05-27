@@ -1,8 +1,6 @@
 package main
 
 import (
-	"strings"
-
 	"golang.org/x/net/html"
 )
 
@@ -18,13 +16,18 @@ type tbcAttribCollector interface {
 	collect(name string, val string) bool
 }
 
-type templateAttribs struct {
-	name string
+type componentAttribs struct {
+	name       string
+	controller bool
 }
 
-func (t *templateAttribs) collect(name, val string) bool {
-	if name == "name" {
+func (t *componentAttribs) collect(name, val string) bool {
+	switch name {
+	case "name":
 		t.name = val
+		return true
+	case "controller":
+		t.controller = true
 		return true
 	}
 	return false
@@ -58,7 +61,7 @@ type generalAttribs struct {
 	interactive interactivity
 	name        string
 	classSwitch string
-	capture     map[string]string
+	captures    []capture
 }
 
 func (g *generalAttribs) collect(name, val string) bool {
@@ -78,20 +81,10 @@ func (g *generalAttribs) collect(name, val string) bool {
 	case "classswitch":
 		g.classSwitch = val
 	case "capture":
-		items := strings.Split(strings.TrimSpace(val), ",")
-		g.capture = make(map[string]string)
-		for i := range items {
-			item := strings.TrimSpace(items[i])
-			tmp := strings.Split(item, "=")
-			if len(tmp) != 2 {
-				panic("illegal capture item: " + item)
-			}
-			event := strings.TrimSpace(tmp[0])
-			_, ok := g.capture[event]
-			if ok {
-				panic("duplicate event in capture: " + event)
-			}
-			g.capture[event] = strings.TrimSpace(tmp[1])
+		var err error
+		g.captures, err = cp.parse(val)
+		if err != nil {
+			panic("while parsing capture `" + val + "`: " + err.Error())
 		}
 	default:
 		return false

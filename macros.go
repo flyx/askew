@@ -76,6 +76,9 @@ func (mi *macroInstantiator) instantiate(
 
 func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 	inSlot bool) (first *html.Node, last *html.Node) {
+	if n.Type == html.ErrorNode {
+		panic("encountered ErrorNode!")
+	}
 	if n.Type != html.ElementNode {
 		return
 	}
@@ -143,7 +146,7 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 			}
 			return
 		case "tbc:embed", "tbc:handler":
-			break
+			return n, n
 		case "tbc:macro":
 			panic("<tbc:macro> must be at top level")
 		default:
@@ -172,7 +175,7 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 		}
 		childPath[len(childPath)-1]++
 	}
-	return nil, nil
+	return n, n
 }
 
 func (ip *includesProcessor) process(nodes *[]*html.Node) {

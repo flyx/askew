@@ -35,11 +35,9 @@ type handler struct {
 	params map[string]reflect.Kind
 }
 
-type capture struct {
-	path          []int
-	event         string
-	handler       string
-	paramMappings map[string]string
+type captureSource struct {
+	path     []int
+	captures []capture
 }
 
 type component struct {
@@ -47,12 +45,13 @@ type component struct {
 	id string
 	// maps CSS selector to object description.
 	// used to ensure selectors are unique.
-	objects      []dynamicObject
-	embeds       []embed
-	handlers     map[string]handler
-	captures     []capture
-	strippedHTML *html.Node
-	needsList    bool
+	objects         []dynamicObject
+	embeds          []embed
+	handlers        map[string]handler
+	captureSources  []captureSource
+	processedHTML   *html.Node
+	needsController bool
+	needsList       bool
 }
 
 // maps name to template. For components, the string key is its Go name; for
@@ -116,24 +115,31 @@ func parseHandler(input string) (name string, h handler) {
 	return
 }
 
-func (t *component) mapCaptures(n *html.Node, path []int, v map[string]string) {
-	for event, hName := range v {
-		h, ok := t.handlers[hName]
+func (t *component) mapCaptures(n *html.Node, path []int, v []capture) {
+	if len(v) == 0 {
+		return
+	}
+	for i := range v {
+		item := v[i]
+		h, ok := t.handlers[item.handler]
 		if !ok {
-			panic("capture references unknown handler: " + hName)
+			panic("capture references unknown handler: " + item.handler)
 		}
-		c := capture{path: append([]int(nil), path...), event: event, handler: hName}
-		if len(h.params) > 0 {
-			c.paramMappings = make(map[string]string)
-			for pName := range h.params {
-				if !attrExists(n.Attr, "data-"+pName) {
-					panic("missing attribute data-" + pName + " for handler " + hName)
-				}
-				c.paramMappings[pName] = "data-" + pName
+		for pName := range item.paramMappings {
+			_, ok = h.params[pName]
+			if !ok {
+				panic("unknown param for capture mapping: " + pName)
 			}
 		}
-		t.captures = append(t.captures, c)
+		for pName := range h.params {
+			_, ok = item.paramMappings[pName]
+			if !ok {
+				item.paramMappings[pName] = paramSupplier{kind: attrSupplier, id: "data-" + pName}
+			}
+		}
 	}
+	t.captureSources = append(t.captureSources, captureSource{
+		path: append([]int(nil), path...), captures: v})
 }
 
 func (t *component) process(set componentSet, n *html.Node, indexList []int) {
@@ -199,7 +205,7 @@ func (t *component) process(set componentSet, n *html.Node, indexList []int) {
 		if tbcAttrs.classSwitch != "" {
 			panic("tbc:classSwitch not allowed on <input>")
 		}
-		t.mapCaptures(n, indexList, tbcAttrs.capture)
+		t.mapCaptures(n, indexList, tbcAttrs.captures)
 		if tbcAttrs.interactive == inactive {
 			return
 		}
@@ -238,7 +244,7 @@ func (t *component) process(set componentSet, n *html.Node, indexList []int) {
 			kind: inputValue, path: append([]int(nil), indexList...),
 			goType: goType, goName: goName})
 	default:
-		t.mapCaptures(n, indexList, tbcAttrs.capture)
+		t.mapCaptures(n, indexList, tbcAttrs.captures)
 		if tbcAttrs.interactive != forceActive {
 			if tbcAttrs.classSwitch != "" {
 				if tbcAttrs.name == "" {
