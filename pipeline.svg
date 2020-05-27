@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg version="1.1"
+     baseProfile="full"
+     width="500" height="144"
+     viewBox="0 0 500 144"
+     xmlns="http://www.w3.org/2000/svg">
+  <defs>
+      <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="2" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,4 L5,2 z" fill="black" />
+    </marker>
+  </defs>
+  <style type="text/css">
+    text {
+      text-anchor: middle;
+      dominant-baseline: middle;
+      font-size: 10pt;
+    }
+    ellipse, rect {
+      stroke: black;
+      stroke-width: 1.5pt;
+      fill: none;
+    }
+    .generated {
+      stroke-dasharray: 5,3;
+    }
+    line {
+      stroke: black;
+      stroke-width: 1.5pt;
+      marker-end: url(#arrow);
+    }
+  </style>
+  <!-- to ensure people using dark theme can see it. -->
+  <rect x="0" y="0" width="500" height="144" style="stroke: none; fill: white;" />
+  <rect x="5" y="45" width="70" height="40" />
+  <text x="40" y="58">templates</text>
+  <text x="40" y="73">(HTML)</text>
+  <line x1="75" y1="65" x2="95" y2="65" />
+  <ellipse cx="120" cy="65" rx="25" ry="20" />
+  <text x="120" y="66">tbc</text>
+  <line x1="140" y1="55" x2="200" y2="45" />
+  <rect x="200" y="35" width="60" height="20" class="generated"/>
+  <text x="230" y="45">Go code</text>
+  <line x1="140" y1="75" x2="160" y2="90" />
+  <rect x="160" y="70" width="120" height="40" class="generated"/>
+  <text x="220" y="83">processed</text>
+  <text x="220" y="98">templates (HTML)</text>
+  <rect x="140" y="2" width="120" height="20" />
+  <text x="200" y="12">additional Go code</text>
+  <line x1="260" y1="45" x2="280" y2="35" />
+  <line x1="260" y1="12" x2="280" y2="15" />
+  <ellipse cx="310" cy="25" rx="35" ry="20" />
+  <text x="310" y="27">GopherJS</text>
+  <line x1="345" y1="25" x2="400" y2="45" />
+  <rect x="400" y="35" width="50" height="20" class="generated" />
+  <text x="425" y="46">main.js</text>
+  <rect x="170" y="122" width="110" height="20" />
+  <text x="225" y="133">HTML skeleton</text>
+  <line x1="280" y1="90" x2="305" y2="95" />
+  <line x1="280" y1="130" x2="305" y2="115" />
+  <ellipse cx="330" cy="105" rx="30" ry="20" />
+  <text x="330" y="106">merge</text>
+  <line x1="360" y1="105" x2="400" y2="86" />
+  <rect x="400" y="76" width="70" height="20" class="generated" />
+  <text x="435" y="87">index.html</text>
+  <rect x="390" y="25" width="90" height="110" stroke-width="1pt" stroke-dasharray="10,5" />
+  <text x="435" y="126">Website</text>
+</svg>
