@@ -2,7 +2,6 @@ package main
 
 import (
 	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 )
 
 type slot struct {
@@ -149,6 +148,8 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 			return n, n
 		case "tbc:macro":
 			panic("<tbc:macro> must be at top level")
+		case "tbc:component":
+			break
 		default:
 			panic("unknown element: <" + n.Data + ">")
 		}
@@ -187,7 +188,7 @@ func (ip *includesProcessor) process(nodes *[]*html.Node) {
 			i++
 			continue
 		}
-		if n.DataAtom == atom.Template {
+		if n.DataAtom == 0 && n.Data == "tbc:component" {
 			ip.walk(n, nil, nil, false)
 			i++
 			continue

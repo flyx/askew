@@ -12,7 +12,7 @@ const (
 	inactive
 )
 
-type tbcAttribCollector interface {
+type attribCollector interface {
 	collect(name string, val string) bool
 }
 
@@ -91,7 +91,7 @@ type tbcAttribs struct {
 	interactive interactivity
 }
 
-func extractTbcAttribs(n *html.Node, target tbcAttribCollector) {
+func extractTbcAttribs(n *html.Node, target attribCollector) {
 	seen := make(map[string]struct{})
 
 	i := 0
@@ -116,5 +116,19 @@ func extractTbcAttribs(n *html.Node, target tbcAttribCollector) {
 			panic("element <" + n.Data + "> does not allow attribute " + attr.Key)
 		}
 	}
-	return
+}
+
+func collectAttribs(n *html.Node, target attribCollector) {
+	seen := make(map[string]struct{})
+
+	for _, attr := range n.Attr {
+
+		if _, ok := seen[attr.Key]; ok {
+			panic("duplicate attribute: " + attr.Key)
+		}
+		seen[attr.Key] = struct{}{}
+		if !target.collect(attr.Key, attr.Val) {
+			panic("element <" + n.Data + "> does not allow attribute " + attr.Key)
+		}
+	}
 }

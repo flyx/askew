@@ -1,4 +1,4 @@
-<template tbc:name="NameForm" tbc:controller>
+<tbc:component name="NameForm" controller>
   <tbc:handler>Submit()</tbc:handler>
   <tbc:handler>Reset(foo string)</tbc:handler>
   <section>
@@ -13,13 +13,13 @@
     </form>
   </section>
   <hr/>
-</template>
+</tbc:component>
 
-<template tbc:name="NameForms">
+<tbc:component name="NameForms">
   <p>Before the forms</p>
   <tbc:embed list name="Forms" type="NameForm"></tbc:embed>
   <p>After the forms</p>
-</template>
+</tbc:component>
 
 <tbc:macro name="inputs">
   <table>
@@ -33,7 +33,7 @@
   </table>
 </tbc:macro>
 
-<template tbc:name="MacroTest">
+<tbc:component name="MacroTest">
   <tbc:handler>SetTitle(v string)</tbc:handler>
   <section>
     <h2 tbc:bindings="class(teletype):MonospaceTitle">MacroTest</h2>
@@ -43,8 +43,8 @@
       <span tbc:slot="col2">B</span>
     </tbc:include>
   </section>
-</template>
+</tbc:component>
 
-<template tbc:name="EmbedTest">
+<tbc:component name="EmbedTest">
   <tbc:embed name="Content" type="MacroTest"></tbc:embed>
-</template>
+</tbc:component>
