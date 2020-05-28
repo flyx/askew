@@ -6,22 +6,10 @@ import (
 	peg "github.com/yhirose/go-peg"
 )
 
-type paramSupplierKind int
-
-const (
-	attrSupplier paramSupplierKind = iota
-	propSupplier
-)
-
-type paramSupplier struct {
-	kind paramSupplierKind
-	id   string
-}
-
 type capture struct {
 	event         string
 	handler       string
-	paramMappings map[string]paramSupplier
+	paramMappings map[string]boundValue
 }
 
 type captureParser struct {
@@ -30,7 +18,7 @@ type captureParser struct {
 
 type paramMapping struct {
 	param    string
-	supplier paramSupplier
+	supplier boundValue
 }
 
 func (cp *captureParser) init() {
@@ -41,17 +29,14 @@ func (cp *captureParser) init() {
 	EVENT       ← < [a-z]+ >
 	HANDLER     ← < [a-zA-Z_][a-zA-Z_0-9]* >
 	MAPPINGS    ← MAPPING (',' MAPPING)*
-	MAPPING     ← VARIABLE '=' SUPPLIER
+	MAPPING     ← VARIABLE '=' BOUND
 	VARIABLE    ← < [a-zA-ZL_][a-zA-Z_0-9]* >
-	SUPPLIER    ← ATTR / PROP
-	ATTR        ← 'attr' '(' ID ')'
-	PROP        ← 'prop' '(' ID ')'
-	ID          ← < ([0-9a-zA-Z_] / '-')+ >
 	%whitespace ← [ \t]*
-	`)
+	` + boundSyntax)
 	if err != nil {
 		panic(err)
 	}
+	registerBinders(cp.p)
 	g := cp.p.Grammar
 	strToken := func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		return v.Token(), nil
@@ -60,20 +45,11 @@ func (cp *captureParser) init() {
 	g["VARIABLE"].Action = strToken
 	g["EVENT"].Action = strToken
 	g["HANDLER"].Action = strToken
-	g["PROP"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return paramSupplier{kind: propSupplier, id: v.ToStr(0)}, nil
-	}
-	g["ATTR"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return paramSupplier{kind: attrSupplier, id: v.ToStr(0)}, nil
-	}
-	g["SUPPLIER"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return v.Vs[0], nil
-	}
 	g["MAPPING"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return paramMapping{param: v.ToStr(0), supplier: v.Vs[1].(paramSupplier)}, nil
+		return paramMapping{param: v.ToStr(0), supplier: v.Vs[1].(boundValue)}, nil
 	}
 	g["MAPPINGS"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		ret := make(map[string]paramSupplier)
+		ret := make(map[string]boundValue)
 		first := v.Vs[0].(paramMapping)
 		ret[first.param] = first.supplier
 		for i := 1; i < len(v.Vs); i++ {
@@ -89,9 +65,9 @@ func (cp *captureParser) init() {
 	g["CAPTURE"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		ret := capture{event: v.ToStr(0), handler: v.ToStr(1)}
 		if v.Len() == 3 {
-			ret.paramMappings = v.Vs[2].(map[string]paramSupplier)
+			ret.paramMappings = v.Vs[2].(map[string]boundValue)
 		} else {
-			ret.paramMappings = make(map[string]paramSupplier)
+			ret.paramMappings = make(map[string]boundValue)
 		}
 		return ret, nil
 	}

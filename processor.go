@@ -148,9 +148,35 @@ func (r *goRenderer) writeFormatted(goCode string, file string) {
 }
 
 func genPropertyAccessor(b *strings.Builder, path []int, propName string) {
-	fmt.Fprintf(b, "runtime.NewPropertyAccessor(o.root, \"%s\", ", propName)
+	fmt.Fprintf(b, "runtime.NewBoundProperty(o.root, \"%s\", ", propName)
 	writePathLiteral(b, path)
 	b.WriteString(")")
+}
+
+func nameForType(t reflect.Kind) string {
+	switch t {
+	case reflect.String:
+		return "StringValue"
+	case reflect.Int:
+		return "IntValue"
+	case reflect.Bool:
+		return "BoolValue"
+	default:
+		panic("unsupported type")
+	}
+}
+
+func nameForBound(b boundKind) string {
+	switch b {
+	case boundAttribute:
+		return "BoundAttribute"
+	case boundProperty:
+		return "BoundProperty"
+	case boundClass:
+		return "BoundClass"
+	default:
+		panic("unknown boundKind")
+	}
 }
 
 func (r *goRenderer) writeComponentFile(name string, c *component) {
@@ -187,23 +213,11 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 	if c.needsController && c.handlers != nil {
 		fmt.Fprintf(&b, "c %sController\n", name)
 	}
-	for i := range c.objects {
-		o := c.objects[i]
+	for _, o := range c.objects {
 		b.WriteString(o.goName)
-		b.WriteByte(' ')
-		switch o.goType {
-		case reflect.Int:
-			b.WriteString("runtime.IntValue\n")
-		case reflect.String:
-			b.WriteString("runtime.StringValue\n")
-		case reflect.Bool:
-			b.WriteString("runtime.BoolValue\n")
-		default:
-			panic("unexpected type of dynamic object")
-		}
+		fmt.Fprintf(&b, " runtime.%s\n", nameForType(o.goType))
 	}
-	for i := range c.embeds {
-		e := c.embeds[i]
+	for _, e := range c.embeds {
 		if e.list {
 			fmt.Fprintf(&b, "%s %sList\n", e.fieldName, e.goName)
 		} else {
@@ -220,23 +234,21 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 	b.WriteString("// the main document. It can be manipulated both before and after insertion.\n")
 	fmt.Fprintf(&b, "func (o *%s) Init() {\n", name)
 	fmt.Fprintf(&b, "o.root = runtime.InstantiateTemplateByID(\"%s\")\n", c.id)
-	for i := range c.objects {
-		o := c.objects[i]
-		fmt.Fprintf(&b, "o.%s.ScalarAccessor = ", o.goName)
+	for _, o := range c.objects {
+		fmt.Fprintf(&b, "o.%s.BoundValue = ", o.goName)
 		switch o.kind {
 		case textContent:
 			genPropertyAccessor(&b, o.path, "textContent")
 		case inputValue:
 			genPropertyAccessor(&b, o.path, "value")
 		case classSwitch:
-			fmt.Fprintf(&b, "runtime.NewClassSwitcher(o.root, \"%s\", ", o.className)
+			fmt.Fprintf(&b, "runtime.NewBoundClass(o.root, \"%s\", ", o.className)
 			writePathLiteral(&b, o.path)
 			b.WriteString(")")
 		}
 		b.WriteString("\n")
 	}
-	for i := range c.embeds {
-		e := c.embeds[i]
+	for _, e := range c.embeds {
 		b.WriteString("{\ncontainer := runtime.WalkPath(o.root, ")
 		writePathLiteral(&b, e.path[:len(e.path)-1])
 		if e.list {
@@ -254,22 +266,19 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 		b.WriteString(")\n")
 		for _, cap := range src.captures {
 			b.WriteString("{\nwrapper := js.MakeFunc(func(this *js.Object, arguments []*js.Object) interface{} {\n")
+			for pName, bVal := range cap.paramMappings {
+				fmt.Fprintf(&b, "var p%s runtime.%s\n", pName, nameForBound(bVal.kind))
+				fmt.Fprintf(&b, "p%s.Init(this, \"%s\")\n", pName, bVal.id)
+			}
 			fmt.Fprintf(&b, "if o.call%s(", cap.handler)
-			h := c.handlers[cap.handler]
 			first := true
-			for pName := range h.params {
+			for pName := range cap.paramMappings {
 				if first {
 					first = false
 				} else {
 					b.WriteString(", ")
 				}
-				m := cap.paramMappings[pName]
-				switch m.kind {
-				case attrSupplier:
-					fmt.Fprintf(&b, "this.Call(\"getAttribute\", \"%s\")", m.id)
-				case propSupplier:
-					fmt.Fprintf(&b, "this.Get(\"%s\")", m.id)
-				}
+				fmt.Fprintf(&b, "&p%s", pName)
 			}
 			b.WriteString(") {\narguments[0].Call(\"preventDefault\")\n}\nreturn nil\n})\n")
 			fmt.Fprintf(&b, "src.Call(\"addEventListener\", \"%s\", wrapper)\n", cap.event)
@@ -283,8 +292,7 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 	b.WriteString("// at the end if `before` is `nil`.")
 	fmt.Fprintf(&b, "\nfunc (o *%s) InsertInto(parent *js.Object, before *js.Object) {\n", name)
 	b.WriteString("parent.Call(\"insertBefore\", o.root, before)\n")
-	for i := range c.embeds {
-		e := c.embeds[i]
+	for _, e := range c.embeds {
 		if e.list {
 			fmt.Fprintf(&b, "o.%s.mgr.UpdateParent(o.root, parent, before)\n", e.fieldName)
 		}
@@ -307,20 +315,14 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 				} else {
 					b.WriteString(", ")
 				}
-				fmt.Fprintf(&b, "%s *js.Object", pName)
+				fmt.Fprintf(&b, "%s runtime.BoundValue", pName)
 			}
 			b.WriteString(") bool {\n")
 			if c.needsController {
 				b.WriteString("if o.c == nil {\nreturn false\n}\n")
 			}
 			for pName, pType := range h.params {
-				fmt.Fprintf(&b, "_%s := %s", pName, pName)
-				switch pType {
-				case reflect.String:
-					b.WriteString(".String()\n")
-				case reflect.Int:
-					b.WriteString(".Int()\n")
-				}
+				fmt.Fprintf(&b, "_%s := runtime.%s{%s}\n", pName, nameForType(pType), pName)
 			}
 			if c.needsController {
 				fmt.Fprintf(&b, "return o.c.%s(", hName)
@@ -334,7 +336,7 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 				} else {
 					b.WriteString(", ")
 				}
-				fmt.Fprintf(&b, "_%s", pName)
+				fmt.Fprintf(&b, "_%s.Get()", pName)
 			}
 			b.WriteString(")\n}\n")
 		}

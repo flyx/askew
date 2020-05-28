@@ -134,7 +134,7 @@ func (t *component) mapCaptures(n *html.Node, path []int, v []capture) {
 		for pName := range h.params {
 			_, ok = item.paramMappings[pName]
 			if !ok {
-				item.paramMappings[pName] = paramSupplier{kind: attrSupplier, id: "data-" + pName}
+				item.paramMappings[pName] = boundValue{kind: boundAttribute, id: "data-" + pName}
 			}
 		}
 	}
