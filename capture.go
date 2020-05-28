@@ -25,7 +25,7 @@ func (cp *captureParser) init() {
 	var err error
 	cp.p, err = peg.NewParser(`
 	ROOT        ← CAPTURE (',' CAPTURE)*
-	CAPTURE     ← EVENT '=' HANDLER ('(' MAPPINGS? ')')?
+	CAPTURE     ← EVENT ':' HANDLER ('(' MAPPINGS? ')')?
 	EVENT       ← < [a-z]+ >
 	HANDLER     ← < [a-zA-Z_][a-zA-Z_0-9]* >
 	MAPPINGS    ← MAPPING (',' MAPPING)*
@@ -38,10 +38,6 @@ func (cp *captureParser) init() {
 	}
 	registerBinders(cp.p)
 	g := cp.p.Grammar
-	strToken := func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return v.Token(), nil
-	}
-	g["ID"].Action = strToken
 	g["VARIABLE"].Action = strToken
 	g["EVENT"].Action = strToken
 	g["HANDLER"].Action = strToken

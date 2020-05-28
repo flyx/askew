@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"golang.org/x/net/html/atom"
@@ -147,20 +146,40 @@ func (r *goRenderer) writeFormatted(goCode string, file string) {
 	ioutil.WriteFile(file, []byte(stdout.String()), os.ModePerm)
 }
 
-func genPropertyAccessor(b *strings.Builder, path []int, propName string) {
-	fmt.Fprintf(b, "runtime.NewBoundProperty(o.root, \"%s\", ", propName)
+func genAccessor(b *strings.Builder, path []int, bv boundValue) {
+	switch bv.kind {
+	case boundProperty:
+		fmt.Fprintf(b, "runtime.NewBoundProperty(o.root, \"%s\", ", bv.id)
+	case boundAttribute:
+		fmt.Fprintf(b, "runtime.NewBoundAttribute(o.root, \"%s\", ", bv.id)
+	case boundClass:
+		fmt.Fprintf(b, "runtime.NewBoundClass(o.root, \"%s\", ", bv.id)
+	}
 	writePathLiteral(b, path)
 	b.WriteString(")")
 }
 
-func nameForType(t reflect.Kind) string {
-	switch t {
-	case reflect.String:
+func wrapperForType(k valueKind) string {
+	switch k {
+	case stringVal:
 		return "StringValue"
-	case reflect.Int:
+	case intVal:
 		return "IntValue"
-	case reflect.Bool:
+	case boolVal:
 		return "BoolValue"
+	default:
+		panic("unsupported type")
+	}
+}
+
+func nameForType(k valueKind) string {
+	switch k {
+	case stringVal:
+		return "string"
+	case intVal:
+		return "int"
+	case boolVal:
+		return "bool"
 	default:
 		panic("unsupported type")
 	}
@@ -194,13 +213,7 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 				} else {
 					b.WriteString(", ")
 				}
-				fmt.Fprintf(&b, "%s ", pName)
-				switch pType {
-				case reflect.String:
-					b.WriteString("string")
-				case reflect.Int:
-					b.WriteString("int")
-				}
+				fmt.Fprintf(&b, "%s %s", pName, nameForType(pType))
 			}
 			b.WriteString(") bool\n")
 		}
@@ -213,9 +226,8 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 	if c.needsController && c.handlers != nil {
 		fmt.Fprintf(&b, "c %sController\n", name)
 	}
-	for _, o := range c.objects {
-		b.WriteString(o.goName)
-		fmt.Fprintf(&b, " runtime.%s\n", nameForType(o.goType))
+	for _, a := range c.accessors {
+		fmt.Fprintf(&b, "%s runtime.%s\n", a.variable.name, wrapperForType(a.variable.kind))
 	}
 	for _, e := range c.embeds {
 		if e.list {
@@ -234,18 +246,9 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 	b.WriteString("// the main document. It can be manipulated both before and after insertion.\n")
 	fmt.Fprintf(&b, "func (o *%s) Init() {\n", name)
 	fmt.Fprintf(&b, "o.root = runtime.InstantiateTemplateByID(\"%s\")\n", c.id)
-	for _, o := range c.objects {
-		fmt.Fprintf(&b, "o.%s.BoundValue = ", o.goName)
-		switch o.kind {
-		case textContent:
-			genPropertyAccessor(&b, o.path, "textContent")
-		case inputValue:
-			genPropertyAccessor(&b, o.path, "value")
-		case classSwitch:
-			fmt.Fprintf(&b, "runtime.NewBoundClass(o.root, \"%s\", ", o.className)
-			writePathLiteral(&b, o.path)
-			b.WriteString(")")
-		}
+	for _, a := range c.accessors {
+		fmt.Fprintf(&b, "o.%s.BoundValue = ", a.variable.name)
+		genAccessor(&b, a.path, a.target)
 		b.WriteString("\n")
 	}
 	for _, e := range c.embeds {
@@ -322,7 +325,7 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 				b.WriteString("if o.c == nil {\nreturn false\n}\n")
 			}
 			for pName, pType := range h.params {
-				fmt.Fprintf(&b, "_%s := runtime.%s{%s}\n", pName, nameForType(pType), pName)
+				fmt.Fprintf(&b, "_%s := runtime.%s{%s}\n", pName, wrapperForType(pType), pName)
 			}
 			if c.needsController {
 				fmt.Fprintf(&b, "return o.c.%s(", hName)

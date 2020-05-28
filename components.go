@@ -1,7 +1,6 @@
 package main
 
 import (
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -9,20 +8,10 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-type dynamicObjectKind int
-
-const (
-	textContent dynamicObjectKind = iota
-	inputValue
-	classSwitch
-)
-
-type dynamicObject struct {
-	kind      dynamicObjectKind
-	path      []int
-	goType    reflect.Kind
-	goName    string
-	className string
+type accessor struct {
+	target   boundValue
+	path     []int
+	variable targetVar
 }
 
 type embed struct {
@@ -32,7 +21,7 @@ type embed struct {
 }
 
 type handler struct {
-	params map[string]reflect.Kind
+	params map[string]valueKind
 }
 
 type captureSource struct {
@@ -42,10 +31,8 @@ type captureSource struct {
 
 type component struct {
 	// HTML id. internally generated.
-	id string
-	// maps CSS selector to object description.
-	// used to ensure selectors are unique.
-	objects         []dynamicObject
+	id              string
+	accessors       []accessor
 	embeds          []embed
 	handlers        map[string]handler
 	captureSources  []captureSource
@@ -86,7 +73,7 @@ func parseHandler(input string) (name string, h handler) {
 	}
 	name = tmp[0]
 	if len(tmp[1]) > 1 {
-		h.params = make(map[string]reflect.Kind)
+		h.params = make(map[string]valueKind)
 		params := strings.Split(tmp[1][:len(tmp[1])-1], ",")
 		for i := range params {
 			param := strings.TrimSpace(params[i])
@@ -104,9 +91,11 @@ func parseHandler(input string) (name string, h handler) {
 			}
 			switch t := strings.TrimSpace(tmp[1]); t {
 			case "string":
-				h.params[pName] = reflect.String
+				h.params[pName] = stringVal
 			case "int":
-				h.params[pName] = reflect.Int
+				h.params[pName] = intVal
+			case "bool":
+				h.params[pName] = boolVal
 			default:
 				panic("unsupported parameter type: " + t)
 			}
@@ -115,13 +104,13 @@ func parseHandler(input string) (name string, h handler) {
 	return
 }
 
-func (t *component) mapCaptures(n *html.Node, path []int, v []capture) {
+func (c *component) mapCaptures(n *html.Node, path []int, v []capture) {
 	if len(v) == 0 {
 		return
 	}
 	for i := range v {
 		item := v[i]
-		h, ok := t.handlers[item.handler]
+		h, ok := c.handlers[item.handler]
 		if !ok {
 			panic("capture references unknown handler: " + item.handler)
 		}
@@ -138,11 +127,25 @@ func (t *component) mapCaptures(n *html.Node, path []int, v []capture) {
 			}
 		}
 	}
-	t.captureSources = append(t.captureSources, captureSource{
+	c.captureSources = append(c.captureSources, captureSource{
 		path: append([]int(nil), path...), captures: v})
 }
 
-func (t *component) process(set componentSet, n *html.Node, indexList []int) {
+func (c *component) processBindings(path []int, arr []varBinding) {
+	for _, vb := range arr {
+		if vb.variable.kind == autoVal {
+			if vb.value.kind == boundClass {
+				vb.variable.kind = boolVal
+			} else {
+				vb.variable.kind = stringVal
+			}
+		}
+		c.accessors = append(c.accessors, accessor{
+			target: vb.value, path: path, variable: vb.variable})
+	}
+}
+
+func (c *component) process(set componentSet, n *html.Node, indexList []int) {
 	if n.Type != html.ElementNode {
 		return
 	}
@@ -173,7 +176,7 @@ func (t *component) process(set componentSet, n *html.Node, indexList []int) {
 			if n.FirstChild != nil {
 				panic("tbc:embed may not have content")
 			}
-			t.embeds = append(t.embeds, e)
+			c.embeds = append(c.embeds, e)
 			n.Type = html.CommentNode
 			n.Data = "embed(" + e.fieldName + "=" + e.goName + ")"
 			n.Attr = nil
@@ -186,15 +189,15 @@ func (t *component) process(set componentSet, n *html.Node, indexList []int) {
 				panic("tbc:handler must have plain text as content and nothing else")
 			}
 			name, h := parseHandler(def.Data)
-			if t.handlers == nil {
-				t.handlers = make(map[string]handler)
+			if c.handlers == nil {
+				c.handlers = make(map[string]handler)
 			} else {
-				_, ok := t.handlers[name]
+				_, ok := c.handlers[name]
 				if ok {
 					panic("duplicate handler name: " + name)
 				}
 			}
-			t.handlers[name] = h
+			c.handlers[name] = h
 			n.Type = html.CommentNode
 			n.Data = "handler: " + def.Data
 			n.Attr = nil
@@ -202,78 +205,48 @@ func (t *component) process(set componentSet, n *html.Node, indexList []int) {
 			panic("unknown element: <" + n.Data + ">")
 		}
 	case atom.Input:
-		if tbcAttrs.classSwitch != "" {
-			panic("tbc:classSwitch not allowed on <input>")
-		}
-		t.mapCaptures(n, indexList, tbcAttrs.captures)
-		if tbcAttrs.interactive == inactive {
-			return
-		}
-		var goType reflect.Kind
-		switch inputType := attrVal(n.Attr, "type"); inputType {
-		case "number", "range":
-			if strings.ContainsRune(attrVal(n.Attr, "min"), '.') ||
-				strings.ContainsRune(attrVal(n.Attr, "max"), '.') ||
-				strings.ContainsRune(attrVal(n.Attr, "step"), '.') {
-				panic("non-integer " + inputType + " inputs not supported")
-			}
-			goType = reflect.Int
-		case "", "text":
-			goType = reflect.String
-		case "submit", "reset":
-			if tbcAttrs.interactive != forceActive {
-				return
-			}
-			goType = reflect.String
-		default:
-			panic("input type not supported: " + inputType)
-		}
-		htmlName := attrVal(n.Attr, "name")
-		if len(htmlName) == 0 {
-			panic("<input> misses a name!")
-		}
-		goName := htmlName
-		if len(tbcAttrs.name) > 0 {
-			goName = tbcAttrs.name
-		}
-		if !isValidIdentifier(goName) {
-			panic("not a valid identifier: " + goName)
-		}
-
-		t.objects = append(t.objects, dynamicObject{
-			kind: inputValue, path: append([]int(nil), indexList...),
-			goType: goType, goName: goName})
-	default:
-		t.mapCaptures(n, indexList, tbcAttrs.captures)
-		if tbcAttrs.interactive != forceActive {
-			if tbcAttrs.classSwitch != "" {
-				if tbcAttrs.name == "" {
-					panic("tbc:classSwitch requires tbc:name!")
+		c.mapCaptures(n, indexList, tbcAttrs.captures)
+		path := append([]int(nil), indexList...)
+		if !tbcAttrs.ignore {
+			htmlName := attrVal(n.Attr, "name")
+			found := false
+			for _, vb := range tbcAttrs.bindings {
+				if vb.variable.name == htmlName {
+					found = true
+					break
 				}
-				t.objects = append(t.objects, dynamicObject{
-					kind: classSwitch, path: append([]int(nil), indexList...),
-					goType: reflect.Bool, goName: tbcAttrs.name,
-					className: tbcAttrs.classSwitch})
 			}
-			indexList = append(indexList, 0)
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				t.process(set, c, indexList)
-				indexList[len(indexList)-1]++
+			if !found && htmlName != "" {
+				var kind valueKind
+				switch inputType := attrVal(n.Attr, "type"); inputType {
+				case "number", "range":
+					if strings.ContainsRune(attrVal(n.Attr, "min"), '.') ||
+						strings.ContainsRune(attrVal(n.Attr, "max"), '.') ||
+						strings.ContainsRune(attrVal(n.Attr, "step"), '.') {
+						panic("non-integer " + inputType + " inputs not supported")
+					}
+					kind = intVal
+				case "", "text":
+					kind = stringVal
+				case "submit", "reset":
+					break
+				default:
+					panic("input type not supported: " + inputType)
+				}
+
+				tbcAttrs.bindings = append(tbcAttrs.bindings, varBinding{
+					value:    boundValue{kind: boundProperty, id: "value"},
+					variable: targetVar{kind: kind, name: htmlName}})
 			}
-			return
 		}
-		if n.FirstChild != nil && (n.FirstChild.Type != html.TextNode ||
-			n.FirstChild.NextSibling != nil) {
-			panic("tbc:dynamic on a node with child nodes")
+		c.processBindings(path, tbcAttrs.bindings)
+	default:
+		c.mapCaptures(n, indexList, tbcAttrs.captures)
+		c.processBindings(append([]int(nil), indexList...), tbcAttrs.bindings)
+		indexList = append(indexList, 0)
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			c.process(set, child, indexList)
+			indexList[len(indexList)-1]++
 		}
-		if len(tbcAttrs.name) == 0 {
-			panic("tbc:dynamic on a node without tbc:name")
-		}
-		if !isValidIdentifier(tbcAttrs.name) {
-			panic("not a valid identifier: " + tbcAttrs.name)
-		}
-		t.objects = append(t.objects, dynamicObject{
-			kind: textContent, path: append([]int(nil), indexList...),
-			goType: reflect.String, goName: tbcAttrs.name})
 	}
 }

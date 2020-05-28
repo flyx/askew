@@ -2,8 +2,8 @@
   <tbc:handler>Submit()</tbc:handler>
   <tbc:handler>Reset(foo string)</tbc:handler>
   <section>
-    <h2 tbc:dynamic tbc:name="Heading">Test</h2>
-    <form data-foo="bar" class="form" tbc:capture="submit=Submit,reset=Reset">
+    <h2 tbc:bindings="attr(textValue):Heading">Test</h2>
+    <form data-foo="bar" class="form" tbc:capture="submit:Submit,reset:Reset">
       <label for="Name">Name:</label>
       <input name="Name" /><br/>
       <label for="age">Age:</label>
@@ -27,7 +27,7 @@
       <th><tbc:slot name="col1"/></th><th><tbc:slot name="col2">R</tbc:slot></th>
     </tr>
     <tr>
-      <td><input name="A" tbc:capture="change=SetTitle(v=prop(value))" /></td>
+      <td><input name="A" tbc:capture="change:SetTitle(v=prop(value))" /></td>
       <td><input name="B" /></td>
     </tr>
   </table>
@@ -36,8 +36,8 @@
 <template tbc:name="MacroTest">
   <tbc:handler>SetTitle(v string)</tbc:handler>
   <section>
-    <h2 tbc:classSwitch="teletype" tbc:name="MonospaceTitle">MacroTest</h2>
-    <h3 tbc:dynamic tbc:name="Title">Changeable Title</h3>
+    <h2 tbc:bindings="class(teletype):MonospaceTitle">MacroTest</h2>
+    <h3 tbc:bindings="prop(textContent):Title">Changeable Title</h3>
     <tbc:include name="inputs">
       <span tbc:slot="col1">A</span>
       <span tbc:slot="col2">B</span>

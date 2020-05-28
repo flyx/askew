@@ -58,28 +58,21 @@ func (e *embedAttribs) collect(name, val string) bool {
 }
 
 type generalAttribs struct {
-	interactive interactivity
-	name        string
-	classSwitch string
-	captures    []capture
+	ignore   bool
+	bindings []varBinding
+	captures []capture
 }
 
 func (g *generalAttribs) collect(name, val string) bool {
 	switch name {
-	case "dynamic":
-		if g.interactive != defaultInter {
-			panic("cannot mix tbc:dynamic with dbc:ignore")
-		}
-		g.interactive = forceActive
 	case "ignore":
-		if g.interactive != defaultInter {
-			panic("cannot mix tbc:dynamic with dbc:ignore")
+		g.ignore = true
+	case "bindings":
+		var err error
+		g.bindings, err = bp.parse(val)
+		if err != nil {
+			panic("while parsing bindings `" + val + "`: " + err.Error())
 		}
-		g.interactive = inactive
-	case "name":
-		g.name = val
-	case "classswitch":
-		g.classSwitch = val
 	case "capture":
 		var err error
 		g.captures, err = cp.parse(val)
@@ -108,6 +101,7 @@ func extractTbcAttribs(n *html.Node, target tbcAttribCollector) {
 			i++
 			continue
 		}
+
 		// erase attribute from token (won't be written out)
 		copy(n.Attr[i:], n.Attr[i+1:])
 		n.Attr = n.Attr[:len(n.Attr)-1]
