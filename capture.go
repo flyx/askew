@@ -30,7 +30,7 @@ func (cp *captureParser) init() {
 	HANDLER     ← < [a-zA-Z_][a-zA-Z_0-9]* >
 	MAPPINGS    ← MAPPING (',' MAPPING)*
 	MAPPING     ← VARIABLE '=' BOUND
-	VARIABLE    ← < [a-zA-ZL_][a-zA-Z_0-9]* >
+	VARIABLE    ← < [a-zA-Z_][a-zA-Z_0-9]* >
 	%whitespace ← [ \t]*
 	` + boundSyntax)
 	if err != nil {

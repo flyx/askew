@@ -36,7 +36,7 @@ func (bp *bindingsParser) init() {
 	BINDING     ← BOUND ':' (AUTOVAR / TYPEDVAR)
 	AUTOVAR     ← IDENTIFIER
 	TYPEDVAR    ← '(' IDENTIFIER IDENTIFIER ')'
-	IDENTIFIER  ← < [a-zA-ZL_][a-zA-Z_0-9]* >
+	IDENTIFIER  ← < [a-zA-Z_][a-zA-Z_0-9]* >
 	%whitespace ← [ \t]*
 	` + boundSyntax)
 	if err != nil {

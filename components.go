@@ -1,7 +1,6 @@
 package main
 
 import (
-	"regexp"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -62,46 +61,6 @@ func attrExists(a []html.Attribute, name string) bool {
 		}
 	}
 	return false
-}
-
-var isValidIdentifier = regexp.MustCompile(`^[\pL_][\pL0-9]*$`).MatchString
-
-func parseHandler(input string) (name string, h handler) {
-	tmp := strings.Split(input, "(")
-	if len(tmp) != 2 || tmp[1][len(tmp[1])-1] != ')' {
-		panic("invalid handler: " + input)
-	}
-	name = tmp[0]
-	if len(tmp[1]) > 1 {
-		h.params = make(map[string]valueKind)
-		params := strings.Split(tmp[1][:len(tmp[1])-1], ",")
-		for i := range params {
-			param := strings.TrimSpace(params[i])
-			tmp = strings.Split(param, " ")
-			if len(tmp) != 2 {
-				panic("invalid parameter def in handler: " + param)
-			}
-			pName := strings.TrimSpace(tmp[0])
-			if !isValidIdentifier(pName) {
-				panic("invalid parameter name: " + pName)
-			}
-			_, ok := h.params[pName]
-			if ok {
-				panic("duplicate parameter name: " + pName)
-			}
-			switch t := strings.TrimSpace(tmp[1]); t {
-			case "string":
-				h.params[pName] = stringVal
-			case "int":
-				h.params[pName] = intVal
-			case "bool":
-				h.params[pName] = boolVal
-			default:
-				panic("unsupported parameter type: " + t)
-			}
-		}
-	}
-	return
 }
 
 func (c *component) mapCaptures(n *html.Node, path []int, v []capture) {
@@ -188,16 +147,19 @@ func (c *component) process(set componentSet, n *html.Node, indexList []int) {
 			if def.Type != html.TextNode || def.NextSibling != nil {
 				panic("tbc:handler must have plain text as content and nothing else")
 			}
-			name, h := parseHandler(def.Data)
+			parsed, err := hp.parse(def.Data)
+			if err != nil {
+				panic("unable to parse handler `" + def.Data + "`: " + err.Error())
+			}
 			if c.handlers == nil {
 				c.handlers = make(map[string]handler)
 			} else {
-				_, ok := c.handlers[name]
+				_, ok := c.handlers[parsed.name]
 				if ok {
-					panic("duplicate handler name: " + name)
+					panic("duplicate handler name: " + parsed.name)
 				}
 			}
-			c.handlers[name] = h
+			c.handlers[parsed.name] = handler{params: parsed.params}
 			n.Type = html.CommentNode
 			n.Data = "handler: " + def.Data
 			n.Attr = nil
