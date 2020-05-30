@@ -16,6 +16,18 @@ type attribCollector interface {
 	collect(name string, val string) bool
 }
 
+type packageAttribs struct {
+	name string
+}
+
+func (p *packageAttribs) collect(name, val string) bool {
+	if name == "name" {
+		p.name = val
+		return true
+	}
+	return false
+}
+
 type componentAttribs struct {
 	name       string
 	controller bool

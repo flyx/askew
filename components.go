@@ -14,9 +14,9 @@ type accessor struct {
 }
 
 type embed struct {
-	path              []int
-	fieldName, goName string
-	list              bool
+	path          []int
+	field, pkg, t string
+	list          bool
 }
 
 type handler struct {
@@ -38,12 +38,8 @@ type component struct {
 	processedHTML   *html.Node
 	needsController bool
 	needsList       bool
+	dependencies    map[string]struct{}
 }
-
-// maps name to template. For components, the string key is its Go name; for
-// macros, the string key is the internal name. In both cases, the name can be
-// used to tbc:include the template.
-type componentSet map[string]*component
 
 func attrVal(a []html.Attribute, name string) string {
 	for i := range a {
@@ -104,7 +100,7 @@ func (c *component) processBindings(path []int, arr []varBinding) {
 	}
 }
 
-func (c *component) process(set componentSet, n *html.Node, indexList []int) {
+func (c *component) walk(syms *symbols, n *html.Node, indexList []int) {
 	if n.Type != html.ElementNode {
 		return
 	}
@@ -118,26 +114,29 @@ func (c *component) process(set componentSet, n *html.Node, indexList []int) {
 			if len(targetType) == 0 {
 				panic("tbc:embed misses `type` attribute")
 			}
-			tmpl, ok := set[targetType]
-			if !ok {
-				panic("tbc:embed references unknown type `" + targetType + "`")
+			target, pkgName, typeName, err := syms.findComponent(targetType)
+			if err != nil {
+				panic("invalid type in tbc:embed: " + err.Error())
 			}
 			e := embed{path: append([]int(nil), indexList...),
 				list: attrExists(n.Attr, "list")}
 			if e.list {
-				tmpl.needsList = true
+				target.needsList = true
 			}
-			e.fieldName = attrVal(n.Attr, "name")
-			if len(e.fieldName) == 0 {
+			if pkgName != syms.curPkg {
+				e.pkg = pkgName
+			}
+			e.field = attrVal(n.Attr, "name")
+			if len(e.field) == 0 {
 				panic("tbc:embed must give a `name` attribute!")
 			}
-			e.goName = targetType
+			e.t = typeName
 			if n.FirstChild != nil {
 				panic("tbc:embed may not have content")
 			}
 			c.embeds = append(c.embeds, e)
 			n.Type = html.CommentNode
-			n.Data = "embed(" + e.fieldName + "=" + e.goName + ")"
+			n.Data = "embed(" + e.field + "=" + targetType + ")"
 			n.Attr = nil
 		case "tbc:handler":
 			if len(indexList) != 1 {
@@ -207,7 +206,7 @@ func (c *component) process(set componentSet, n *html.Node, indexList []int) {
 		c.processBindings(append([]int(nil), indexList...), tbcAttrs.bindings)
 		indexList = append(indexList, 0)
 		for child := n.FirstChild; child != nil; child = child.NextSibling {
-			c.process(set, child, indexList)
+			c.walk(syms, child, indexList)
 			indexList[len(indexList)-1]++
 		}
 	}

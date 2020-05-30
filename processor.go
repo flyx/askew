@@ -13,33 +13,14 @@ import (
 
 	"golang.org/x/net/html/atom"
 
+	"golang.org/x/mod/modfile"
 	"golang.org/x/net/html"
 )
 
 type processor struct {
-	components componentSet
-	counter    int
-}
-
-func (p *processor) processController(n *html.Node) {
-	var tmplAttrs componentAttribs
-	collectAttribs(n, &tmplAttrs)
-	if len(tmplAttrs.name) == 0 {
-		panic("<tbc:component> must have name!")
-	}
-	n.DataAtom = atom.Template
-	n.Data = "template"
-
-	tmpl := &component{processedHTML: n, needsController: tmplAttrs.controller}
-	p.counter++
-	tmpl.id = fmt.Sprintf("tbc-component-%d-%s", p.counter, strings.ToLower(tmplAttrs.name))
-	n.Attr = append(n.Attr, html.Attribute{Key: "id", Val: tmpl.id})
-	indexList := make([]int, 1, 32)
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		tmpl.process(p.components, c, indexList)
-		indexList[0]++
-	}
-	p.components[tmplAttrs.name] = tmpl
+	syms    symbols
+	counter int
+	mod     *modfile.File
 }
 
 // dummy body node to be used for fragment parsing
@@ -47,6 +28,30 @@ var bodyEnv = html.Node{
 	Type:     html.ElementNode,
 	Data:     "body",
 	DataAtom: atom.Body}
+
+func (p *processor) init(outputPath string) bool {
+	p.syms.packages = make(map[string]*tbcPackage)
+	raw, err := ioutil.ReadFile("go.mod")
+	if err != nil {
+		if os.IsNotExist(err) {
+			os.Stderr.WriteString("[error] did not find go.mod.\n")
+			os.Stderr.WriteString(
+				"[error] tbc must be run in the root directory of your module.\n")
+		} else {
+			os.Stderr.WriteString("[error] while reading go.mod: ")
+			os.Stderr.WriteString(err.Error() + "\n")
+		}
+		return false
+	}
+	p.mod, err = modfile.Parse("go.mod", raw, nil)
+	if err != nil {
+		os.Stderr.WriteString("[error] unable to read go.mod:\n")
+		fmt.Fprintf(os.Stderr, "[error] %s\n", err.Error())
+		return false
+	}
+	p.syms.pkgBasePath = filepath.Join(p.mod.Module.Mod.Path, outputPath)
+	return true
+}
 
 func (p *processor) process(file string) {
 	contents, err := ioutil.ReadFile(file)
@@ -60,8 +65,8 @@ func (p *processor) process(file string) {
 		return
 	}
 	{
-		ip := includesProcessor{}
-		ip.process(&nodes)
+		mp := macroProcessor{&p.syms}
+		mp.process(nodes)
 
 		// we need to write out the nodes and parse it again since text nodes may
 		// be merged and additional elements may be created now with includes
@@ -88,10 +93,12 @@ func (p *processor) process(file string) {
 		case html.ErrorNode:
 			panic("encountered ErrorNode: " + n.Data)
 		case html.ElementNode:
-			if n.DataAtom != 0 || n.Data != "tbc:component" {
-				panic("only tbc:macro and tbc:component are allowed at top level. found <" + n.Data + ">")
+			if n.DataAtom != 0 || n.Data != "tbc:package" {
+				panic("only tbc:package is allowed at top level. found <" + n.Data + ">")
 			}
-			p.processController(n)
+			p.syms.curPkg = attrVal(n.Attr, "name")
+			pkg, _ := p.syms.packages[p.syms.curPkg]
+			pkg.process(&p.syms, n, &p.counter)
 		default:
 			panic("illegal node at top level: " + n.Data)
 		}
@@ -108,14 +115,24 @@ func writePathLiteral(b *strings.Builder, path []int) {
 }
 
 type goRenderer struct {
-	templates   componentSet
+	syms        *symbols
 	packageName string
 	packagePath string
 }
 
-func (r *goRenderer) writeFileHeader(b *strings.Builder) {
+func writeQuotedLine(b *strings.Builder, name string) {
+	fmt.Fprintf(b, "\"%s\"\n", name)
+}
+
+func (r *goRenderer) writeFileHeader(b *strings.Builder, deps map[string]struct{}) {
 	fmt.Fprintf(b, "package %s\n\n", r.packageName)
-	b.WriteString("import (\n\"github.com/flyx/tbc/runtime\"\n\"github.com/gopherjs/gopherjs/js\"\n)\n")
+	b.WriteString("import (\n")
+	writeQuotedLine(b, "github.com/flyx/tbc/runtime")
+	writeQuotedLine(b, "github.com/gopherjs/gopherjs/js")
+	for dep := range deps {
+		writeQuotedLine(b, dep)
+	}
+	b.WriteString(")\n")
 }
 
 func (r *goRenderer) writeFormatted(goCode string, file string) {
@@ -142,7 +159,9 @@ func (r *goRenderer) writeFormatted(goCode string, file string) {
 		panic("failed to format Go code")
 	}
 
-	ioutil.WriteFile(file, []byte(stdout.String()), os.ModePerm)
+	if err := ioutil.WriteFile(file, []byte(stdout.String()), os.ModePerm); err != nil {
+		panic("failed to write file '" + file + "': " + err.Error())
+	}
 }
 
 func genAccessor(b *strings.Builder, path []int, bv boundValue) {
@@ -199,7 +218,7 @@ func nameForBound(b boundKind) string {
 
 func (r *goRenderer) writeComponentFile(name string, c *component) {
 	b := strings.Builder{}
-	r.writeFileHeader(&b)
+	r.writeFileHeader(&b, c.dependencies)
 	if c.needsList && c.handlers != nil {
 		fmt.Fprintf(&b, "// %sController is the interface for handling events captured from %s\n", name, name)
 		fmt.Fprintf(&b, "type %sController interface {\n", name)
@@ -229,10 +248,17 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 		fmt.Fprintf(&b, "%s runtime.%s\n", a.variable.name, wrapperForType(a.variable.kind))
 	}
 	for _, e := range c.embeds {
+		fmt.Fprintf(&b, "%s ", e.field)
+		if !e.list {
+			b.WriteRune('*')
+		}
+		if e.pkg != "" {
+			fmt.Fprintf(&b, "%s.", e.pkg)
+		}
 		if e.list {
-			fmt.Fprintf(&b, "%s %sList\n", e.fieldName, e.goName)
+			fmt.Fprintf(&b, "%sList\n", e.t)
 		} else {
-			fmt.Fprintf(&b, "%s *%s\n", e.fieldName, e.goName)
+			fmt.Fprintf(&b, "%s\n", e.t)
 		}
 	}
 
@@ -254,11 +280,15 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 		b.WriteString("{\ncontainer := runtime.WalkPath(o.root, ")
 		writePathLiteral(&b, e.path[:len(e.path)-1])
 		if e.list {
-			fmt.Fprintf(&b, ")\no.%s.Init(container, %d)\n", e.fieldName, e.path[len(e.path)-1])
+			fmt.Fprintf(&b, ")\no.%s.Init(container, %d)\n", e.field, e.path[len(e.path)-1])
 		} else {
-			fmt.Fprintf(&b, ")\no.%s = New%s()\n", e.fieldName, e.goName)
+			fmt.Fprintf(&b, ")\no.%s = ", e.field)
+			if e.pkg != "" {
+				fmt.Fprintf(&b, "%s.", e.pkg)
+			}
+			fmt.Fprintf(&b, "New%s()\n", e.t)
 			fmt.Fprintf(&b, "o.%s.InsertInto(container, container.Get(\"childNodes\").Index(%d))\n",
-				e.fieldName, e.path[len(e.path)-1])
+				e.field, e.path[len(e.path)-1])
 		}
 		b.WriteString("}\n")
 	}
@@ -296,7 +326,7 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 	b.WriteString("parent.Call(\"insertBefore\", o.root, before)\n")
 	for _, e := range c.embeds {
 		if e.list {
-			fmt.Fprintf(&b, "o.%s.mgr.UpdateParent(o.root, parent, before)\n", e.fieldName)
+			fmt.Fprintf(&b, "o.%s.mgr.UpdateParent(o.root, parent, before)\n", e.field)
 		}
 	}
 	b.WriteString("}\n")
@@ -324,7 +354,8 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 				b.WriteString("if o.c == nil {\nreturn false\n}\n")
 			}
 			for pName, pType := range h.params {
-				fmt.Fprintf(&b, "_%s := runtime.%s{%s}\n", pName, wrapperForType(pType), pName)
+				fmt.Fprintf(&b, "_%s := runtime.%s{BoundValue: %s}\n",
+					pName, wrapperForType(pType), pName)
 			}
 			if c.needsController {
 				fmt.Fprintf(&b, "return o.c.%s(", hName)
@@ -390,22 +421,28 @@ func (r *goRenderer) writeComponentFile(name string, c *component) {
 	r.writeFormatted(b.String(), filepath.Join(r.packagePath, strings.ToLower(name)+".go"))
 }
 
-func (p *processor) dump(htmlPath, packagePath string) {
+func (p *processor) dump(htmlPath, packageParent string) {
 	htmlFile, err := os.Create(htmlPath)
 	if err != nil {
 		panic("unable to write HTML output: " + err.Error())
 	}
-	for i := range p.components {
-		html.Render(htmlFile, p.components[i].processedHTML)
+	for _, pkg := range p.syms.packages {
+		for _, c := range pkg.components {
+			html.Render(htmlFile, c.processedHTML)
+		}
 	}
+
 	htmlFile.Close()
 
-	_, packageName := filepath.Split(packagePath)
-
-	renderer := goRenderer{templates: p.components, packageName: packageName,
-		packagePath: packagePath}
-
-	for name, t := range p.components {
-		renderer.writeComponentFile(name, t)
+	for pkgName, pkg := range p.syms.packages {
+		renderer := goRenderer{syms: &p.syms, packageName: pkgName,
+			packagePath: filepath.Join(packageParent, pkgName)}
+		if err := os.MkdirAll(renderer.packagePath, os.ModePerm); err != nil {
+			panic("failed to create package directory '" + renderer.packagePath +
+				"': " + err.Error())
+		}
+		for name, t := range pkg.components {
+			renderer.writeComponentFile(name, t)
+		}
 	}
 }

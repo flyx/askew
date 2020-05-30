@@ -14,8 +14,10 @@ type macro struct {
 	firstChild *html.Node
 }
 
-type includesProcessor struct {
-	macros map[string]macro
+type macros map[string]macro
+
+type macroProcessor struct {
+	syms *symbols
 }
 
 type macroInstantiator struct {
@@ -73,8 +75,8 @@ func (mi *macroInstantiator) instantiate(
 	return
 }
 
-func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
-	inSlot bool) (first *html.Node, last *html.Node) {
+func (mp *macroProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
+	inSlot bool, pkgName string) (first *html.Node, last *html.Node) {
 	if n.Type == html.ErrorNode {
 		panic("encountered ErrorNode!")
 	}
@@ -101,9 +103,9 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 			if name == "" {
 				panic("tbc:slot misses `name` attribute")
 			}
-			m, ok := ip.macros[name]
-			if !ok {
-				panic("tbc:include references unknown macro `" + name + "`")
+			m, err := mp.syms.findMacro(name)
+			if err != nil {
+				panic("cannot map: tbc:include: " + err.Error())
 			}
 			instantiator := macroInstantiator{
 				slots: m.slots, values: make([]*html.Node, len(m.slots))}
@@ -158,12 +160,15 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 	childPath := append(curPath, 0)
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		cFirst, cLast := ip.walk(c, slots, childPath, inSlot)
+		cFirst, cLast := mp.walk(c, slots, childPath, inSlot, pkgName)
 		if cFirst != nil {
+			cFirst.PrevSibling = c.PrevSibling
+			cLast.NextSibling = c.NextSibling
 			if c.PrevSibling == nil {
 				n.FirstChild = cFirst
 			} else {
 				c.PrevSibling.NextSibling = cFirst
+
 			}
 			if c.NextSibling == nil {
 				n.LastChild = cLast
@@ -176,21 +181,16 @@ func (ip *includesProcessor) walk(n *html.Node, slots *[]slot, curPath []int,
 		}
 		childPath[len(childPath)-1]++
 	}
-	return n, n
+	return nil, nil
 }
 
-func (ip *includesProcessor) process(nodes *[]*html.Node) {
-	ip.macros = make(map[string]macro)
-
-	for i := 0; i < len(*nodes); {
-		n := (*nodes)[i]
+func (mp *macroProcessor) processComponents(pkgName string, first *html.Node) {
+	for n := first; n != nil; n = n.NextSibling {
 		if n.Type != html.ElementNode {
-			i++
 			continue
 		}
 		if n.DataAtom == 0 && n.Data == "tbc:component" {
-			ip.walk(n, nil, nil, false)
-			i++
+			mp.walk(n, nil, nil, false, pkgName)
 			continue
 		}
 		if n.DataAtom == 0 && n.Data == "tbc:macro" {
@@ -198,13 +198,14 @@ func (ip *includesProcessor) process(nodes *[]*html.Node) {
 			if name == "" {
 				panic("tbc:macro without `name` attribute")
 			}
-			_, ok := ip.macros[name]
+			pkg, _ := mp.syms.packages[pkgName]
+			_, ok := pkg.macros[name]
 			if ok {
 				panic("duplicate macro name: `" + name + "`")
 			}
 			slots := make([]slot, 0, 16)
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				cFirst, cLast := ip.walk(c, &slots, nil, false)
+				cFirst, cLast := mp.walk(c, &slots, nil, false, pkgName)
 				if cFirst != nil {
 					if c.PrevSibling == nil {
 						n.FirstChild = cFirst
@@ -221,11 +222,40 @@ func (ip *includesProcessor) process(nodes *[]*html.Node) {
 					}
 				}
 			}
-			ip.macros[name] = macro{slots: slots, firstChild: n.FirstChild}
+			pkg.macros[name] = macro{slots: slots, firstChild: n.FirstChild}
 		} else {
 			panic("invalid top-level: <" + n.Data + ">")
 		}
-		copy((*nodes)[i:], (*nodes)[i+1:])
-		*nodes = (*nodes)[:len(*nodes)-1]
+		if n.PrevSibling == nil {
+			n.Parent.FirstChild = n.NextSibling
+		} else {
+			n.PrevSibling.NextSibling = n.NextSibling
+		}
+		if n.NextSibling == nil {
+			n.Parent.LastChild = n.PrevSibling
+		} else {
+			n.NextSibling.PrevSibling = n.PrevSibling
+		}
+	}
+}
+
+func (mp *macroProcessor) process(nodes []*html.Node) {
+
+	for _, n := range nodes {
+		if n.Type != html.ElementNode {
+			continue
+		}
+		if n.DataAtom != 0 || n.Data != "tbc:package" {
+			panic("unexpected node <" + n.Data + "> at root level")
+		}
+		var attrs packageAttribs
+		collectAttribs(n, &attrs)
+		_, ok := mp.syms.packages[attrs.name]
+		if ok {
+			panic("duplicate package name: " + attrs.name)
+		}
+		mp.syms.curPkg = attrs.name
+		mp.syms.packages[attrs.name] = &tbcPackage{macros: make(macros)}
+		mp.processComponents(attrs.name, n.FirstChild)
 	}
 }

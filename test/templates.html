@@ -1,3 +1,5 @@
+<tbc:package name="ui">
+
 <tbc:component name="NameForm" controller>
   <tbc:handler>Submit()</tbc:handler>
   <tbc:handler>Reset(foo string)</tbc:handler>
@@ -45,6 +47,14 @@
   </section>
 </tbc:component>
 
-<tbc:component name="EmbedTest">
-  <tbc:embed name="Content" type="MacroTest"></tbc:embed>
-</tbc:component>
+<tbc:macro name="embedHeading">
+  <h1>EmbedTest</h1>
+</tbc:macro>
+</tbc:package>
+
+<tbc:package name="extra">
+  <tbc:component name="EmbedTest">
+    <tbc:include name="ui.embedHeading"></tbc:include>
+    <tbc:embed name="Content" type="ui.MacroTest"></tbc:embed>
+  </tbc:component>
+</tbc:package>

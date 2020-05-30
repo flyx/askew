@@ -8,7 +8,7 @@ tbc:
 	go build
 
 run-tbc: test/generated tbc
-	./tbc -o test/generated/templates.html -p test/generated/ui test/templates.html
+	./tbc -o test/generated test/templates.html
 
 .PHONY: tbc test-run-tbc test
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/flyx/tbc/test/generated/extra"
 	"github.com/flyx/tbc/test/generated/ui"
 	"github.com/gopherjs/gopherjs/js"
 )
@@ -32,7 +33,7 @@ func main() {
 	second.Name.Set("Second")
 	second.Age.Set(23)
 
-	et := ui.NewEmbedTest()
+	et := extra.NewEmbedTest()
 	et.InsertInto(body, nil)
 	et.Content.MonospaceTitle.Set(true)
 	et.Content.A.Set("AAA")

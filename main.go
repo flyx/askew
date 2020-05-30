@@ -1,38 +1,57 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/pborman/getopt/v2"
 )
 
 func main() {
 	output := getopt.StringLong(
-		"output", 'o', "", "output file to write HTML to.")
-	packagePath := getopt.StringLong(
-		"package", 'p', "", "package path where *.go files should be written to."+
-			" last element of the path determines package name.")
+		"outputDir", 'o', "", "output directory. Each package will be placed as child directory here.")
+	outputHTML := getopt.StringLong(
+		"outputHtml", 't', "", "path to output file where the HTML templates are written."+
+			" defaults to ${outputDir}/templates.html.")
 	getopt.Parse()
 	args := getopt.Args()
 
-	info, err := os.Stat(*packagePath)
+	if strings.Contains(*output, "..") {
+		fmt.Fprintf(os.Stderr, "[error] illegal outputDir: %s\n", *output)
+		os.Stderr.WriteString("[error] may not contain `..` (must target dir in current module)\n")
+	}
+	if filepath.IsAbs(*output) {
+		fmt.Fprintf(os.Stderr, "[error] illegal outputDir: %s\n", *output)
+		os.Stderr.WriteString("[error] must be relative path\n")
+	}
+
+	if *outputHTML == "" {
+		*outputHTML = filepath.Join(*output, "templates.html")
+	}
+
+	info, err := os.Stat(*output)
 	if err != nil {
 		if os.IsNotExist(err) {
-			os.MkdirAll(*packagePath, os.ModePerm)
+			os.MkdirAll(*output, os.ModePerm)
 		} else {
-			panic("unable to access package directory " + *output)
+			panic("unable to access output directory " + *output)
 		}
 	} else if !info.IsDir() {
-		panic("package path is not a directory: " + *output)
+		panic("output path is not a directory: " + *output)
 	}
 
 	if len(args) == 0 {
 		panic("must give at least one input file")
 	}
 
-	p := processor{components: make(componentSet)}
+	var p processor
+	if !p.init(*output) {
+		os.Exit(1)
+	}
 	for i := range args {
 		p.process(args[i])
 	}
-	p.dump(*output, *packagePath)
+	p.dump(*outputHTML, *output)
 }
