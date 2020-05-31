@@ -8,7 +8,7 @@ tbc:
 	go build
 
 run-tbc: test/generated tbc
-	./tbc -o test/generated test/templates.html
+	./tbc -o test/generated test/components.html
 
 .PHONY: tbc test-run-tbc test
 
@@ -18,7 +18,7 @@ test/generated/ui/*.go: run-tbc
 test/site:
 	mkdir site
 
-test/site/main.js: test/templates.html test/site test/generated/templates.html test/generated/ui/nameform.go
+test/site/main.js: test/site test/generated/templates.html test/generated/ui/nameform.go
 	cd test/main && gopherjs build -o ../site/main.js
 
 test/site/index.html: test/site/main.js

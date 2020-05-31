@@ -65,8 +65,9 @@ func (p *processor) process(file string) {
 		return
 	}
 	{
-		mp := macroProcessor{&p.syms}
-		mp.process(nodes)
+		if err = processMacros(nodes, &p.syms); err != nil {
+			panic(file + err.Error())
+		}
 
 		// we need to write out the nodes and parse it again since text nodes may
 		// be merged and additional elements may be created now with includes
@@ -76,6 +77,7 @@ func (p *processor) process(file string) {
 		for i := range nodes {
 			html.Render(&b, nodes[i])
 		}
+		log.Println("after macro processing:\n" + b.String())
 		nodes, err = html.ParseFragment(strings.NewReader(b.String()), &bodyEnv)
 		if err != nil {
 			panic(err)
