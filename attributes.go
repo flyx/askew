@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/flyx/tbc/data"
+	"github.com/flyx/tbc/parsers"
 	"golang.org/x/net/html"
 )
 
@@ -71,8 +73,8 @@ func (e *embedAttribs) collect(name, val string) bool {
 
 type generalAttribs struct {
 	ignore   bool
-	bindings []varBinding
-	captures []capture
+	bindings []data.VariableMapping
+	capture  []data.EventMapping
 }
 
 func (g *generalAttribs) collect(name, val string) bool {
@@ -81,13 +83,13 @@ func (g *generalAttribs) collect(name, val string) bool {
 		g.ignore = true
 	case "bindings":
 		var err error
-		g.bindings, err = bp.parse(val)
+		g.bindings, err = parsers.ParseBindings(val)
 		if err != nil {
 			panic("while parsing bindings `" + val + "`: " + err.Error())
 		}
 	case "capture":
 		var err error
-		g.captures, err = cp.parse(val)
+		g.capture, err = parsers.ParseCapture(val)
 		if err != nil {
 			panic("while parsing capture `" + val + "`: " + err.Error())
 		}
@@ -143,4 +145,22 @@ func collectAttribs(n *html.Node, target attribCollector) {
 			panic("element <" + n.Data + "> does not allow attribute " + attr.Key)
 		}
 	}
+}
+
+func attrVal(a []html.Attribute, name string) string {
+	for i := range a {
+		if a[i].Key == name {
+			return a[i].Val
+		}
+	}
+	return ""
+}
+
+func attrExists(a []html.Attribute, name string) bool {
+	for i := range a {
+		if a[i].Key == name {
+			return true
+		}
+	}
+	return false
 }

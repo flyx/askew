@@ -1,29 +1,22 @@
-package main
+package parsers
 
 import (
 	"errors"
 
+	"github.com/flyx/tbc/data"
 	peg "github.com/yhirose/go-peg"
 )
 
-type capture struct {
-	event         string
-	handler       string
-	paramMappings map[string]boundValue
-}
-
-type captureParser struct {
-	p *peg.Parser
-}
-
 type paramMapping struct {
 	param    string
-	supplier boundValue
+	supplier data.BoundValue
 }
 
-func (cp *captureParser) init() {
+var captureParser *peg.Parser
+
+func init() {
 	var err error
-	cp.p, err = peg.NewParser(`
+	captureParser, err = peg.NewParser(`
 	ROOT        ← CAPTURE (',' CAPTURE)*
 	CAPTURE     ← EVENT ':' HANDLER ('(' MAPPINGS? ')')?
 	EVENT       ← < [a-z]+ >
@@ -36,16 +29,16 @@ func (cp *captureParser) init() {
 	if err != nil {
 		panic(err)
 	}
-	registerBinders(cp.p)
-	g := cp.p.Grammar
+	registerBinders(captureParser)
+	g := captureParser.Grammar
 	g["VARIABLE"].Action = strToken
 	g["EVENT"].Action = strToken
 	g["HANDLER"].Action = strToken
 	g["MAPPING"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return paramMapping{param: v.ToStr(0), supplier: v.Vs[1].(boundValue)}, nil
+		return paramMapping{param: v.ToStr(0), supplier: v.Vs[1].(data.BoundValue)}, nil
 	}
 	g["MAPPINGS"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		ret := make(map[string]boundValue)
+		ret := make(map[string]data.BoundValue)
 		first := v.Vs[0].(paramMapping)
 		ret[first.param] = first.supplier
 		for i := 1; i < len(v.Vs); i++ {
@@ -59,33 +52,28 @@ func (cp *captureParser) init() {
 		return ret, nil
 	}
 	g["CAPTURE"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		ret := capture{event: v.ToStr(0), handler: v.ToStr(1)}
+		ret := data.EventMapping{Event: v.ToStr(0), Handler: v.ToStr(1)}
 		if v.Len() == 3 {
-			ret.paramMappings = v.Vs[2].(map[string]boundValue)
+			ret.ParamMappings = v.Vs[2].(map[string]data.BoundValue)
 		} else {
-			ret.paramMappings = make(map[string]boundValue)
+			ret.ParamMappings = make(map[string]data.BoundValue)
 		}
 		return ret, nil
 	}
 	g["ROOT"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		ret := make([]capture, v.Len())
+		ret := make([]data.EventMapping, v.Len())
 		for i, c := range v.Vs {
-			ret[i] = c.(capture)
+			ret[i] = c.(data.EventMapping)
 		}
 		return ret, nil
 	}
 }
 
-func (cp *captureParser) parse(s string) ([]capture, error) {
-	ret, err := cp.p.ParseAndGetValue(s, nil)
+// ParseCapture parses the content of a tbc:capture attribute.
+func ParseCapture(s string) ([]data.EventMapping, error) {
+	ret, err := captureParser.ParseAndGetValue(s, nil)
 	if err != nil {
 		return nil, err
 	}
-	return ret.([]capture), nil
-}
-
-var cp captureParser
-
-func init() {
-	cp.init()
+	return ret.([]data.EventMapping), nil
 }

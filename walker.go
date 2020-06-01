@@ -35,6 +35,7 @@ type walker struct {
 	templates   nodeHandler
 	stdElements nodeHandler
 	text        nodeHandler
+	indexList   *[]int
 }
 
 func (w *walker) walk(n *html.Node, nodesCount map[string]int) (replacement *html.Node, err error) {
@@ -140,6 +141,9 @@ func (ns *nodeSlice) next() (ret *html.Node) {
 func (w *walker) walkChildren(parent *html.Node,
 	l nodeList) (repFirst, repLast *html.Node, err error) {
 	nodesCount := make(map[string]int)
+	if w.indexList != nil {
+		*w.indexList = append(*w.indexList, 0)
+	}
 	for c := l.next(); c != nil; c = l.next() {
 		f, err := w.walk(c, nodesCount)
 		if err != nil {
@@ -180,6 +184,12 @@ func (w *walker) walkChildren(parent *html.Node,
 				}
 			}
 		}
+		if w.indexList != nil {
+			(*w.indexList)[len(*w.indexList)-1]++
+		}
+	}
+	if w.indexList != nil {
+		*w.indexList = (*w.indexList)[:len(*w.indexList)-1]
 	}
 	if parent != nil {
 		parent.LastChild = repLast

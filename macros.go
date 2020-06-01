@@ -3,23 +3,12 @@ package main
 import (
 	"errors"
 
+	"github.com/flyx/tbc/data"
 	"golang.org/x/net/html"
 )
 
-type slot struct {
-	name string
-	node *html.Node
-}
-
-type macro struct {
-	slots       []slot
-	first, last *html.Node
-}
-
-type macros map[string]macro
-
 type macroDiscovery struct {
-	syms *symbols
+	syms *data.Symbols
 }
 
 func (md *macroDiscovery) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
@@ -27,12 +16,12 @@ func (md *macroDiscovery) process(n *html.Node) (descend bool, replacement *html
 	if name == "" {
 		panic("tbc:macro without `name` attribute")
 	}
-	pkg, _ := md.syms.packages[md.syms.curPkg]
-	_, ok := pkg.macros[name]
+	pkg, _ := md.syms.Packages[md.syms.CurPkg]
+	_, ok := pkg.Macros[name]
 	if ok {
 		panic("duplicate macro name: `" + name + "`")
 	}
-	sd := slotDiscovery{slots: make([]slot, 0, 16), syms: md.syms}
+	sd := slotDiscovery{slots: make([]data.Slot, 0, 16), syms: md.syms}
 	w := walker{text: allow{}, stdElements: allow{},
 		embed: allow{}, include: &includeProcessor{md.syms}, slot: &sd}
 
@@ -40,14 +29,14 @@ func (md *macroDiscovery) process(n *html.Node) (descend bool, replacement *html
 	if err != nil {
 		return false, nil, err
 	}
-	pkg.macros[name] = macro{slots: sd.slots, first: first, last: last}
+	pkg.Macros[name] = data.Macro{Slots: sd.slots, First: first, Last: last}
 	// removes the macro and stops parent walker from descending
 	return false, &html.Node{Type: html.TextNode, Data: ""}, nil
 }
 
 type slotDiscovery struct {
-	syms  *symbols
-	slots []slot
+	syms  *data.Symbols
+	slots []data.Slot
 }
 
 func (sd *slotDiscovery) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
@@ -55,7 +44,7 @@ func (sd *slotDiscovery) process(n *html.Node) (descend bool, replacement *html.
 	if name == "" {
 		return false, nil, errors.New("missing attribute `name`")
 	}
-	sd.slots = append(sd.slots, slot{name: name, node: n})
+	sd.slots = append(sd.slots, data.Slot{Name: name, Node: n})
 
 	w := walker{text: allow{}, stdElements: allow{}, include: &includeProcessor{sd.syms}}
 	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
@@ -63,7 +52,7 @@ func (sd *slotDiscovery) process(n *html.Node) (descend bool, replacement *html.
 }
 
 type includeProcessor struct {
-	syms *symbols
+	syms *data.Symbols
 }
 
 func (ip *includeProcessor) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
@@ -71,12 +60,12 @@ func (ip *includeProcessor) process(n *html.Node) (descend bool, replacement *ht
 	if name == "" {
 		return false, nil, errors.New(": `name` attribute missing")
 	}
-	m, err := ip.syms.findMacro(name)
+	m, err := ip.syms.ResolveMacro(name)
 	if err != nil {
 		return false, nil, errors.New(": failed to process: " + err.Error())
 	}
 
-	vm := valueMapper{slots: m.slots, values: make([]*html.Node, len(m.slots)),
+	vm := valueMapper{slots: m.Slots, values: make([]*html.Node, len(m.Slots)),
 		syms: ip.syms}
 	w := walker{text: whitespaceOnly{}, stdElements: &vm}
 	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
@@ -85,17 +74,17 @@ func (ip *includeProcessor) process(n *html.Node) (descend bool, replacement *ht
 	}
 
 	instantiator := macroInstantiator{
-		slots: m.slots, values: vm.values}
+		slots: m.Slots, values: vm.values}
 	instantiator.w =
 		walker{text: textCopier{}, stdElements: &elmCopier{&instantiator},
 			slot: &slotReplacer{&instantiator}}
-	replacement, _, err = instantiator.w.walkChildren(nil, &siblings{m.first})
+	replacement, _, err = instantiator.w.walkChildren(nil, &siblings{m.First})
 	return
 }
 
 type valueMapper struct {
-	syms   *symbols
-	slots  []slot
+	syms   *data.Symbols
+	slots  []data.Slot
 	values []*html.Node
 }
 
@@ -108,7 +97,7 @@ func (vm *valueMapper) process(n *html.Node) (descend bool, replacement *html.No
 	}
 	found := false
 	for i := range vm.slots {
-		if vm.slots[i].name == iAttrs.slot {
+		if vm.slots[i].Name == iAttrs.slot {
 			if vm.values[i] != nil {
 				return false, nil, errors.New(": dupicate value for slot `" + iAttrs.slot + "`")
 			}
@@ -129,7 +118,7 @@ func (vm *valueMapper) process(n *html.Node) (descend bool, replacement *html.No
 }
 
 type macroInstantiator struct {
-	slots  []slot
+	slots  []data.Slot
 	values []*html.Node
 	w      walker
 }
@@ -160,7 +149,7 @@ type slotReplacer struct {
 
 func (sl *slotReplacer) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	for i := range sl.mi.slots {
-		if sl.mi.slots[i].node != n {
+		if sl.mi.slots[i].Node != n {
 			continue
 		}
 		if sl.mi.values[i] == nil {
@@ -174,7 +163,7 @@ func (sl *slotReplacer) process(n *html.Node) (descend bool, replacement *html.N
 }
 
 type componentDescender struct {
-	syms *symbols
+	syms *data.Symbols
 }
 
 func (cd *componentDescender) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
@@ -185,18 +174,18 @@ func (cd *componentDescender) process(n *html.Node) (descend bool, replacement *
 }
 
 type packageDiscovery struct {
-	syms *symbols
+	syms *data.Symbols
 }
 
 func (pd *packageDiscovery) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	var attrs packageAttribs
 	collectAttribs(n, &attrs)
-	_, ok := pd.syms.packages[attrs.name]
+	_, ok := pd.syms.Packages[attrs.name]
 	if ok {
 		return false, nil, errors.New("duplicate package name: " + attrs.name)
 	}
-	pd.syms.curPkg = attrs.name
-	pd.syms.packages[attrs.name] = &tbcPackage{macros: make(macros)}
+	pd.syms.CurPkg = attrs.name
+	pd.syms.Packages[attrs.name] = &data.Package{Macros: make(map[string]data.Macro)}
 
 	w := walker{
 		text: whitespaceOnly{}, component: &componentDescender{syms: pd.syms},
@@ -205,7 +194,7 @@ func (pd *packageDiscovery) process(n *html.Node) (descend bool, replacement *ht
 	return false, nil, err
 }
 
-func processMacros(nodes []*html.Node, syms *symbols) (err error) {
+func processMacros(nodes []*html.Node, syms *data.Symbols) (err error) {
 	w := walker{text: whitespaceOnly{}, tbcPackage: &packageDiscovery{syms: syms}}
 	_, _, err = w.walkChildren(nil, &nodeSlice{nodes, 0})
 	return

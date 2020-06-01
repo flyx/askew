@@ -1,19 +1,9 @@
-package main
+package parsers
 
-import peg "github.com/yhirose/go-peg"
-
-type boundKind int
-
-const (
-	boundAttribute boundKind = iota
-	boundProperty
-	boundClass
+import (
+	"github.com/flyx/tbc/data"
+	peg "github.com/yhirose/go-peg"
 )
-
-type boundValue struct {
-	kind boundKind
-	id   string
-}
 
 var boundSyntax = `
 BOUND  ← ATTR / PROP / CLASS
@@ -30,13 +20,13 @@ func strToken(v *peg.Values, d peg.Any) (peg.Any, error) {
 func registerBinders(p *peg.Parser) {
 	p.Grammar["HTMLID"].Action = strToken
 	p.Grammar["PROP"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return boundValue{kind: boundProperty, id: v.ToStr(0)}, nil
+		return data.BoundValue{Kind: data.BoundProperty, ID: v.ToStr(0)}, nil
 	}
 	p.Grammar["ATTR"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return boundValue{kind: boundAttribute, id: v.ToStr(0)}, nil
+		return data.BoundValue{Kind: data.BoundAttribute, ID: v.ToStr(0)}, nil
 	}
 	p.Grammar["CLASS"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return boundValue{kind: boundClass, id: v.ToStr(0)}, nil
+		return data.BoundValue{Kind: data.BoundClass, ID: v.ToStr(0)}, nil
 	}
 	p.Grammar["BOUND"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		return v.Vs[0], nil
