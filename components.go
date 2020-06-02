@@ -27,7 +27,7 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 
 	replacement = &html.Node{Type: html.ElementNode, DataAtom: atom.Template,
 		Data: "template"}
-	cmp := &data.Component{Template: replacement, NeedsController: cmpAttrs.controller,
+	cmp := &data.Component{Name: cmpAttrs.name, Template: replacement, NeedsController: cmpAttrs.controller,
 		Dependencies: make(map[string]struct{})}
 	cp.syms.CurComponent = cmp
 	(*cp.counter)++

@@ -1,0 +1,45 @@
+package output
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/flyx/tbc/data"
+)
+
+func nameForType(k data.VariableType) string {
+	switch k {
+	case data.StringVar:
+		return "string"
+	case data.IntVar:
+		return "int"
+	case data.BoolVar:
+		return "bool"
+	default:
+		panic("unsupported type")
+	}
+}
+
+func nameForBound(b data.BoundKind) string {
+	switch b {
+	case data.BoundAttribute:
+		return "BoundAttribute"
+	case data.BoundProperty:
+		return "BoundProperty"
+	case data.BoundClass:
+		return "BoundClass"
+	default:
+		panic("unknown boundKind")
+	}
+}
+
+func pathItems(path []int) string {
+	b := strings.Builder{}
+	for i := range path {
+		if i != 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(strconv.FormatInt(int64(path[i]), 10))
+	}
+	return b.String()
+}

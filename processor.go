@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/flyx/tbc/data"
+	"github.com/flyx/tbc/output"
 	"golang.org/x/net/html/atom"
 
 	"golang.org/x/mod/modfile"
@@ -106,15 +107,6 @@ func (p *processor) process(file string) {
 	}
 }
 
-func writePathLiteral(b *strings.Builder, path []int) {
-	for i := range path {
-		if i != 0 {
-			b.WriteString(", ")
-		}
-		fmt.Fprintf(b, "%d", path[i])
-	}
-}
-
 func (p *processor) dump(skeleton *data.Skeleton, htmlPath, packageParent string) {
 	htmlFile, err := os.Create(htmlPath)
 	if err != nil {
@@ -129,14 +121,14 @@ func (p *processor) dump(skeleton *data.Skeleton, htmlPath, packageParent string
 	htmlFile.Close()
 
 	for pkgName, pkg := range p.syms.Packages {
-		renderer := goRenderer{syms: &p.syms, packageName: pkgName,
-			packagePath: filepath.Join(packageParent, pkgName)}
-		if err := os.MkdirAll(renderer.packagePath, os.ModePerm); err != nil {
-			panic("failed to create package directory '" + renderer.packagePath +
+		w := output.PackageWriter{Syms: &p.syms, PackageName: pkgName,
+			PackagePath: filepath.Join(packageParent, pkgName)}
+		if err := os.MkdirAll(w.PackagePath, os.ModePerm); err != nil {
+			panic("failed to create package directory '" + w.PackagePath +
 				"': " + err.Error())
 		}
 		for name, t := range pkg.Components {
-			renderer.writeComponentFile(name, t)
+			w.WriteComponent(name, t)
 		}
 	}
 }

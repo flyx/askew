@@ -16,8 +16,9 @@ test/generated/templates.html: run-tbc
 test/generated/ui/*.go: run-tbc
 
 test/site:
-	mkdir site
+	mkdir -p test/site
 
+test/site/main.js: export GOPHERJS_GOROOT = $(shell go1.12.16 env GOROOT)
 test/site/main.js: test/site test/generated/templates.html test/generated/ui/nameform.go
 	cd test/main && gopherjs build -o ../site/main.js
 

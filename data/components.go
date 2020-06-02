@@ -22,6 +22,7 @@ type Capture struct {
 
 // Component describes a <tbc:component> node.
 type Component struct {
+	Name string
 	// HTML id. internally generated.
 	ID              string
 	Variables       []VariableMapping
