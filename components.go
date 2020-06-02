@@ -53,35 +53,44 @@ type embedProcessor struct {
 	indexList *[]int
 }
 
-func (ep *embedProcessor) process(n *html.Node) (descend bool,
-	replacement *html.Node, err error) {
+func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed, error) {
 	targetType := attrVal(n.Attr, "type")
 	if len(targetType) == 0 {
-		return false, nil, errors.New(": attribute `type` missing")
+		return data.Embed{}, errors.New(": attribute `type` missing")
 	}
-	target, pkgName, typeName, err := ep.syms.ResolveComponent(targetType)
+	target, pkgName, typeName, err := syms.ResolveComponent(targetType)
 	if err != nil {
-		return false, nil, errors.New(": attribute `type` invalid: %s" + err.Error())
+		return data.Embed{}, errors.New(": attribute `type` invalid: %s" + err.Error())
 	}
-	e := data.Embed{Path: append([]int(nil), *ep.indexList...),
+	e := data.Embed{Path: append([]int(nil), indexList...),
 		List: attrExists(n.Attr, "list")}
 	if e.List {
 		target.NeedsList = true
 	}
-	if pkgName != ep.syms.CurPkg {
+	if pkgName != syms.CurPkg {
 		e.Pkg = pkgName
 	}
 	e.Field = attrVal(n.Attr, "name")
 	if e.Field == "" {
-		return false, nil, errors.New(": attribute `name` missing")
+		return data.Embed{}, errors.New(": attribute `name` missing")
 	}
 	e.T = typeName
 	if n.FirstChild != nil {
-		return false, nil, errors.New(": illegal content")
+		return data.Embed{}, errors.New(": illegal content")
 	}
+	return e, nil
+}
+
+func (ep *embedProcessor) process(n *html.Node) (descend bool,
+	replacement *html.Node, err error) {
+	e, err := resolveEmbed(n, ep.syms, *ep.indexList)
+	if err != nil {
+		return false, nil, err
+	}
+
 	ep.syms.CurComponent.Embeds = append(ep.syms.CurComponent.Embeds, e)
 	replacement = &html.Node{Type: html.CommentNode,
-		Data: "embed(" + e.Field + "=" + targetType + ")"}
+		Data: "embed(" + e.Field + ")"}
 	return
 }
 

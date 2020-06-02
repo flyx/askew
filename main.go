@@ -6,15 +6,20 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/flyx/tbc/data"
+
 	"github.com/pborman/getopt/v2"
 )
 
 func main() {
+	skeleton := getopt.StringLong("skeleton", 's', "", "Skeleton HTML file. If given, will be the "+
+		"base for the output HTML.")
 	output := getopt.StringLong(
 		"outputDir", 'o', "", "output directory. Each package will be placed as child directory here.")
 	outputHTML := getopt.StringLong(
 		"outputHtml", 't', "", "path to output file where the HTML templates are written."+
-			" defaults to ${outputDir}/templates.html.")
+			" defaults to ${outputDir}/<name>.html where <name> is \"templates\" if no "+
+			"skeleton is given and \"index.html\" if a skeleton is given.")
 	getopt.Parse()
 	args := getopt.Args()
 
@@ -28,7 +33,11 @@ func main() {
 	}
 
 	if *outputHTML == "" {
-		*outputHTML = filepath.Join(*output, "templates.html")
+		if *skeleton == "" {
+			*outputHTML = filepath.Join(*output, "templates.html")
+		} else {
+			*outputHTML = filepath.Join(*output, "index.html")
+		}
 	}
 
 	info, err := os.Stat(*output)
@@ -53,5 +62,12 @@ func main() {
 	for i := range args {
 		p.process(args[i])
 	}
-	p.dump(*outputHTML, *output)
+	var s *data.Skeleton
+	if *skeleton != "" {
+		s, err = readSkeleton(&p.syms, *skeleton)
+		if err != nil {
+			panic(err)
+		}
+	}
+	p.dump(s, *outputHTML, *output)
 }

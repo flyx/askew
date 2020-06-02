@@ -1,0 +1,53 @@
+// {{.}}List is a list of {{.}} whose manipulation methods auto-update
+// the corresponding nodes in the document.
+type {{.}}List struct {
+	mgr runtime.ListManager
+	items []*{{.}}
+}
+
+// Init initializes the list, discarding previous data.
+// The list is initially a DocumentFragment until it gets inserted into
+// the main document. It can be manipulated both before and after insertion.
+func (l *{{.}}List) Init(container *js.Object, index int) {
+	l.mgr = runtime.CreateListManager(container, index)
+	l.items = nil
+}
+
+// Len returns the number of items in the list.
+func (l *{{.}}List) Len() int {
+	return len(l.items)
+}
+
+// Item returns the item at the current index.
+func (l *{{.}}List) Item(index int) *{{.}}{
+	return l.items[index]
+}
+
+// Append initializes a new item, appends it to the list and returns it.
+func (l *{{.}}List) Append() (ret *{{.}}) {
+	ret = New{{.}}()
+	l.items = append(l.items, ret)
+	l.mgr.Append(ret.root)
+	return
+}
+
+// Insert initializes a new item, inserts it into the list and returns it.
+func (l *{{.}}List) Insert(index int) (ret *{{.}}) {
+	var prev *js.Object
+	if index < len(l.items) {
+		prev = l.items[index].root
+	}
+	ret = New{{.}}()
+	l.items = append(l.items, nil)
+	copy(l.items[index+1:], l.items[index:])
+	l.items[index] = ret
+	l.mgr.Insert(ret.root, prev)
+	return
+}
+
+// Remove removes the item at the given index from the list.
+func (l *{{.}}List) Remove(index int) {
+	l.mgr.Remove(l.items[index].root)
+	copy(l.items[index:], l.items[index+1:])
+	l.items = l.items[:len(l.items)-1]
+}
