@@ -22,13 +22,13 @@ func main() {
 	body := js.Global.Get("document").Get("body")
 	forms := ui.NewNameForms()
 	forms.InsertInto(body, nil)
-	first := forms.Forms.Append()
+	first := forms.Forms.Append(nil)
 	first.Heading.Set("First Form")
 	first.Name.Set("First")
 	first.Age.Set(42)
-	first.SetController(&handler{})
+	first.Controller = &handler{}
 
-	second := forms.Forms.Append()
+	second := forms.Forms.Append(nil)
 	second.Heading.Set("Second Form")
 	second.Name.Set("Second")
 	second.Age.Set(23)

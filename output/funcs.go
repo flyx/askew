@@ -43,3 +43,16 @@ func pathItems(path []int) string {
 	}
 	return b.String()
 }
+
+func wrapperForType(k data.VariableType) string {
+	switch k {
+	case data.StringVar:
+		return "StringValue"
+	case data.IntVar:
+		return "IntValue"
+	case data.BoolVar:
+		return "BoolValue"
+	default:
+		panic("unsupported type")
+	}
+}
