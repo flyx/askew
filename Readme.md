@@ -1,6 +1,6 @@
-<p align=center><h1>Askew</h1></p>
+<p align="center" style="font-size: x-large;">Askew</p>
 
-<p align=center><h2>A code generator for building single-page web applications with GopherJS</h2></p>
+<h2 align="center">A code generator for building single-page web applications with GopherJS</h2>
 
 Askew is a tool that reads annotated HTML sources and generates Go code from it.
 The generated code provides means to build a single-page web application via modular components.
@@ -62,7 +62,7 @@ Let's define a component as well as the skeleton of our website in annotated HTM
   <title>Example</title>
   <style>
     .hasError {
-      background-color: #66f;
+      background-color: #f66;
     }
   </style>
 </head>
@@ -113,6 +113,8 @@ func (o *Greeter) Greet() bool {
       o.ErrorMsg.Set("")
       js.Global.Call("alert", "Hello, " + name + "!")
   }
+  // return true to prevent the captured event's default action
+  return true
 }
 ```
 
