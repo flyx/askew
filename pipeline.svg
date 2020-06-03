@@ -30,7 +30,7 @@
     }
   </style>
   <!-- to ensure people using dark theme can see it. -->
-  <rect x="0" y="0" width="500" height="144" style="stroke: none; fill: white;" />
+  <rect x="0" y="0" width="415" height="160" style="stroke: none; fill: white;" />
 
   <g transform="translate(10,10)">
     <rect width="70" height="40" />
