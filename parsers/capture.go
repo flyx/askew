@@ -3,7 +3,7 @@ package parsers
 import (
 	"errors"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 	peg "github.com/yhirose/go-peg"
 )
 
@@ -69,7 +69,7 @@ func init() {
 	}
 }
 
-// ParseCapture parses the content of a tbc:capture attribute.
+// ParseCapture parses the content of an a:capture attribute.
 func ParseCapture(s string) ([]data.EventMapping, error) {
 	ret, err := captureParser.ParseAndGetValue(s, nil)
 	if err != nil {

@@ -36,7 +36,7 @@
   <text x="40" y="73">(HTML)</text>
   <line x1="75" y1="65" x2="95" y2="65" />
   <ellipse cx="120" cy="65" rx="25" ry="20" />
-  <text x="120" y="66">tbc</text>
+  <text x="120" y="66">askew</text>
   <line x1="140" y1="55" x2="200" y2="45" />
   <rect x="200" y="35" width="60" height="20" class="generated"/>
   <text x="230" y="45">Go code</text>

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 	"golang.org/x/net/html"
 )
 
@@ -16,7 +16,7 @@ type templateInjector struct {
 
 func (ti *templateInjector) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	if ti.seen {
-		return false, nil, errors.New("duplicate <tbc:templates> in document")
+		return false, nil, errors.New("duplicate <a:templates> in document")
 	}
 	ti.seen = true
 	var last *html.Node

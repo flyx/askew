@@ -1,7 +1,7 @@
 package parsers
 
 import (
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 	peg "github.com/yhirose/go-peg"
 )
 

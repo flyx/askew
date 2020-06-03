@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 
 	"github.com/pborman/getopt/v2"
 )

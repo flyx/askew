@@ -3,7 +3,7 @@ package parsers
 import (
 	"fmt"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 
 	"github.com/yhirose/go-peg"
 )
@@ -55,7 +55,7 @@ func init() {
 	}
 }
 
-// ParseBindings parses the content of a tbc:bindings attribute.
+// ParseBindings parses the content of a a:bindings attribute.
 // The Path field in the returned VariableMappings is unset.
 func ParseBindings(s string) ([]data.VariableMapping, error) {
 	ret, err := bindingsParser.ParseAndGetValue(s, nil)

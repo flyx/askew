@@ -21,11 +21,11 @@ type nodeHandler interface {
 	process(n *html.Node) (descend bool, replacement *html.Node, err error)
 }
 
-// walker walks over a node graph. for each tbc-specific element, a nodeHandler
+// walker walks over a node graph. for each askew-specific element, a nodeHandler
 // must be registered for that element to be valid. for each standard HTML
 // element, a nodeHandler may be registered.
 type walker struct {
-	tbcPackage  nodeHandler
+	aPackage    nodeHandler
 	macro       nodeHandler
 	component   nodeHandler
 	slot        nodeHandler
@@ -72,21 +72,21 @@ func (w *walker) processElement(n *html.Node) (replacement *html.Node, err error
 	var h nodeHandler
 	if n.DataAtom == 0 {
 		switch n.Data {
-		case "tbc:package":
-			h = w.tbcPackage
-		case "tbc:macro":
+		case "a:package":
+			h = w.aPackage
+		case "a:macro":
 			h = w.macro
-		case "tbc:component":
+		case "a:component":
 			h = w.component
-		case "tbc:slot":
+		case "a:slot":
 			h = w.slot
-		case "tbc:include":
+		case "a:include":
 			h = w.include
-		case "tbc:embed":
+		case "a:embed":
 			h = w.embed
-		case "tbc:handler":
+		case "a:handler":
 			h = w.handler
-		case "tbc:templates":
+		case "a:templates":
 			h = w.templates
 		default:
 			return nil, errors.New(": unknown element")

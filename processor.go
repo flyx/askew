@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/flyx/tbc/data"
-	"github.com/flyx/tbc/output"
+	"github.com/flyx/askew/data"
+	"github.com/flyx/askew/output"
 	"golang.org/x/net/html/atom"
 
 	"golang.org/x/mod/modfile"
@@ -36,7 +36,7 @@ func (p *processor) init(outputPath string) bool {
 		if os.IsNotExist(err) {
 			os.Stderr.WriteString("[error] did not find go.mod.\n")
 			os.Stderr.WriteString(
-				"[error] tbc must be run in the root directory of your module.\n")
+				"[error] askew must be run in the root directory of your module.\n")
 		} else {
 			os.Stderr.WriteString("[error] while reading go.mod: ")
 			os.Stderr.WriteString(err.Error() + "\n")
@@ -89,20 +89,20 @@ func (p *processor) process(file string) {
 		case html.TextNode:
 			text := strings.TrimSpace(n.Data)
 			if len(text) > 0 {
-				panic("non-whitespace text at top level: `" + text + "`")
+				panic(file + ": non-whitespace text at top level: `" + text + "`")
 			}
 		case html.ErrorNode:
-			panic("encountered ErrorNode: " + n.Data)
+			panic(file + ": encountered ErrorNode: " + n.Data)
 		case html.ElementNode:
-			if n.DataAtom != 0 || n.Data != "tbc:package" {
-				panic("only tbc:package is allowed at top level. found <" + n.Data + ">")
+			if n.DataAtom != 0 || n.Data != "a:package" {
+				panic(file + ": only a:package is allowed at top level. found <" + n.Data + ">")
 			}
 			p.syms.CurPkg = attrVal(n.Attr, "name")
 			if err := processComponents(&p.syms, n, &p.counter); err != nil {
 				panic(file + err.Error())
 			}
 		default:
-			panic("illegal node at top level: " + n.Data)
+			panic(file + ": illegal node at top level: " + n.Data)
 		}
 	}
 }

@@ -1,18 +1,18 @@
-all: tbc
+all: askew
 test: test/site/index.html test/site/main.js
 
-tbc:
+askew:
 	go build
 
-run-tbc: tbc test/site
-	./tbc -o test -s test/skeleton.html -i test/site/index.html test/components.html
+run-askew: askew test/site
+	./askew -o test -s test/skeleton.html -i test/site/index.html test/components.html
 
-.PHONY: tbc test-run-tbc test
+.PHONY: askew test-run-askew test
 
-test/site/index.html: run-tbc
-test/ui/nameform.go: run-tbc
-test/ui/nameforms.go: run-tbc
-test/ui/macrotest.go: run-tbc
+test/site/index.html: run-askew
+test/ui/nameform.go: run-askew
+test/ui/nameforms.go: run-askew
+test/ui/macrotest.go: run-askew
 
 test/site:
 	mkdir -p test/site

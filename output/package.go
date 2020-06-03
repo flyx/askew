@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 )
 
 // PackageWriter writes the Go code for a component into a file.

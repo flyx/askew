@@ -1,11 +1,11 @@
-<tbc:package name="ui">
+<a:package name="ui">
 
-<tbc:component name="NameForm" controller>
-  <tbc:handler>Submit()</tbc:handler>
-  <tbc:handler>Reset(foo string)</tbc:handler>
+<a:component name="NameForm" controller>
+  <a:handler>Submit()</a:handler>
+  <a:handler>Reset(foo string)</a:handler>
   <section>
-    <h2 tbc:bindings="attr(textValue):Heading">Test</h2>
-    <form data-foo="bar" class="form" tbc:capture="submit:Submit,reset:Reset">
+    <h2 a:bindings="attr(textValue):Heading">Test</h2>
+    <form data-foo="bar" class="form" a:capture="submit:Submit,reset:Reset">
       <label for="Name">Name:</label>
       <input name="Name" /><br/>
       <label for="age">Age:</label>
@@ -15,46 +15,46 @@
     </form>
   </section>
   <hr/>
-</tbc:component>
+</a:component>
 
-<tbc:component name="NameForms">
+<a:component name="NameForms">
   <p>Before the forms</p>
-  <tbc:embed list name="Forms" type="NameForm"></tbc:embed>
+  <a:embed list name="Forms" type="NameForm"></a:embed>
   <p>After the forms</p>
-</tbc:component>
+</a:component>
 
-<tbc:macro name="inputs">
+<a:macro name="inputs">
   <table>
     <tr>
-      <th><tbc:slot name="col1"/></th><th><tbc:slot name="col2">R</tbc:slot></th>
+      <th><a:slot name="col1"/></th><th><a:slot name="col2">R</a:slot></th>
     </tr>
     <tr>
-      <td><input name="A" tbc:capture="change:SetTitle(v=prop(value))" /></td>
+      <td><input name="A" a:capture="change:SetTitle(v=prop(value))" /></td>
       <td><input name="B" /></td>
     </tr>
   </table>
-</tbc:macro>
+</a:macro>
 
-<tbc:component name="MacroTest">
-  <tbc:handler>SetTitle(v string)</tbc:handler>
+<a:component name="MacroTest">
+  <a:handler>SetTitle(v string)</a:handler>
   <section>
-    <h2 tbc:bindings="class(teletype):MonospaceTitle">MacroTest</h2>
-    <h3 tbc:bindings="prop(textContent):Title">Changeable Title</h3>
-    <tbc:include name="inputs">
-      <span tbc:slot="col1">A</span>
-      <span tbc:slot="col2">B</span>
-    </tbc:include>
+    <h2 a:bindings="class(teletype):MonospaceTitle">MacroTest</h2>
+    <h3 a:bindings="prop(textContent):Title">Changeable Title</h3>
+    <a:include name="inputs">
+      <span a:slot="col1">A</span>
+      <span a:slot="col2">B</span>
+    </a:include>
   </section>
-</tbc:component>
+</a:component>
 
-<tbc:macro name="embedHeading">
+<a:macro name="embedHeading">
   <h1>EmbedTest</h1>
-</tbc:macro>
-</tbc:package>
+</a:macro>
+</a:package>
 
-<tbc:package name="extra">
-  <tbc:component name="EmbedTest">
-    <tbc:include name="ui.embedHeading"></tbc:include>
-    <tbc:embed name="Content" type="ui.MacroTest"></tbc:embed>
-  </tbc:component>
-</tbc:package>
+<a:package name="extra">
+  <a:component name="EmbedTest">
+    <a:include name="ui.embedHeading"></a:include>
+    <a:embed name="Content" type="ui.MacroTest"></a:embed>
+  </a:component>
+</a:package>

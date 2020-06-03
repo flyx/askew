@@ -3,7 +3,7 @@ package output
 import (
 	"strings"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 )
 
 type skeletonWriter struct {

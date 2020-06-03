@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/flyx/tbc/data"
-	"github.com/flyx/tbc/parsers"
+	"github.com/flyx/askew/data"
+	"github.com/flyx/askew/parsers"
 	"golang.org/x/net/html"
 )
 
@@ -99,19 +99,19 @@ func (g *generalAttribs) collect(name, val string) bool {
 	return true
 }
 
-type tbcAttribs struct {
+type askewAttribs struct {
 	list        bool
 	name        string
 	interactive interactivity
 }
 
-func extractTbcAttribs(n *html.Node, target attribCollector) {
+func extractAskewAttribs(n *html.Node, target attribCollector) {
 	seen := make(map[string]struct{})
 
 	i := 0
 	for i < len(n.Attr) {
 		attr := n.Attr[i]
-		if len(attr.Key) < 4 || attr.Key[0:4] != "tbc:" {
+		if len(attr.Key) < 2 || attr.Key[0:2] != "a:" {
 			i++
 			continue
 		}
@@ -120,7 +120,7 @@ func extractTbcAttribs(n *html.Node, target attribCollector) {
 		copy(n.Attr[i:], n.Attr[i+1:])
 		n.Attr = n.Attr[:len(n.Attr)-1]
 
-		key := attr.Key[4:]
+		key := attr.Key[2:]
 
 		if _, ok := seen[key]; ok {
 			panic("duplicate attribute: " + attr.Key)

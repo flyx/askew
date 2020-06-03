@@ -1,8 +1,9 @@
-module github.com/flyx/tbc
+module github.com/flyx/askew
 
 go 1.12
 
 require (
+	github.com/flyx/tbc v0.0.0-20200603134517-d4ef9c17c29b
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00
 	github.com/neelance/astrewrite v0.0.0-20160511093645-99348263ae86 // indirect

@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 	"golang.org/x/net/html"
 )
 
@@ -14,12 +14,12 @@ type macroDiscovery struct {
 func (md *macroDiscovery) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	name := attrVal(n.Attr, "name")
 	if name == "" {
-		panic("tbc:macro without `name` attribute")
+		return false, nil, errors.New(": attribute `name` missing")
 	}
 	pkg, _ := md.syms.Packages[md.syms.CurPkg]
 	_, ok := pkg.Macros[name]
 	if ok {
-		panic("duplicate macro name: `" + name + "`")
+		return false, nil, errors.New(": duplicate name `" + name + "`")
 	}
 	sd := slotDiscovery{slots: make([]data.Slot, 0, 16), syms: md.syms}
 	w := walker{text: allow{}, stdElements: allow{},
@@ -90,10 +90,10 @@ type valueMapper struct {
 
 func (vm *valueMapper) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	var iAttrs includeChildAttribs
-	extractTbcAttribs(n, &iAttrs)
+	extractAskewAttribs(n, &iAttrs)
 
 	if iAttrs.slot == "" {
-		return false, nil, errors.New(": child of tbc:include has no attribute `tbc:slot`")
+		return false, nil, errors.New(": child of a:include has no attribute `a:slot`")
 	}
 	found := false
 	for i := range vm.slots {
@@ -195,7 +195,7 @@ func (pd *packageDiscovery) process(n *html.Node) (descend bool, replacement *ht
 }
 
 func processMacros(nodes []*html.Node, syms *data.Symbols) (err error) {
-	w := walker{text: whitespaceOnly{}, tbcPackage: &packageDiscovery{syms: syms}}
+	w := walker{text: whitespaceOnly{}, aPackage: &packageDiscovery{syms: syms}}
 	_, _, err = w.walkChildren(nil, &nodeSlice{nodes, 0})
 	return
 }

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 )
 
 func nameForType(k data.VariableType) string {

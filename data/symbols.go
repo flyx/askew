@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Package describes a <tbc:package>.
+// Package describes as <a:package>.
 type Package struct {
 	Macros     map[string]Macro
 	Components map[string]*Component

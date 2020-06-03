@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/flyx/tbc/parsers"
+	"github.com/flyx/askew/parsers"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -31,7 +31,7 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 		Name: cmpAttrs.name, Template: replacement, NeedsController: cmpAttrs.controller}
 	cp.syms.CurHost = &cmp.EmbedHost
 	(*cp.counter)++
-	cmp.ID = fmt.Sprintf("tbc-component-%d-%s", *cp.counter, strings.ToLower(cmpAttrs.name))
+	cmp.ID = fmt.Sprintf("askew-component-%d-%s", *cp.counter, strings.ToLower(cmpAttrs.name))
 	replacement.Attr = []html.Attribute{html.Attribute{Key: "id", Val: cmp.ID}}
 
 	var indexList []int
@@ -113,7 +113,7 @@ type handlerProcessor struct {
 func (hp *handlerProcessor) process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
 	if len(*hp.indexList) != 1 {
-		return false, nil, errors.New(": must be defined as direct child of <tbc:component>")
+		return false, nil, errors.New(": must be defined as direct child of <a:component>")
 	}
 	def := n.FirstChild
 	if def.Type != html.TextNode || def.NextSibling != nil {
@@ -185,17 +185,17 @@ type stdElementHandler struct {
 }
 
 func (seh *stdElementHandler) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	var tbcAttrs generalAttribs
-	extractTbcAttribs(n, &tbcAttrs)
+	var attrs generalAttribs
+	extractAskewAttribs(n, &attrs)
 	if n.DataAtom == atom.Input {
-		if err := mapCaptures(seh.c, n, *seh.indexList, tbcAttrs.capture); err != nil {
+		if err := mapCaptures(seh.c, n, *seh.indexList, attrs.capture); err != nil {
 			return false, nil, errors.New(": " + err.Error())
 		}
 		path := append([]int(nil), *seh.indexList...)
-		if !tbcAttrs.ignore {
+		if !attrs.ignore {
 			htmlName := attrVal(n.Attr, "name")
 			found := false
-			for _, vb := range tbcAttrs.bindings {
+			for _, vb := range attrs.bindings {
 				if vb.Variable.Name == htmlName {
 					found = true
 					break
@@ -219,17 +219,17 @@ func (seh *stdElementHandler) process(n *html.Node) (descend bool, replacement *
 					return false, nil, errors.New("input type not supported: " + inputType)
 				}
 
-				tbcAttrs.bindings = append(tbcAttrs.bindings, data.VariableMapping{
+				attrs.bindings = append(attrs.bindings, data.VariableMapping{
 					Value:    data.BoundValue{Kind: data.BoundProperty, ID: "value"},
 					Variable: data.Variable{Type: t, Name: htmlName}})
 			}
 		}
-		processBindings(seh.c, path, tbcAttrs.bindings)
+		processBindings(seh.c, path, attrs.bindings)
 	} else {
-		if err := mapCaptures(seh.c, n, *seh.indexList, tbcAttrs.capture); err != nil {
+		if err := mapCaptures(seh.c, n, *seh.indexList, attrs.capture); err != nil {
 			return false, nil, errors.New(": " + err.Error())
 		}
-		processBindings(seh.c, append([]int(nil), *seh.indexList...), tbcAttrs.bindings)
+		processBindings(seh.c, append([]int(nil), *seh.indexList...), attrs.bindings)
 		descend = true
 	}
 	return

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/flyx/tbc/data"
+	"github.com/flyx/askew/data"
 
 	"github.com/yhirose/go-peg"
 )
@@ -14,7 +14,7 @@ type param struct {
 	Type data.VariableType
 }
 
-// HandlerSpec describes the content of a <tbc:handler> node.
+// HandlerSpec describes the content of an <a:handler> node.
 type HandlerSpec struct {
 	Name   string
 	Params map[string]data.VariableType
@@ -75,7 +75,7 @@ func init() {
 	}
 }
 
-// ParseHandler parses the content of a <tbc:handler> element.
+// ParseHandler parses the content of a <a:handler> element.
 func ParseHandler(s string) (HandlerSpec, error) {
 	ret, err := handlerParser.ParseAndGetValue(s, nil)
 	if err != nil {

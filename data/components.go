@@ -2,25 +2,25 @@ package data
 
 import "golang.org/x/net/html"
 
-// Embed describes a <tbc:embed> node.
+// Embed describes a <a:embed> node.
 type Embed struct {
 	Path          []int
 	Field, Pkg, T string
 	List          bool
 }
 
-// Handler describes a <tbc:handler> node.
+// Handler describes a <a:handler> node.
 type Handler struct {
 	Params map[string]VariableType
 }
 
-// Capture describe a `tbc:capture` attribute.
+// Capture describe a `a:capture` attribute.
 type Capture struct {
 	Path     []int
 	Mappings []EventMapping
 }
 
-// Component describes a <tbc:component> node.
+// Component describes a <a:component> node.
 type Component struct {
 	EmbedHost
 	Name string

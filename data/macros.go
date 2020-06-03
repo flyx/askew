@@ -2,13 +2,13 @@ package data
 
 import "golang.org/x/net/html"
 
-// Slot describes a <tbc:slot> inside a macro.
+// Slot describes an <a:slot> inside a macro.
 type Slot struct {
 	Name string
 	Node *html.Node
 }
 
-// Macro describes a <tbc:macro>.
+// Macro describes an <a:macro>.
 type Macro struct {
 	Slots       []Slot
 	First, Last *html.Node

@@ -1,6 +1,6 @@
 package data
 
-// EventMapping describes the mapping of a DOM node's event to a tbc handler.
+// EventMapping describes the mapping of a DOM node's event to a declared handler.
 type EventMapping struct {
 	Event         string
 	Handler       string
