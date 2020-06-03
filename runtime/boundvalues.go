@@ -37,30 +37,30 @@ func (bp *BoundProperty) set(value interface{}) {
 	bp.node.Set(bp.pName, value)
 }
 
-// BoundAttribute implements BoundValue for an attribute of an HTML node.
-type BoundAttribute struct {
+// BoundData implements BoundValue for an item in the dataset of an HTML node.
+type BoundData struct {
 	node  *js.Object
-	aName string
+	dName string
 }
 
-// NewBoundAttribute creates a BoundAttribtue for the node found at the given
-// path (relative to root) and the given attribute name.
-func NewBoundAttribute(
-	root *js.Object, aName string, path ...int) *BoundAttribute {
-	return &BoundAttribute{node: WalkPath(root, path...), aName: aName}
+// NewBoundData creates a BoundData for the node found at the given
+// path (relative to root) and the given dataset item.
+func NewBoundData(
+	root *js.Object, dName string, path ...int) *BoundData {
+	return &BoundData{node: WalkPath(root, path...), dName: dName}
 }
 
-// Init initializes the bound attribute with the given node and attribute name.
-func (ba *BoundAttribute) Init(node *js.Object, aName string) {
-	ba.node, ba.aName = node, aName
+// Init initializes the object with the given node and dataset item name.
+func (ba *BoundData) Init(node *js.Object, dName string) {
+	ba.node, ba.dName = node, dName
 }
 
-func (ba *BoundAttribute) get() *js.Object {
-	return ba.node.Call("getAttribute", ba.aName)
+func (ba *BoundData) get() *js.Object {
+	return ba.node.Get("dataset").Get(ba.dName)
 }
 
-func (ba *BoundAttribute) set(value interface{}) {
-	ba.node.Call("setAttribute", ba.aName, value)
+func (ba *BoundData) set(value interface{}) {
+	ba.node.Get("dataset").Set(ba.dName, value)
 }
 
 // BoundClass implements BoundValue for a node so that assigning boolean

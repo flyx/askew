@@ -154,7 +154,7 @@ func mapCaptures(c *data.Component, n *html.Node, path []int, v []data.EventMapp
 		for pName := range h.Params {
 			_, ok = m.ParamMappings[pName]
 			if !ok {
-				m.ParamMappings[pName] = data.BoundValue{Kind: data.BoundAttribute, ID: "data-" + pName}
+				m.ParamMappings[pName] = data.BoundValue{Kind: data.BoundData, ID: pName}
 			}
 		}
 	}

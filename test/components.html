@@ -4,7 +4,7 @@
   <a:handler>Submit()</a:handler>
   <a:handler>Reset(foo string)</a:handler>
   <section>
-    <h2 a:bindings="attr(textValue):Heading">Test</h2>
+    <h2 a:bindings="prop(textContent):Heading">Test</h2>
     <form data-foo="bar" class="form" a:capture="submit:Submit,reset:Reset">
       <label for="Name">Name:</label>
       <input name="Name" /><br/>

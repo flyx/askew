@@ -6,8 +6,8 @@ import (
 )
 
 var boundSyntax = `
-BOUND  ← ATTR / PROP / CLASS
-ATTR   ← 'attr' '(' HTMLID ')'
+BOUND  ← DATA / PROP / CLASS
+DATA   ← 'data' '(' HTMLID ')'
 PROP   ← 'prop' '(' HTMLID ')'
 CLASS  ← 'class' '(' HTMLID ')'
 HTMLID ← < ([0-9a-zA-Z_] / '-')+ >
@@ -22,8 +22,8 @@ func registerBinders(p *peg.Parser) {
 	p.Grammar["PROP"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		return data.BoundValue{Kind: data.BoundProperty, ID: v.ToStr(0)}, nil
 	}
-	p.Grammar["ATTR"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return data.BoundValue{Kind: data.BoundAttribute, ID: v.ToStr(0)}, nil
+	p.Grammar["DATA"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
+		return data.BoundValue{Kind: data.BoundData, ID: v.ToStr(0)}, nil
 	}
 	p.Grammar["CLASS"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		return data.BoundValue{Kind: data.BoundClass, ID: v.ToStr(0)}, nil

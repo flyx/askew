@@ -6,3 +6,4 @@ test/ui/macrotest.go
 test/extra/embedtest.go
 test/init.go
 test/site
+.DS_Store

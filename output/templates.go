@@ -43,8 +43,8 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 		switch bk {
 		case data.BoundProperty:
 			return "NewBoundProperty"
-		case data.BoundAttribute:
-			return "NewBoundAttribute"
+		case data.BoundData:
+			return "NewBoundData"
 		case data.BoundClass:
 			return "NewBoundClass"
 		default:

@@ -22,8 +22,8 @@ func nameForType(k data.VariableType) string {
 
 func nameForBound(b data.BoundKind) string {
 	switch b {
-	case data.BoundAttribute:
-		return "BoundAttribute"
+	case data.BoundData:
+		return "BoundData"
 	case data.BoundProperty:
 		return "BoundProperty"
 	case data.BoundClass:
