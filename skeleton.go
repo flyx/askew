@@ -19,55 +19,56 @@ func (ti *templateInjector) process(n *html.Node) (descend bool, replacement *ht
 		return false, nil, errors.New("duplicate <tbc:templates> in document")
 	}
 	ti.seen = true
+	var last *html.Node
 	for _, pkg := range ti.syms.Packages {
 		for _, cmp := range pkg.Components {
-			if replacement == nil {
-				replacement = cmp.Template
+			if last == nil {
+				last = cmp.Template
+				last.PrevSibling = nil
+				replacement = last
 			} else {
-				replacement.NextSibling = cmp.Template
-				cmp.Template.PrevSibling = replacement
-				replacement = replacement.NextSibling
+				last.NextSibling = cmp.Template
+				cmp.Template.PrevSibling = last
+				last = last.NextSibling
 			}
+			last.NextSibling = nil
 		}
 	}
 	return
 }
 
-type globalEmbedProcessor struct {
-	syms      *data.Symbols
-	embeds    []data.Embed
-	indexList []int
-}
-
-func (gep *globalEmbedProcessor) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	e, err := resolveEmbed(n, gep.syms, gep.indexList)
-	if err != nil {
-		return false, nil, err
-	}
-	gep.embeds = append(gep.embeds, e)
-	return false, nil, nil
-}
-
 func readSkeleton(syms *data.Symbols, file string) (*data.Skeleton, error) {
 	raw, err := ioutil.ReadFile(file)
-	if err == nil {
+	if err != nil {
 		return nil, err
 	}
 	root, err := html.Parse(bytes.NewReader(raw))
 	if err != nil {
-		return nil, err
+		return nil, errors.New(file + ": " + err.Error())
 	}
 	if root.Type != html.DocumentNode {
 		panic(file + ": HTML document is not a DocumentNode")
 	}
 
-	gep := globalEmbedProcessor{syms, make([]data.Embed, 0, 32), make([]int, 0, 32)}
+	indexList := make([]int, 0, 32)
 
-	w := walker{templates: &templateInjector{syms, false}, stdElements: allow{},
-		embed: &gep, indexList: &gep.indexList}
-	_, _, err = w.walkChildren(root, &siblings{root.FirstChild})
+	s := &data.Skeleton{EmbedHost: data.EmbedHost{Dependencies: make(map[string]struct{})}, Root: root}
+
+	syms.CurHost = &s.EmbedHost
+	syms.CurPkg = ""
+
+	w := walker{text: allow{}, templates: &templateInjector{syms, false}, stdElements: allow{},
+		embed: &embedProcessor{syms, &indexList}, indexList: &indexList}
+	root.FirstChild, root.LastChild, err = w.walkChildren(root, &siblings{root.FirstChild})
 	if err != nil {
-		return nil, err
+		return nil, errors.New(file + err.Error())
 	}
-	return &data.Skeleton{Root: root, Embeds: gep.embeds}, nil
+
+	tmp := make([]data.Embed, len(s.Embeds))
+	for i, e := range s.Embeds {
+		tmp[len(tmp)-i-1] = e
+	}
+	s.Embeds = tmp
+
+	return s, nil
 }

@@ -13,13 +13,19 @@ type Package struct {
 	Components map[string]*Component
 }
 
+// EmbedHost is an entity that allows embedding components.
+type EmbedHost struct {
+	Dependencies map[string]struct{}
+	Embeds       []Embed
+}
+
 // Symbols is the context of the procesor. It stores all seen symbols along
 // with the packages they are declared in.
 type Symbols struct {
-	PkgBasePath  string
-	Packages     map[string]*Package
-	CurPkg       string
-	CurComponent *Component
+	PkgBasePath string
+	Packages    map[string]*Package
+	CurPkg      string
+	CurHost     *EmbedHost
 }
 
 // split takes an identifier consisting of a symbol name optionally
@@ -65,7 +71,7 @@ func (s *Symbols) ResolveComponent(id string) (*Component, string, string, error
 		return nil, "", "", fmt.Errorf("unknown component: '%s'", id)
 	}
 	if pkgName != s.CurPkg {
-		s.CurComponent.Dependencies[filepath.Join(s.PkgBasePath, pkgName)] = struct{}{}
+		s.CurHost.Dependencies[filepath.Join(s.PkgBasePath, pkgName)] = struct{}{}
 	}
 	return ret, pkgName, name, nil
 }

@@ -44,6 +44,14 @@ func pathItems(path []int) string {
 	return b.String()
 }
 
+func parentPath(path []int) string {
+	return pathItems(path[:len(path)-1])
+}
+
+func last(path []int) int {
+	return path[len(path)-1]
+}
+
 func wrapperForType(k data.VariableType) string {
 	switch k {
 	case data.StringVar:

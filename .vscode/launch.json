@@ -11,7 +11,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}",
       "env": {},
-      "args": ["-o", "test/generated", "test/components.html"]
+      "args": ["-o", "test", "-s", "test/skeleton.html", "-i", "test/site/index.html", "test/components.html"]
     }
   ]
 }

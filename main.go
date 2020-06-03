@@ -17,9 +17,9 @@ func main() {
 	output := getopt.StringLong(
 		"outputDir", 'o', "", "output directory. Each package will be placed as child directory here.")
 	outputHTML := getopt.StringLong(
-		"outputHtml", 't', "", "path to output file where the HTML templates are written."+
-			" defaults to ${outputDir}/<name>.html where <name> is \"templates\" if no "+
-			"skeleton is given and \"index.html\" if a skeleton is given.")
+		"outputHtml", 'i', "", "path to the HTML output file. This file will contain the rendered skeleton "+
+			"in one has been given, or a list of templates if not. defaults to ${outputDir}/<name>.html where "+
+			"<name> is \"templates\" if no skeleton is given and ${outputDir}/index.html if a skeleton is given.")
 	getopt.Parse()
 	args := getopt.Args()
 

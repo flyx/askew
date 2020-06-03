@@ -22,15 +22,14 @@ type Capture struct {
 
 // Component describes a <tbc:component> node.
 type Component struct {
+	EmbedHost
 	Name string
 	// HTML id. internally generated.
 	ID              string
 	Variables       []VariableMapping
-	Embeds          []Embed
 	Handlers        map[string]Handler
 	Captures        []Capture
 	Template        *html.Node
 	NeedsController bool
 	NeedsList       bool
-	Dependencies    map[string]struct{}
 }

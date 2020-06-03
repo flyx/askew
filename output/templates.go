@@ -23,12 +23,8 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 	"Wrapper":      wrapperForType,
 	"PathItems":    pathItems,
 	"NameForBound": nameForBound,
-	"ParentPath": func(path []int) string {
-		return pathItems(path[:len(path)-1])
-	},
-	"Last": func(path []int) int {
-		return path[len(path)-1]
-	},
+	"ParentPath":   parentPath,
+	"Last":         last,
 	"GenParams": func(params map[string]data.VariableType) string {
 		var items []string
 		for pName, pType := range params {
@@ -182,8 +178,8 @@ type {{.Name}}List struct {
 }
 
 // Init initializes the list, discarding previous data.
-// The list is initially a DocumentFragment until it gets inserted into
-// the main document. It can be manipulated both before and after insertion.
+// The list's items will be placed in the given container, starting at the
+// given index.
 func (l *{{.Name}}List) Init(container *js.Object, index int) {
 	l.mgr = runtime.CreateListManager(container, index)
 	l.items = nil
@@ -238,4 +234,31 @@ func (l *{{.Name}}List) Remove(index int) {
 	l.items = l.items[:len(l.items)-1]
 }
 {{end}}
+`))
+
+var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
+	"ParentPath": parentPath,
+	"Last":       last,
+}).Parse(`
+{{range .Embeds}}
+{{if .List}}
+var {{.Field}} {{.Pkg}}.{{.T}}List
+{{else}}
+var {{.Field}} = {{.Pkg}}.New{{.T}}()
+{{end}}
+{{end}}
+
+func init() {
+	document := js.Global.Get("document")
+	{{- range .Embeds}}
+	{{- if .List}}
+	{{.Field}}.Init(runtime.WalkPath(document, {{ParentPath .Path}}), {{Last .Path}})
+	{{- else}}
+	{
+		container := runtime.WalkPath(document, {{ParentPath .Path}})
+		{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
+	}
+	{{- end}}
+	{{- end}}
+}
 `))

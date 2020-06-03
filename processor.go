@@ -112,10 +112,14 @@ func (p *processor) dump(skeleton *data.Skeleton, htmlPath, packageParent string
 	if err != nil {
 		panic("unable to write HTML output: " + err.Error())
 	}
-	for _, pkg := range p.syms.Packages {
-		for _, c := range pkg.Components {
-			html.Render(htmlFile, c.Template)
+	if skeleton == nil {
+		for _, pkg := range p.syms.Packages {
+			for _, c := range pkg.Components {
+				html.Render(htmlFile, c.Template)
+			}
 		}
+	} else {
+		html.Render(htmlFile, skeleton.Root)
 	}
 
 	htmlFile.Close()
@@ -130,5 +134,9 @@ func (p *processor) dump(skeleton *data.Skeleton, htmlPath, packageParent string
 		for name, t := range pkg.Components {
 			w.WriteComponent(name, t)
 		}
+	}
+
+	if skeleton != nil {
+		output.WriteSkeleton(&p.syms, filepath.Join(packageParent, "init.go"), skeleton)
 	}
 }

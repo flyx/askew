@@ -17,10 +17,12 @@ type PackageWriter struct {
 // WriteComponent writes a component of the package to a file.
 func (pw *PackageWriter) WriteComponent(name string, c *data.Component) {
 	b := strings.Builder{}
-	fileHeader.Execute(&b, struct {
+	if err := fileHeader.Execute(&b, struct {
 		PackageName string
 		Deps        map[string]struct{}
-	}{pw.PackageName, c.Dependencies})
+	}{pw.PackageName, c.Dependencies}); err != nil {
+		panic(err)
+	}
 
 	if err := component.Execute(&b, c); err != nil {
 		panic(err)

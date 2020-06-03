@@ -50,7 +50,7 @@ func (w *walker) walk(n *html.Node, nodesCount map[string]int) (replacement *htm
 		return
 	case html.ElementNode:
 		break
-	case html.CommentNode:
+	case html.CommentNode, html.DoctypeNode:
 		return nil, nil
 	default:
 		return nil, errors.New(": unexpected node kind")

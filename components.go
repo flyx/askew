@@ -27,9 +27,9 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 
 	replacement = &html.Node{Type: html.ElementNode, DataAtom: atom.Template,
 		Data: "template"}
-	cmp := &data.Component{Name: cmpAttrs.name, Template: replacement, NeedsController: cmpAttrs.controller,
-		Dependencies: make(map[string]struct{})}
-	cp.syms.CurComponent = cmp
+	cmp := &data.Component{EmbedHost: data.EmbedHost{Dependencies: make(map[string]struct{})},
+		Name: cmpAttrs.name, Template: replacement, NeedsController: cmpAttrs.controller}
+	cp.syms.CurHost = &cmp.EmbedHost
 	(*cp.counter)++
 	cmp.ID = fmt.Sprintf("tbc-component-%d-%s", *cp.counter, strings.ToLower(cmpAttrs.name))
 	replacement.Attr = []html.Attribute{html.Attribute{Key: "id", Val: cmp.ID}}
@@ -38,11 +38,21 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 	w := walker{
 		text:        allow{},
 		embed:       &embedProcessor{cp.syms, &indexList},
-		handler:     &handlerProcessor{cp.syms, &indexList},
-		stdElements: &stdElementHandler{cp.syms, &indexList},
+		handler:     &handlerProcessor{cp.syms, &cmp.Handlers, &indexList},
+		stdElements: &stdElementHandler{cp.syms, &indexList, cmp},
 		indexList:   &indexList}
 	replacement.FirstChild, replacement.LastChild, err = w.walkChildren(
 		replacement, &siblings{n.FirstChild})
+
+	// reverse Embed list so that they get embedded in reverse order.
+	// this is necessary because embedding may change the number of elements in
+	// a node, rendering the path of following embeds invalid.
+	tmp := make([]data.Embed, len(cmp.Embeds))
+	for i, e := range cmp.Embeds {
+		tmp[len(tmp)-i-1] = e
+	}
+	cmp.Embeds = tmp
+
 	cp.syms.Packages[cp.syms.CurPkg].Components[cmpAttrs.name] = cmp
 
 	return
@@ -88,7 +98,7 @@ func (ep *embedProcessor) process(n *html.Node) (descend bool,
 		return false, nil, err
 	}
 
-	ep.syms.CurComponent.Embeds = append(ep.syms.CurComponent.Embeds, e)
+	ep.syms.CurHost.Embeds = append(ep.syms.CurHost.Embeds, e)
 	replacement = &html.Node{Type: html.CommentNode,
 		Data: "embed(" + e.Field + ")"}
 	return
@@ -96,6 +106,7 @@ func (ep *embedProcessor) process(n *html.Node) (descend bool,
 
 type handlerProcessor struct {
 	syms      *data.Symbols
+	handlers  *map[string]data.Handler
 	indexList *[]int
 }
 
@@ -112,16 +123,15 @@ func (hp *handlerProcessor) process(n *html.Node) (descend bool,
 	if err != nil {
 		return false, nil, errors.New(": unable to parse `" + def.Data + "`: " + err.Error())
 	}
-	c := hp.syms.CurComponent
-	if c.Handlers == nil {
-		c.Handlers = make(map[string]data.Handler)
+	if *hp.handlers == nil {
+		*hp.handlers = make(map[string]data.Handler)
 	} else {
-		_, ok := c.Handlers[parsed.Name]
+		_, ok := (*hp.handlers)[parsed.Name]
 		if ok {
 			return false, nil, errors.New(": duplicate handler name: " + parsed.Name)
 		}
 	}
-	c.Handlers[parsed.Name] = data.Handler{Params: parsed.Params}
+	(*hp.handlers)[parsed.Name] = data.Handler{Params: parsed.Params}
 	replacement = &html.Node{Type: html.CommentNode, Data: "handler: " + def.Data}
 	return
 }
@@ -171,14 +181,14 @@ func processBindings(c *data.Component, path []int, arr []data.VariableMapping) 
 type stdElementHandler struct {
 	syms      *data.Symbols
 	indexList *[]int
+	c         *data.Component
 }
 
 func (seh *stdElementHandler) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	var tbcAttrs generalAttribs
 	extractTbcAttribs(n, &tbcAttrs)
-	c := seh.syms.CurComponent
 	if n.DataAtom == atom.Input {
-		if err := mapCaptures(c, n, *seh.indexList, tbcAttrs.capture); err != nil {
+		if err := mapCaptures(seh.c, n, *seh.indexList, tbcAttrs.capture); err != nil {
 			return false, nil, errors.New(": " + err.Error())
 		}
 		path := append([]int(nil), *seh.indexList...)
@@ -214,12 +224,12 @@ func (seh *stdElementHandler) process(n *html.Node) (descend bool, replacement *
 					Variable: data.Variable{Type: t, Name: htmlName}})
 			}
 		}
-		processBindings(c, path, tbcAttrs.bindings)
+		processBindings(seh.c, path, tbcAttrs.bindings)
 	} else {
-		if err := mapCaptures(c, n, *seh.indexList, tbcAttrs.capture); err != nil {
+		if err := mapCaptures(seh.c, n, *seh.indexList, tbcAttrs.capture); err != nil {
 			return false, nil, errors.New(": " + err.Error())
 		}
-		processBindings(c, append([]int(nil), *seh.indexList...), tbcAttrs.bindings)
+		processBindings(seh.c, append([]int(nil), *seh.indexList...), tbcAttrs.bindings)
 		descend = true
 	}
 	return
