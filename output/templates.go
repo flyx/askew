@@ -23,7 +23,6 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 	"Wrapper":      wrapperForType,
 	"PathItems":    pathItems,
 	"NameForBound": nameForBound,
-	"ParentPath":   parentPath,
 	"Last":         last,
 	"GenParams": func(params map[string]data.VariableType) string {
 		var items []string
@@ -38,6 +37,9 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 			items = append(items, fmt.Sprintf("&p%s", name))
 		}
 		return strings.Join(items, ", ")
+	},
+	"IsFormValue": func(bk data.BoundKind) bool {
+		return bk == data.BoundFormValue
 	},
 	"Constructor": func(bk data.BoundKind) string {
 		switch bk {
@@ -104,11 +106,15 @@ func New{{.Name}}() *{{.Name}} {
 func (o *{{.Name}}) Init() {
 	o.root = runtime.InstantiateTemplateByID("{{.ID}}")
 	{{ range .Variables }}
-	o.{{.Name}}.BoundValue = runtime.{{Constructor .Value.Kind}}(o.root, "{{.Value.ID}}", {{PathItems .Path}})
+	{{- if IsFormValue .Value.Kind}}
+	o.{{.Name}}.BoundValue = runtime.NewBoundFormValue(o.root, "{{.Value.ID}}", {{.Value.IsRadio}}, {{PathItems .Path .Value.FormDepth}})
+	{{- else}}
+	o.{{.Name}}.BoundValue = runtime.{{Constructor .Value.Kind}}(o.root, "{{.Value.ID}}", {{PathItems .Path 0}})
+	{{- end}}
 	{{- end}}
 	{{- range .Embeds }}
 	{
-		container := runtime.WalkPath(o.root, {{ParentPath .Path}})
+		container := runtime.WalkPath(o.root, {{PathItems .Path 1}})
 		{{- if .List}}
 		o.{{.Field}}.Init(container, {{Last .Path}})
 		{{- else}}
@@ -119,13 +125,17 @@ func (o *{{.Name}}) Init() {
 	{{- end}}
 	{{- range .Captures}}
 	{
-		src := runtime.WalkPath(o.root, {{PathItems .Path}})
+		src := runtime.WalkPath(o.root, {{PathItems .Path 0}})
 		{{- range .Mappings}}
 		{
 			wrapper := js.MakeFunc(func(this *js.Object, arguments []*js.Object) interface{} {
 				{{- range $pName, $bVal := .ParamMappings}}
 				var p{{$pName}} runtime.{{NameForBound $bVal.Kind}}
+				{{- if IsFormValue $bVal.Kind}}
+				p{{$pName}}.Init(this.Call("closest", "form"), "{{$bVal.ID}}", {{$bVal.IsRadio}})
+				{{- else}}
 				p{{$pName}}.Init(this, "{{$bVal.ID}}")
+				{{- end}}
 				{{- end}}
 				if o.call{{.Handler}}({{GenArgs .ParamMappings}}) {
 					arguments[0].Call("preventDefault")
@@ -237,8 +247,8 @@ func (l *{{.Name}}List) Remove(index int) {
 `))
 
 var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
-	"ParentPath": parentPath,
-	"Last":       last,
+	"PathItems": pathItems,
+	"Last":      last,
 }).Parse(`
 {{range .Embeds}}
 {{if .List}}
@@ -252,10 +262,10 @@ func init() {
 	document := js.Global.Get("document")
 	{{- range .Embeds}}
 	{{- if .List}}
-	{{.Field}}.Init(runtime.WalkPath(document, {{ParentPath .Path}}), {{Last .Path}})
+	{{.Field}}.Init(runtime.WalkPath(document, {{PathItems .Path 1}}), {{Last .Path}})
 	{{- else}}
 	{
-		container := runtime.WalkPath(document, {{ParentPath .Path}})
+		container := runtime.WalkPath(document, {{PathItems .Path 1}})
 		{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
 	}
 	{{- end}}

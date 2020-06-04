@@ -94,3 +94,52 @@ func (bc *BoundClass) set(value interface{}) {
 		bc.node.Get("classList").Call("remove", bc.className)
 	}
 }
+
+// BoundFormValue implements BoundValue as a reference to an element supplying
+// a value to the current form.
+type BoundFormValue struct {
+	form  *js.Object
+	name  string
+	radio bool
+}
+
+// NewBoundFormValue creates a BoundFormValue for the from at the given path.
+// radio must be true iff the input with the given name has type=radio.
+func NewBoundFormValue(root *js.Object, name string, radio bool, path ...int) *BoundFormValue {
+	return &BoundFormValue{
+		form: WalkPath(root, path...), name: name}
+}
+
+// Init initializes the BoundFormValue with the given form and element name.
+func (bfv *BoundFormValue) Init(form *js.Object, name string, radio bool) {
+	bfv.form, bfv.name, bfv.radio = form, name, radio
+}
+
+func (bfv *BoundFormValue) get() *js.Object {
+	if bfv.radio {
+		list := bfv.form.Get("elements").Get(bfv.name)
+		for i := 0; i < list.Length(); i++ {
+			item := list.Index(i)
+			if item.Get("checked").Bool() {
+				return item.Get("value")
+			}
+		}
+		return nil
+	}
+	return bfv.form.Get("elements").Get(bfv.name).Get("value")
+}
+
+func (bfv *BoundFormValue) set(value interface{}) {
+	elm := bfv.form.Get("elements").Get(bfv.name)
+	if bfv.radio {
+		for i := 0; i < elm.Length(); i++ {
+			item := elm.Index(i)
+			if item.Get("value") == value {
+				item.Set("checked", true)
+				return
+			}
+		}
+		panic("unknown radio value!")
+	}
+	elm.Set("value", value)
+}

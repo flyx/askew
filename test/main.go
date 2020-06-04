@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/gopherjs/gopherjs/js"
 )
 
@@ -11,8 +13,8 @@ func (*handler) Reset(foo string) bool {
 	return true
 }
 
-func (*handler) Submit() bool {
-	js.Global.Call("alert", "submit!")
+func (*handler) Submit(name string, age int) bool {
+	js.Global.Call("alert", "name="+name+", age="+strconv.FormatInt(int64(age), 10))
 	return true
 }
 

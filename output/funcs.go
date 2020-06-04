@@ -28,24 +28,22 @@ func nameForBound(b data.BoundKind) string {
 		return "BoundProperty"
 	case data.BoundClass:
 		return "BoundClass"
+	case data.BoundFormValue:
+		return "BoundFormValue"
 	default:
 		panic("unknown boundKind")
 	}
 }
 
-func pathItems(path []int) string {
+func pathItems(path []int, exclude int) string {
 	b := strings.Builder{}
-	for i := range path {
+	for i := 0; i < len(path)-exclude; i++ {
 		if i != 0 {
 			b.WriteString(", ")
 		}
 		b.WriteString(strconv.FormatInt(int64(path[i]), 10))
 	}
 	return b.String()
-}
-
-func parentPath(path []int) string {
-	return pathItems(path[:len(path)-1])
 }
 
 func last(path []int) int {

@@ -39,7 +39,7 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 		text:        allow{},
 		embed:       &embedProcessor{cp.syms, &indexList},
 		handler:     &handlerProcessor{cp.syms, &cmp.Handlers, &indexList},
-		stdElements: &stdElementHandler{cp.syms, &indexList, cmp},
+		stdElements: &stdElementHandler{cp.syms, &indexList, cmp, -1, nil},
 		indexList:   &indexList}
 	replacement.FirstChild, replacement.LastChild, err = w.walkChildren(
 		replacement, &siblings{n.FirstChild})
@@ -136,12 +136,87 @@ func (hp *handlerProcessor) process(n *html.Node) (descend bool,
 	return
 }
 
-func mapCaptures(c *data.Component, n *html.Node, path []int, v []data.EventMapping) error {
+type formValue struct {
+	t     data.VariableType
+	radio bool
+}
+
+type formValueDiscovery struct {
+	values map[string]formValue
+}
+
+func (d *formValueDiscovery) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+	var v formValue
+	name := attrVal(n.Attr, "name")
+	if name == "" {
+		return false, nil, nil
+	}
+	switch n.DataAtom {
+	case atom.Input:
+		switch inputType := attrVal(n.Attr, "type"); inputType {
+		case "radio":
+			v.radio = true
+			v.t = data.StringVar
+		case "number", "range":
+			if strings.ContainsRune(attrVal(n.Attr, "min"), '.') ||
+				strings.ContainsRune(attrVal(n.Attr, "max"), '.') ||
+				strings.ContainsRune(attrVal(n.Attr, "step"), '.') {
+				return false, nil, errors.New(": non-integer " + inputType + " inputs not supported")
+			}
+			v.t = data.IntVar
+		case "text", "":
+			v.t = data.StringVar
+		case "submit", "reset", "hidden":
+			return false, nil, nil
+		default:
+			return false, nil, errors.New(": unsupported input type: `" + inputType + "`")
+		}
+	case atom.Select, atom.Textarea:
+		v.t, v.radio = data.StringVar, false
+	default:
+		return false, nil, nil
+	}
+	existing, ok := d.values[name]
+	if ok {
+		if v.radio && existing.radio {
+			return false, nil, nil
+		}
+		return false, nil, errors.New(": duplicate name `" + name + "` in same form")
+	}
+	d.values[name] = v
+	return false, nil, nil
+}
+
+func discoverFormValues(form *html.Node) (map[string]formValue, error) {
+	fvd := formValueDiscovery{values: make(map[string]formValue)}
+	w := walker{text: allow{}, embed: dontDescend{}, handler: dontDescend{},
+		stdElements: &fvd}
+	var err error
+	form.FirstChild, form.LastChild, err = w.walkChildren(form, &siblings{form.FirstChild})
+	if err != nil {
+		return nil, err
+	}
+	return fvd.values, nil
+}
+
+type stdElementHandler struct {
+	syms       *data.Symbols
+	indexList  *[]int
+	c          *data.Component
+	curFormPos int
+	curForm    map[string]formValue
+}
+
+func (seh *stdElementHandler) mapCaptures(n *html.Node, v []data.EventMapping) error {
 	if len(v) == 0 {
 		return nil
 	}
+	formDepth := -1
+	if seh.curFormPos != -1 {
+		formDepth = len(*seh.indexList) - seh.curFormPos
+	}
 	for _, m := range v {
-		h, ok := c.Handlers[m.Handler]
+		h, ok := seh.c.Handlers[m.Handler]
 		if !ok {
 			return errors.New("capture references unknown handler: " + m.Handler)
 		}
@@ -152,86 +227,96 @@ func mapCaptures(c *data.Component, n *html.Node, path []int, v []data.EventMapp
 			}
 		}
 		for pName := range h.Params {
-			_, ok = m.ParamMappings[pName]
+			bVal, ok := m.ParamMappings[pName]
 			if !ok {
 				m.ParamMappings[pName] = data.BoundValue{Kind: data.BoundData, ID: pName}
+			} else if bVal.Kind == data.BoundFormValue {
+				if formDepth == -1 {
+					return errors.New(": illegal form() binding outside of <form> element")
+				}
+				bVal.FormDepth = formDepth
+				_, ok := seh.curForm[bVal.ID]
+				if !ok {
+					return errors.New(": unknown form value name: `" + bVal.ID + "`")
+				}
 			}
 		}
 	}
 
-	c.Captures = append(c.Captures, data.Capture{
-		Path: append([]int(nil), path...), Mappings: v})
+	seh.c.Captures = append(seh.c.Captures, data.Capture{
+		Path: append([]int(nil), *seh.indexList...), Mappings: v})
 	return nil
 }
 
-func processBindings(c *data.Component, path []int, arr []data.VariableMapping) {
+func (seh *stdElementHandler) processBindings(arr []data.VariableMapping) error {
+	formDepth := -1
+	if seh.curFormPos != -1 {
+		formDepth = len(*seh.indexList) - seh.curFormPos
+	}
+
 	for _, vb := range arr {
-		if vb.Variable.Type == data.AutoVar {
-			if vb.Value.Kind == data.BoundClass {
-				vb.Variable.Type = data.BoolVar
-			} else {
-				vb.Variable.Type = data.StringVar
+		if vb.Value.Kind == data.BoundFormValue {
+			if formDepth == -1 {
+				return errors.New(": illegal form() binding outside of <form> element")
+			}
+			vb.Value.FormDepth = formDepth
+			val, ok := seh.curForm[vb.Name]
+			if !ok {
+				return errors.New(": unknown form value name: `" + vb.Name + "`")
+			}
+			if vb.Variable.Type == data.AutoVar {
+				vb.Variable.Type = val.t
+			}
+		} else {
+			if vb.Variable.Type == data.AutoVar {
+				if vb.Value.Kind == data.BoundClass {
+					vb.Variable.Type = data.BoolVar
+				} else {
+					vb.Variable.Type = data.StringVar
+				}
 			}
 		}
-		vb.Path = path
-		c.Variables = append(c.Variables, vb)
+		vb.Path = append([]int(nil), *seh.indexList...)
+		seh.c.Variables = append(seh.c.Variables, vb)
 	}
+	return nil
 }
 
-type stdElementHandler struct {
-	syms      *data.Symbols
-	indexList *[]int
-	c         *data.Component
+func (seh *stdElementHandler) formDepth() int {
+	if seh.curFormPos == -1 {
+		return -1
+	}
+	return len(*seh.indexList) - seh.curFormPos
 }
 
 func (seh *stdElementHandler) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+	if len(*seh.indexList) <= seh.curFormPos {
+		seh.curFormPos = -1
+		seh.curForm = nil
+	}
+
 	var attrs generalAttribs
 	extractAskewAttribs(n, &attrs)
-	if n.DataAtom == atom.Input {
-		if err := mapCaptures(seh.c, n, *seh.indexList, attrs.capture); err != nil {
-			return false, nil, errors.New(": " + err.Error())
+	switch n.DataAtom {
+	case atom.Form:
+		if seh.curFormPos != -1 {
+			return false, nil, errors.New(": nested <form> not allowed")
 		}
-		path := append([]int(nil), *seh.indexList...)
-		if !attrs.ignore {
-			htmlName := attrVal(n.Attr, "name")
-			found := false
-			for _, vb := range attrs.bindings {
-				if vb.Variable.Name == htmlName {
-					found = true
-					break
-				}
-			}
-			if !found && htmlName != "" {
-				var t data.VariableType
-				switch inputType := attrVal(n.Attr, "type"); inputType {
-				case "number", "range":
-					if strings.ContainsRune(attrVal(n.Attr, "min"), '.') ||
-						strings.ContainsRune(attrVal(n.Attr, "max"), '.') ||
-						strings.ContainsRune(attrVal(n.Attr, "step"), '.') {
-						return false, nil, errors.New("non-integer " + inputType + " inputs not supported")
-					}
-					t = data.IntVar
-				case "", "text":
-					t = data.StringVar
-				case "submit", "reset":
-					break
-				default:
-					return false, nil, errors.New("input type not supported: " + inputType)
-				}
-
-				attrs.bindings = append(attrs.bindings, data.VariableMapping{
-					Value:    data.BoundValue{Kind: data.BoundProperty, ID: "value"},
-					Variable: data.Variable{Type: t, Name: htmlName}})
-			}
+		seh.curFormPos = len(*seh.indexList)
+		vals, err := discoverFormValues(n)
+		if err != nil {
+			return false, nil, err
 		}
-		processBindings(seh.c, path, attrs.bindings)
-	} else {
-		if err := mapCaptures(seh.c, n, *seh.indexList, attrs.capture); err != nil {
-			return false, nil, errors.New(": " + err.Error())
-		}
-		processBindings(seh.c, append([]int(nil), *seh.indexList...), attrs.bindings)
-		descend = true
+		seh.curForm = vals
+		break
+	default:
+		break
 	}
+	if err := seh.mapCaptures(n, attrs.capture); err != nil {
+		return false, nil, errors.New(": " + err.Error())
+	}
+	err = seh.processBindings(attrs.bindings)
+	descend = err == nil
 	return
 }
 
