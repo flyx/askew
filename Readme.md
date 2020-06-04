@@ -32,20 +32,20 @@ Let's define a component as well as the skeleton of our website in annotated HTM
 <!-- components.html -->
 <a:package name="ui">
   <a:component name="Greeter">
-    <!-- defines a handler for the component.
-         Handlers translate to Go methods. -->
-    <a:handler>Greet()</a:handler>
-    <!-- a:capture binds DOM events to defined handlers. -->
-    <form a:capture="submit:Greet">
+    <!-- defines a handler for the component. Handlers translate to Go methods.
+         A handler may have parameters, which will be mapped to DOM items when
+         calling it. -->
+    <a:handler>Greet(name string)</a:handler>
+    <!-- a:capture binds DOM events to defined handlers.
+         form(Name) binds to the form's value with the given name. -->
+    <form a:capture="submit:Greet(name=form(Name))">
       <label for="Name">What's your name?</label>
       <!-- a:bindings binds items in the DOM to Go accessors.
            in this case, we get a bool accessor that switches
            the class "hasError" on or off on this element. -->
       <p a:bindings="class(hasError):HasError">
-        <!-- input values are wrapped automatically with accessors
-             if they have a Name. -->
-        <input name="Name">
-        <!-- a:bindings can also bind to DOM node properties. -->
+        <!-- with prop(), we can bind to a certain property of a DOM node -->
+        <input name="Name" a:bindings="prop(value):Name">
         <span a:bindings="prop(textContent):ErrorMsg"></span>
       </p>
       <button type="submit">Greet</button>
@@ -100,8 +100,8 @@ package ui
 
 import "github.com/gopherjs/gopherjs/js"
 
-func (o *Greeter) Greet() bool {
-  switch name := o.Name.Get(); name {
+func (o *Greeter) Greet(name string) bool {
+  switch name {
     case "":
       o.HasError.Set(true)
       o.ErrorMsg.Set("please tell me your name")
