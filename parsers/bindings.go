@@ -31,20 +31,20 @@ func init() {
 	g["TYPEDVAR"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		switch v.ToStr(1) {
 		case "int":
-			return data.Variable{Type: data.IntVar, Name: v.ToStr(0)}, nil
+			return data.GoValue{Type: data.IntVar, Name: v.ToStr(0)}, nil
 		case "string":
-			return data.Variable{Type: data.StringVar, Name: v.ToStr(0)}, nil
+			return data.GoValue{Type: data.StringVar, Name: v.ToStr(0)}, nil
 		case "bool":
-			return data.Variable{Type: data.BoolVar, Name: v.ToStr(0)}, nil
+			return data.GoValue{Type: data.BoolVar, Name: v.ToStr(0)}, nil
 		default:
 			return nil, fmt.Errorf("unsupported type: %s", v.ToStr(1))
 		}
 	}
 	g["AUTOVAR"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return data.Variable{Type: data.AutoVar, Name: v.ToStr(0)}, nil
+		return data.GoValue{Type: data.AutoVar, Name: v.ToStr(0)}, nil
 	}
 	g["BINDING"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		return data.VariableMapping{Value: v.Vs[0].(data.BoundValue), Variable: v.Vs[1].(data.Variable)}, nil
+		return data.VariableMapping{Value: v.Vs[0].(data.BoundValue), Variable: v.Vs[1].(data.GoValue)}, nil
 	}
 	g["ROOT"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		ret := make([]data.VariableMapping, v.Len())

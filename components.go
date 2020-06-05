@@ -220,26 +220,30 @@ func (seh *stdElementHandler) mapCaptures(n *html.Node, v []data.EventMapping) e
 		if !ok {
 			return errors.New("capture references unknown handler: " + m.Handler)
 		}
+		notMapped := make(map[string]struct{})
 		for pName := range m.ParamMappings {
-			_, ok = h.Params[pName]
+			notMapped[pName] = struct{}{}
+		}
+		for _, p := range h.Params {
+			bVal, ok := m.ParamMappings[p.Name]
 			if !ok {
-				return errors.New("unknown param for capture mapping: " + pName)
+				m.ParamMappings[p.Name] = data.BoundValue{Kind: data.BoundData, ID: p.Name}
+			} else {
+				delete(notMapped, p.Name)
+				if bVal.Kind == data.BoundFormValue {
+					if formDepth == -1 {
+						return errors.New(": illegal form() binding outside of <form> element")
+					}
+					bVal.FormDepth = formDepth
+					_, ok := seh.curForm[bVal.ID]
+					if !ok {
+						return errors.New(": unknown form value name: `" + bVal.ID + "`")
+					}
+				}
 			}
 		}
-		for pName := range h.Params {
-			bVal, ok := m.ParamMappings[pName]
-			if !ok {
-				m.ParamMappings[pName] = data.BoundValue{Kind: data.BoundData, ID: pName}
-			} else if bVal.Kind == data.BoundFormValue {
-				if formDepth == -1 {
-					return errors.New(": illegal form() binding outside of <form> element")
-				}
-				bVal.FormDepth = formDepth
-				_, ok := seh.curForm[bVal.ID]
-				if !ok {
-					return errors.New(": unknown form value name: `" + bVal.ID + "`")
-				}
-			}
+		for unknown := range notMapped {
+			return errors.New("unknown param for capture mapping: " + unknown)
 		}
 	}
 
@@ -260,9 +264,9 @@ func (seh *stdElementHandler) processBindings(arr []data.VariableMapping) error 
 				return errors.New(": illegal form() binding outside of <form> element")
 			}
 			vb.Value.FormDepth = formDepth
-			val, ok := seh.curForm[vb.Name]
+			val, ok := seh.curForm[vb.Variable.Name]
 			if !ok {
-				return errors.New(": unknown form value name: `" + vb.Name + "`")
+				return errors.New(": unknown form value name: `" + vb.Variable.Name + "`")
 			}
 			if vb.Variable.Type == data.AutoVar {
 				vb.Variable.Type = val.t

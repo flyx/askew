@@ -16,15 +16,16 @@ const (
 	BoolVar
 )
 
-// Variable is a dynamic variable of a component.
-type Variable struct {
+// GoValue is a named, typed value that is exposed to a component's Go interface.
+// It is used for dynamic variables and component parameters.
+type GoValue struct {
 	Type VariableType
 	Name string
 }
 
 // VariableMapping maps a Variable to a value in the DOM.
 type VariableMapping struct {
-	Variable
-	Value BoundValue
-	Path  []int
+	Variable GoValue
+	Value    BoundValue
+	Path     []int
 }

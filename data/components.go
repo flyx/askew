@@ -11,7 +11,7 @@ type Embed struct {
 
 // Handler describes a <a:handler> node.
 type Handler struct {
-	Params map[string]VariableType
+	Params []GoValue
 }
 
 // Capture describe a `a:capture` attribute.

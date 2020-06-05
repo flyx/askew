@@ -24,10 +24,10 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 	"PathItems":    pathItems,
 	"NameForBound": nameForBound,
 	"Last":         last,
-	"GenParams": func(params map[string]data.VariableType) string {
+	"GenParams": func(params []data.GoValue) string {
 		var items []string
-		for pName, pType := range params {
-			items = append(items, pName+" "+nameForType(pType))
+		for _, p := range params {
+			items = append(items, p.Name+" "+nameForType(p.Type))
 		}
 		return strings.Join(items, ", ")
 	},
@@ -53,17 +53,17 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 			panic("unknown BoundKind")
 		}
 	},
-	"GenCallParams": func(params map[string]data.VariableType) string {
+	"GenCallParams": func(params []data.GoValue) string {
 		items := make([]string, 0, len(params))
-		for name := range params {
-			items = append(items, name+" runtime.BoundValue")
+		for _, p := range params {
+			items = append(items, p.Name+" runtime.BoundValue")
 		}
 		return strings.Join(items, ", ")
 	},
-	"GenTypedArgs": func(params map[string]data.VariableType) string {
+	"GenTypedArgs": func(params []data.GoValue) string {
 		items := make([]string, 0, len(params))
-		for name := range params {
-			items = append(items, fmt.Sprintf("_%s.Get()", name))
+		for _, p := range params {
+			items = append(items, fmt.Sprintf("_%s.Get()", p.Name))
 		}
 		return strings.Join(items, ", ")
 	},
@@ -86,7 +86,7 @@ type {{.Name}} struct {
 	Controller {{.Name}}Controller
 	{{- end}}
 	{{- range .Variables }}
-	{{.Name}} runtime.{{Wrapper .Type}}
+	{{.Variable.Name}} runtime.{{Wrapper .Variable.Type}}
 	{{- end}}
 	{{- range .Embeds }}
 	{{.Field}} {{if not .List}}*{{end}}{{with .Pkg}}{{.}}.{{end}}{{.T}}{{if .List}}List{{end}}
@@ -107,9 +107,9 @@ func (o *{{.Name}}) Init() {
 	o.root = runtime.InstantiateTemplateByID("{{.ID}}")
 	{{ range .Variables }}
 	{{- if IsFormValue .Value.Kind}}
-	o.{{.Name}}.BoundValue = runtime.NewBoundFormValue(o.root, "{{.Value.ID}}", {{.Value.IsRadio}}, {{PathItems .Path .Value.FormDepth}})
+	o.{{.Variable.Name}}.BoundValue = runtime.NewBoundFormValue(o.root, "{{.Value.ID}}", {{.Value.IsRadio}}, {{PathItems .Path .Value.FormDepth}})
 	{{- else}}
-	o.{{.Name}}.BoundValue = runtime.{{Constructor .Value.Kind}}(o.root, "{{.Value.ID}}", {{PathItems .Path 0}})
+	o.{{.Variable.Name}}.BoundValue = runtime.{{Constructor .Value.Kind}}(o.root, "{{.Value.ID}}", {{PathItems .Path 0}})
 	{{- end}}
 	{{- end}}
 	{{- range .Embeds }}
@@ -168,8 +168,8 @@ func (o *{{$.Name}}) call{{$hName}}({{GenCallParams $h.Params}}) bool {
 		return false
 	}
 	{{- end}}
-	{{- range $pName, $pType := $h.Params}}
-	_{{$pName}} := runtime.{{Wrapper $pType}}{BoundValue: {{$pName}}}
+	{{- range $h.Params}}
+	_{{.Name}} := runtime.{{Wrapper .Type}}{BoundValue: {{.Name}}}
 	{{- end}}
 	{{- if $.NeedsController}}
 	return o.Controller
