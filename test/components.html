@@ -1,12 +1,13 @@
 <a:package name="ui">
 
-<a:component name="NameForm" controller>
+<a:component name="NameForm" controller params="index int">
   <a:handler>Submit(name string, age int)</a:handler>
   <a:handler>Reset(foo string)</a:handler>
   <section>
     <h2 a:bindings="prop(textContent):Heading">Test</h2>
     <form data-foo="bar" class="form" a:capture="submit:Submit(name=form(Name), age=form(Age)),reset:Reset"
         a:bindings="form(Name):Name, form(Age):Age">
+      This is form #<a:text expr="index"></a:text><br/>
       <label for="Name">Name:</label>
       <input name="Name" /><br/>
       <label for="age">Age:</label>
@@ -36,10 +37,10 @@
   </table>
 </a:macro>
 
-<a:component name="MacroTest">
+<a:component name="MacroTest" params="title string">
   <a:handler>SetTitle(v string)</a:handler>
   <section>
-    <h2 a:bindings="class(teletype):MonospaceTitle">MacroTest</h2>
+    <h2 a:bindings="class(teletype):MonospaceTitle"><a:text expr="title"></a:text></h2>
     <h3 a:bindings="prop(textContent):Title">Changeable Title</h3>
     <a:include name="inputs">
       <span a:slot="col1">A</span>
@@ -56,6 +57,6 @@
 <a:package name="extra">
   <a:component name="EmbedTest">
     <a:include name="ui.embedHeading"></a:include>
-    <a:embed name="Content" type="ui.MacroTest"></a:embed>
+    <a:embed name="Content" type="ui.MacroTest" args="`MacroTest`"></a:embed>
   </a:component>
 </a:package>

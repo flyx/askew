@@ -35,6 +35,7 @@ type walker struct {
 	templates   nodeHandler
 	stdElements nodeHandler
 	text        nodeHandler
+	aText       nodeHandler
 	indexList   *[]int
 }
 
@@ -88,6 +89,8 @@ func (w *walker) processElement(n *html.Node) (replacement *html.Node, err error
 			h = w.handler
 		case "a:templates":
 			h = w.templates
+		case "a:text":
+			h = w.aText
 		default:
 			return nil, errors.New(": unknown element")
 		}

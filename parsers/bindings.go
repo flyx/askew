@@ -17,9 +17,7 @@ func init() {
 	BINDING     ← BOUND ':' (AUTOVAR / TYPEDVAR)
 	AUTOVAR     ← IDENTIFIER
 	TYPEDVAR    ← '(' IDENTIFIER IDENTIFIER ')'
-	IDENTIFIER  ← < [a-zA-Z_][a-zA-Z_0-9]* >
-	%whitespace ← [ \t]*
-	` + boundSyntax)
+	` + identifierSyntax + boundSyntax + whitespace)
 	if err != nil {
 		panic(err)
 	}

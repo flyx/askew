@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/parsers"
 	"golang.org/x/net/html"
@@ -14,89 +16,105 @@ const (
 	inactive
 )
 
+func invalidAttribute(name string) error {
+	return errors.New("element does not allow attribute `" + name + "`")
+}
+
 type attribCollector interface {
-	collect(name string, val string) bool
+	collect(name string, val string) error
 }
 
 type packageAttribs struct {
 	name string
 }
 
-func (p *packageAttribs) collect(name, val string) bool {
+func (p *packageAttribs) collect(name, val string) error {
 	if name == "name" {
 		p.name = val
-		return true
+		return nil
 	}
-	return false
+	return invalidAttribute(name)
 }
 
 type componentAttribs struct {
 	name       string
 	controller bool
+	params     []data.ComponentParam
 }
 
-func (t *componentAttribs) collect(name, val string) bool {
+func (t *componentAttribs) collect(name, val string) error {
 	switch name {
 	case "name":
 		t.name = val
-		return true
+		return nil
 	case "controller":
 		t.controller = true
-		return true
+		return nil
+	case "params":
+		var err error
+		t.params, err = parsers.ParseParameters(val)
+		return err
 	}
-	return false
+	return invalidAttribute(name)
 }
 
 type includeChildAttribs struct {
 	slot string
 }
 
-func (i *includeChildAttribs) collect(name, val string) bool {
+func (i *includeChildAttribs) collect(name, val string) error {
 	if name == "slot" {
 		i.slot = val
-		return true
+		return nil
 	}
-	return false
+	return invalidAttribute(name)
 }
 
 type embedAttribs struct {
 	list bool
 }
 
-func (e *embedAttribs) collect(name, val string) bool {
+func (e *embedAttribs) collect(name, val string) error {
 	if name == "list" {
 		e.list = true
-		return true
+		return nil
 	}
-	return false
+	return invalidAttribute(name)
 }
 
 type generalAttribs struct {
-	ignore   bool
 	bindings []data.VariableMapping
 	capture  []data.EventMapping
+	_if      string
+	assign   []data.ParamAssignment
 }
 
-func (g *generalAttribs) collect(name, val string) bool {
+func (g *generalAttribs) collect(name, val string) error {
 	switch name {
-	case "ignore":
-		g.ignore = true
 	case "bindings":
 		var err error
 		g.bindings, err = parsers.ParseBindings(val)
 		if err != nil {
-			panic("while parsing bindings `" + val + "`: " + err.Error())
+			return errors.New("invalid bindings: " + err.Error())
 		}
 	case "capture":
 		var err error
 		g.capture, err = parsers.ParseCapture(val)
 		if err != nil {
-			panic("while parsing capture `" + val + "`: " + err.Error())
+			return errors.New("invalid capture: " + err.Error())
+		}
+	case "if":
+		g._if = val
+	case "assign":
+		var err error
+		g.assign, err = parsers.ParseAssignments(val)
+		if err != nil {
+			return errors.New("invalid assign: " + err.Error())
 		}
 	default:
-		return false
+		return invalidAttribute(name)
 	}
-	return true
+	return nil
 }
 
 type askewAttribs struct {
@@ -105,7 +123,7 @@ type askewAttribs struct {
 	interactive interactivity
 }
 
-func extractAskewAttribs(n *html.Node, target attribCollector) {
+func extractAskewAttribs(n *html.Node, target attribCollector) error {
 	seen := make(map[string]struct{})
 
 	i := 0
@@ -126,13 +144,14 @@ func extractAskewAttribs(n *html.Node, target attribCollector) {
 			panic("duplicate attribute: " + attr.Key)
 		}
 		seen[key] = struct{}{}
-		if !target.collect(key, attr.Val) {
-			panic("element <" + n.Data + "> does not allow attribute " + attr.Key)
+		if err := target.collect(key, attr.Val); err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
-func collectAttribs(n *html.Node, target attribCollector) {
+func collectAttribs(n *html.Node, target attribCollector) error {
 	seen := make(map[string]struct{})
 
 	for _, attr := range n.Attr {
@@ -141,10 +160,11 @@ func collectAttribs(n *html.Node, target attribCollector) {
 			panic("duplicate attribute: " + attr.Key)
 		}
 		seen[attr.Key] = struct{}{}
-		if !target.collect(attr.Key, attr.Val) {
-			panic("element <" + n.Data + "> does not allow attribute " + attr.Key)
+		if err := target.collect(attr.Key, attr.Val); err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
 func attrVal(a []html.Attribute, name string) string {

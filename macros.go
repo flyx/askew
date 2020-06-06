@@ -22,7 +22,7 @@ func (md *macroDiscovery) process(n *html.Node) (descend bool, replacement *html
 		return false, nil, errors.New(": duplicate name `" + name + "`")
 	}
 	sd := slotDiscovery{slots: make([]data.Slot, 0, 16), syms: md.syms}
-	w := walker{text: allow{}, stdElements: allow{},
+	w := walker{text: allow{}, stdElements: allow{}, aText: allow{},
 		embed: allow{}, include: &includeProcessor{md.syms}, slot: &sd}
 
 	first, last, err := w.walkChildren(n, &siblings{n.FirstChild})
@@ -46,7 +46,8 @@ func (sd *slotDiscovery) process(n *html.Node) (descend bool, replacement *html.
 	}
 	sd.slots = append(sd.slots, data.Slot{Name: name, Node: n})
 
-	w := walker{text: allow{}, stdElements: allow{}, include: &includeProcessor{sd.syms}}
+	w := walker{text: allow{}, stdElements: allow{}, aText: allow{},
+		include: &includeProcessor{sd.syms}}
 	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
 	return false, nil, err
 }
@@ -75,8 +76,9 @@ func (ip *includeProcessor) process(n *html.Node) (descend bool, replacement *ht
 
 	instantiator := macroInstantiator{
 		slots: m.Slots, values: vm.values}
+	ec := elmCopier{&instantiator}
 	instantiator.w =
-		walker{text: textCopier{}, stdElements: &elmCopier{&instantiator},
+		walker{text: textCopier{}, stdElements: &ec, aText: &ec,
 			slot: &slotReplacer{&instantiator}}
 	replacement, _, err = instantiator.w.walkChildren(nil, &siblings{m.First})
 	return
@@ -112,7 +114,7 @@ func (vm *valueMapper) process(n *html.Node) (descend bool, replacement *html.No
 	if !found {
 		return false, nil, errors.New(": unknown slot `" + iAttrs.slot + "`")
 	}
-	w := walker{text: allow{}, stdElements: allow{}, include: &includeProcessor{vm.syms}}
+	w := walker{text: allow{}, stdElements: allow{}, aText: allow{}, include: &includeProcessor{vm.syms}}
 	replacement, _, err = w.walkChildren(n, &siblings{n.FirstChild})
 	return
 }
@@ -168,7 +170,7 @@ type componentDescender struct {
 
 func (cd *componentDescender) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	w := walker{text: allow{}, stdElements: allow{}, include: &includeProcessor{cd.syms},
-		handler: allow{}, embed: allow{}}
+		handler: allow{}, embed: allow{}, aText: allow{}}
 	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
 	return false, nil, err
 }

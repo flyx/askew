@@ -3,6 +3,8 @@ package main
 import (
 	"strconv"
 
+	"github.com/flyx/askew/test/ui"
+
 	"github.com/gopherjs/gopherjs/js"
 )
 
@@ -19,16 +21,18 @@ func (*handler) Submit(name string, age int) bool {
 }
 
 func main() {
-	first := Forms.Forms.Append(nil)
+	first := ui.NewNameForm(1)
 	first.Heading.Set("First Form")
 	first.Name.Set("First")
 	first.Age.Set(42)
 	first.Controller = &handler{}
+	Forms.Forms.Append(first)
 
-	second := Forms.Forms.Append(nil)
+	second := ui.NewNameForm(2)
 	second.Heading.Set("Second Form")
 	second.Name.Set("Second")
 	second.Age.Set(23)
+	Forms.Forms.Append(second)
 
 	Test.Content.MonospaceTitle.Set(true)
 	Test.Content.A.Set("AAA")

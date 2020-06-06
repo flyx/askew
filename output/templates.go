@@ -67,6 +67,20 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 		}
 		return strings.Join(items, ", ")
 	},
+	"GenComponentParams": func(params []data.ComponentParam) string {
+		items := make([]string, 0, len(params))
+		for _, p := range params {
+			items = append(items, fmt.Sprintf("%s %s", p.Name, p.Type))
+		}
+		return strings.Join(items, ", ")
+	},
+	"ListParamVars": func(params []data.ComponentParam) string {
+		items := make([]string, 0, len(params))
+		for _, p := range params {
+			items = append(items, p.Name)
+		}
+		return strings.Join(items, ", ")
+	},
 }).Option("missingkey=error").Parse(`
 {{- if and .NeedsController .Handlers}}
 // {{.Name}}Controller is the interface for handling events captured from {{.Name}}
@@ -94,16 +108,16 @@ type {{.Name}} struct {
 }
 
 // New{{.Name}} creates a new component and initializes it with Init.
-func New{{.Name}}() *{{.Name}} {
+func New{{.Name}}({{GenComponentParams .Parameters}}) *{{.Name}} {
 	ret := new({{.Name}})
-	ret.Init()
+	ret.Init({{ListParamVars .Parameters}})
 	return ret
 }
 
 // Init initializes the component, discarding all previous information.
 // The component is initially a DocumentFragment until it gets inserted into
 // the main document. It can be manipulated both before and after insertion.
-func (o *{{.Name}}) Init() {
+func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	o.root = runtime.InstantiateTemplateByID("{{.ID}}")
 	{{ range .Variables }}
 	{{- if IsFormValue .Value.Kind}}
@@ -112,13 +126,31 @@ func (o *{{.Name}}) Init() {
 	o.{{.Variable.Name}}.BoundValue = runtime.{{Constructor .Value.Kind}}(o.root, "{{.Value.ID}}", {{PathItems .Path 0}})
 	{{- end}}
 	{{- end}}
+	{{- range .Assignments}}
+	{{- if .AttributeName}}
+	runtime.WalkPath(o.root, {{PathItems .Path 0}}).Call("setAttribute", "{{.AttributeName}}", {{.Expression}})
+	{{- else}}
+	{
+		_item := runtime.WalkPath(o.root, {{PathItems .Path 0}})
+		_parent := _item.Get("parentNode")
+		_parent.Call("replaceChild", js.Global.Get("document").Call("createTextNode", {{.Expression}}), _item)
+	}
+	{{- end}}
+	{{- end}}
+	{{- range .Conditionals}}
+	if !(${{.Condition}}) {
+		_item := runtime.WalkPath(o.root, {{PathItems .Path 0}})
+		_parent := _item.Get("parentNode")
+		_parent.Call("replaceChild", js.Global.Get("document").Call("createComment", "removed"), _item)
+	}
+	{{- end}}
 	{{- range .Embeds }}
 	{
 		container := runtime.WalkPath(o.root, {{PathItems .Path 1}})
 		{{- if .List}}
 		o.{{.Field}}.Init(container, {{Last .Path}})
 		{{- else}}
-		o.{{.Field}} = {{with .Pkg}}{{.}}.{{end}}New{{.T}}()
+		o.{{.Field}} = {{with .Pkg}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}})
 		o.{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
 		{{- end}}
 	}
@@ -201,39 +233,33 @@ func (l *{{.Name}}List) Len() int {
 }
 
 // Item returns the item at the current index.
-func (l *{{.Name}}List) Item(index int) *{{.Name}}{
+func (l *{{.Name}}List) Item(index int) *{{.Name}} {
 	return l.items[index]
 }
 
-// Append appends the given item to the list and returns it.
-// If item is nil, a new item is created and returned.
-func (l *{{.Name}}List) Append(item *{{.Name}}) (ret *{{.Name}}) {
+// Append appends the given item to the list.
+func (l *{{.Name}}List) Append(item *{{.Name}}) {
 	if item == nil {
-		ret = New{{.Name}}()
-	} else {
-		ret = item
+		panic("cannot append nil to list")
 	}
-	l.items = append(l.items, ret)
-	l.mgr.Append(ret.root)
+	l.items = append(l.items, item)
+	l.mgr.Append(item.root)
 	return
 }
 
-// Insert inserts the given item at the given index into the list and returns it.
-// If item is nil, a new item is created and returned.
-func (l *{{.Name}}List) Insert(index int, item *{{.Name}}) (ret *{{.Name}}) {
+// Insert inserts the given item at the given index into the list.
+func (l *{{.Name}}List) Insert(index int, item *{{.Name}}) {
 	var prev *js.Object
 	if index < len(l.items) {
 		prev = l.items[index].root
 	}
 	if item == nil {
-		ret = New{{.Name}}()
-	} else {
-		ret = item
+		panic("cannot insert nil into list")
 	}
 	l.items = append(l.items, nil)
 	copy(l.items[index+1:], l.items[index:])
-	l.items[index] = ret
-	l.mgr.Insert(ret.root, prev)
+	l.items[index] = item
+	l.mgr.Insert(item.root, prev)
 	return
 }
 
@@ -251,9 +277,10 @@ var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
 	"Last":      last,
 }).Parse(`
 {{range .Embeds}}
-{{if .List}}
+// {{.Field}} is part of the main document.
+{{- if .List}}
 var {{.Field}} {{.Pkg}}.{{.T}}List
-{{else}}
+{{- else}}
 var {{.Field}} = {{.Pkg}}.New{{.T}}()
 {{end}}
 {{end}}

@@ -20,7 +20,10 @@ type componentProcessor struct {
 func (cp *componentProcessor) process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
 	var cmpAttrs componentAttribs
-	collectAttribs(n, &cmpAttrs)
+	err = collectAttribs(n, &cmpAttrs)
+	if err != nil {
+		return
+	}
 	if len(cmpAttrs.name) == 0 {
 		return false, nil, errors.New(": attribute `name` missing")
 	}
@@ -28,7 +31,8 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 	replacement = &html.Node{Type: html.ElementNode, DataAtom: atom.Template,
 		Data: "template"}
 	cmp := &data.Component{EmbedHost: data.EmbedHost{Dependencies: make(map[string]struct{})},
-		Name: cmpAttrs.name, Template: replacement, NeedsController: cmpAttrs.controller}
+		Name: cmpAttrs.name, Template: replacement, NeedsController: cmpAttrs.controller,
+		Parameters: cmpAttrs.params}
 	cp.syms.CurHost = &cmp.EmbedHost
 	(*cp.counter)++
 	cmp.ID = fmt.Sprintf("askew-component-%d-%s", *cp.counter, strings.ToLower(cmpAttrs.name))
@@ -36,7 +40,7 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 
 	var indexList []int
 	w := walker{
-		text:        allow{},
+		text: allow{}, aText: &aTextProcessor{cmp, &indexList},
 		embed:       &embedProcessor{cp.syms, &indexList},
 		handler:     &handlerProcessor{cp.syms, &cmp.Handlers, &indexList},
 		stdElements: &stdElementHandler{cp.syms, &indexList, cmp, -1, nil},
@@ -87,6 +91,24 @@ func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed
 	e.T = typeName
 	if n.FirstChild != nil {
 		return data.Embed{}, errors.New(": illegal content")
+	}
+	args := attrVal(n.Attr, "args")
+	if e.List {
+		if args != "" {
+			return data.Embed{}, errors.New(": embed with `list` cannot have `args`")
+		}
+	} else {
+		if args != "" {
+			var err error
+			e.Args, err = parsers.AnalyseArguments(args)
+			if err != nil {
+				return data.Embed{}, errors.New(": in `args`: " + err.Error())
+			}
+		}
+		if len(target.Parameters) != e.Args.Count {
+			return data.Embed{}, fmt.Errorf(
+				": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)
+		}
 	}
 	return e, nil
 }
@@ -190,7 +212,7 @@ func (d *formValueDiscovery) process(n *html.Node) (descend bool, replacement *h
 func discoverFormValues(form *html.Node) (map[string]formValue, error) {
 	fvd := formValueDiscovery{values: make(map[string]formValue)}
 	w := walker{text: allow{}, embed: dontDescend{}, handler: dontDescend{},
-		stdElements: &fvd}
+		aText: allow{}, stdElements: &fvd}
 	var err error
 	form.FirstChild, form.LastChild, err = w.walkChildren(form, &siblings{form.FirstChild})
 	if err != nil {
@@ -300,7 +322,10 @@ func (seh *stdElementHandler) process(n *html.Node) (descend bool, replacement *
 	}
 
 	var attrs generalAttribs
-	extractAskewAttribs(n, &attrs)
+	err = extractAskewAttribs(n, &attrs)
+	if err != nil {
+		return
+	}
 	switch n.DataAtom {
 	case atom.Form:
 		if seh.curFormPos != -1 {
@@ -319,15 +344,49 @@ func (seh *stdElementHandler) process(n *html.Node) (descend bool, replacement *
 	if err := seh.mapCaptures(n, attrs.capture); err != nil {
 		return false, nil, errors.New(": " + err.Error())
 	}
+	if attrs._if != "" {
+		seh.c.Conditionals = append(seh.c.Conditionals, data.Conditional{
+			Condition: attrs._if, Path: append([]int(nil), *seh.indexList...)})
+	}
+	if attrs.assign != nil {
+		path := append([]int(nil), *seh.indexList...)
+		for i := range attrs.assign {
+			attrs.assign[i].Path = path
+		}
+		seh.c.Assignments = append(seh.c.Assignments, attrs.assign...)
+	}
 	err = seh.processBindings(attrs.bindings)
 	descend = err == nil
 	return
 }
 
-func processComponents(syms *data.Symbols, n *html.Node, counter *int) (err error) {
-	p := syms.Packages[syms.CurPkg]
+type aTextProcessor struct {
+	c         *data.Component
+	indexList *[]int
+}
+
+func (atp *aTextProcessor) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+	expr := attrVal(n.Attr, "expr")
+	if expr == "" {
+		return false, nil, errors.New(": missing attribute `expr`")
+	}
+	if n.FirstChild != nil {
+		return false, nil, errors.New(": node may not have child nodes")
+	}
+	atp.c.Assignments = append(atp.c.Assignments, data.ParamAssignment{Expression: expr, Path: append([]int(nil), *atp.indexList...)})
+	return false, &html.Node{Type: html.CommentNode, Data: "a:text"}, nil
+}
+
+type packageProcessor struct {
+	syms    *data.Symbols
+	counter *int
+}
+
+func (pp *packageProcessor) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+	pp.syms.CurPkg = attrVal(n.Attr, "name")
+	p := pp.syms.Packages[pp.syms.CurPkg]
 	p.Components = make(map[string]*data.Component)
-	w := walker{text: whitespaceOnly{}, component: &componentProcessor{syms, counter}}
-	_, _, err = w.walkChildren(n, &siblings{n.FirstChild})
-	return
+	w := walker{text: whitespaceOnly{}, component: &componentProcessor{pp.syms, pp.counter}}
+	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
+	return false, nil, err
 }

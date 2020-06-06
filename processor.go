@@ -83,27 +83,10 @@ func (p *processor) process(file string) {
 		}
 	}
 
-	for i := range nodes {
-		n := nodes[i]
-		switch n.Type {
-		case html.TextNode:
-			text := strings.TrimSpace(n.Data)
-			if len(text) > 0 {
-				panic(file + ": non-whitespace text at top level: `" + text + "`")
-			}
-		case html.ErrorNode:
-			panic(file + ": encountered ErrorNode: " + n.Data)
-		case html.ElementNode:
-			if n.DataAtom != 0 || n.Data != "a:package" {
-				panic(file + ": only a:package is allowed at top level. found <" + n.Data + ">")
-			}
-			p.syms.CurPkg = attrVal(n.Attr, "name")
-			if err := processComponents(&p.syms, n, &p.counter); err != nil {
-				panic(file + err.Error())
-			}
-		default:
-			panic(file + ": illegal node at top level: " + n.Data)
-		}
+	w := walker{text: whitespaceOnly{}, aPackage: &packageProcessor{syms: &p.syms, counter: &p.counter}}
+	_, _, err = w.walkChildren(nil, &nodeSlice{nodes, 0})
+	if err != nil {
+		panic(file + err.Error())
 	}
 }
 

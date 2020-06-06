@@ -22,16 +22,14 @@ func init() {
 	EVENT       ← < [a-z]+ >
 	HANDLER     ← < [a-zA-Z_][a-zA-Z_0-9]* >
 	MAPPINGS    ← MAPPING (',' MAPPING)*
-	MAPPING     ← VARIABLE '=' BOUND
-	VARIABLE    ← < [a-zA-Z_][a-zA-Z_0-9]* >
-	%whitespace ← [ \t]*
-	` + boundSyntax)
+	MAPPING     ← IDENTIFIER '=' BOUND
+	` + identifierSyntax + boundSyntax + whitespace)
 	if err != nil {
 		panic(err)
 	}
 	registerBinders(captureParser)
 	g := captureParser.Grammar
-	g["VARIABLE"].Action = strToken
+	g["IDENTIFIER"].Action = strToken
 	g["EVENT"].Action = strToken
 	g["HANDLER"].Action = strToken
 	g["MAPPING"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
