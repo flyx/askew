@@ -1,5 +1,6 @@
 askew.exe
 askew
+test/ui/herp.go
 test/ui/nameform.go
 test/ui/nameforms.go
 test/ui/macrotest.go

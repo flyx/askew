@@ -12,11 +12,23 @@ type Arguments struct {
 	Count int
 }
 
+// EmbedKind describes the type of embed
+type EmbedKind int
+
+const (
+	// DirectEmbed embeds a component directly so that it is always available
+	DirectEmbed EmbedKind = iota
+	// ListEmbed embeds a list of components
+	ListEmbed
+	// OptionalEmbed embeds a component that may or may not exist
+	OptionalEmbed
+)
+
 // Embed describes a <a:embed> node.
 type Embed struct {
+	Kind          EmbedKind
 	Path          []int
 	Field, Pkg, T string
-	List          bool
 	Args          Arguments
 }
 
@@ -67,4 +79,5 @@ type Component struct {
 	Template        *html.Node
 	NeedsController bool
 	NeedsList       bool
+	NeedsOptional   bool
 }

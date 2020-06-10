@@ -71,13 +71,29 @@ func (i *includeChildAttribs) collect(name, val string) error {
 }
 
 type embedAttribs struct {
-	list bool
+	list, optional bool
+	t, name        string
+	args           data.Arguments
 }
 
 func (e *embedAttribs) collect(name, val string) error {
-	if name == "list" {
+	switch name {
+	case "list":
 		e.list = true
 		return nil
+	case "optional":
+		e.optional = true
+		return nil
+	case "type":
+		e.t = val
+		return nil
+	case "name":
+		e.name = val
+		return nil
+	case "args":
+		var err error
+		e.args, err = parsers.AnalyseArguments(val)
+		return err
 	}
 	return invalidAttribute(name)
 }

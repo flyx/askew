@@ -83,6 +83,24 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 		}
 		return strings.Join(items, ", ")
 	},
+	"FieldType": func(e data.Embed) string {
+		var b strings.Builder
+		if e.Kind == data.DirectEmbed {
+			b.WriteRune('*')
+		}
+		if e.Pkg != "" {
+			b.WriteString(e.Pkg)
+			b.WriteRune('.')
+		}
+		if e.Kind == data.OptionalEmbed {
+			b.WriteString("Optional")
+		}
+		b.WriteString(e.T)
+		if e.Kind == data.ListEmbed {
+			b.WriteString("List")
+		}
+		return b.String()
+	},
 }).Option("missingkey=error").Parse(`
 {{- if and .NeedsController .Handlers}}
 // {{.Name}}Controller is the interface for handling events captured from {{.Name}}
@@ -105,7 +123,7 @@ type {{.Name}} struct {
 	{{.Variable.Name}} runtime.{{Wrapper .Variable.Type}}
 	{{- end}}
 	{{- range .Embeds }}
-	{{.Field}} {{if not .List}}*{{end}}{{with .Pkg}}{{.}}.{{end}}{{.T}}{{if .List}}List{{end}}
+	{{.Field}} {{FieldType .}}
 	{{- end}}
 }
 
@@ -148,11 +166,11 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	{{- range .Embeds }}
 	{
 		container := runtime.WalkPath(o.root, {{PathItems .Path 1}})
-		{{- if .List}}
-		o.{{.Field}}.Init(container, {{Last .Path}})
-		{{- else}}
+		{{- if eq .Kind 0}}
 		o.{{.Field}} = {{with .Pkg}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}})
 		o.{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
+		{{- else}}
+		o.{{.Field}}.Init(container, {{Last .Path}})		
 		{{- end}}
 	}
 	{{- end}}
@@ -188,7 +206,7 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 func (o *{{.Name}}) InsertInto(parent *js.Object, before *js.Object) {
 	parent.Call("insertBefore", o.root, before)
 	{{- range .Embeds}}
-	{{- if .List}}
+	{{- if ne .Kind 0}}
 	o.{{.Field}}.mgr.UpdateParent(o.root, parent, before)
 	{{- end}}
 	{{- end}}
@@ -271,6 +289,40 @@ func (l *{{.Name}}List) Remove(index int) {
 	l.items = l.items[:len(l.items)-1]
 }
 {{end}}
+
+{{- if .NeedsOptional}}
+// Optional{{.Name}} is a nillable embeddable container for {{.Name}}.
+type Optional{{.Name}} struct {
+	cur *{{.Name}}
+	mgr runtime.ListManager
+}
+
+// Init initializes the container to be empty.
+// The contained item, if any, will be placed in the given container at the
+// given index.
+func (o *Optional{{.Name}}) Init(container *js.Object, index int) {
+	o.mgr = runtime.CreateListManager(container, index)
+	o.cur = nil
+}
+
+// Item returns the current item, or nil if no item is assigned
+func (o *Optional{{.Name}}) Item() *{{.Name}} {
+	return o.cur
+}
+
+// Set sets the contained item removing the current one.
+// Give nil as value to simply remove the current item.
+func (o *Optional{{.Name}}) Set(value *{{.Name}}) {
+	if o.cur != nil {
+		o.mgr.Remove(o.cur.root)
+	}
+	o.cur = value
+	if value != nil {
+		o.mgr.Append(value.root)
+	}
+}
+
+{{end}}
 `))
 
 var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
@@ -279,23 +331,25 @@ var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
 }).Parse(`
 {{range .Embeds}}
 // {{.Field}} is part of the main document.
-{{- if .List}}
+{{- if eq .Kind 0}}
+var {{.Field}} = {{.Pkg}}.New{{.T}}({{.Args.Raw}})
+{{- else if eq .Kind 1}}
 var {{.Field}} {{.Pkg}}.{{.T}}List
 {{- else}}
-var {{.Field}} = {{.Pkg}}.New{{.T}}({{.Args.Raw}})
+var {{.Field}} {{.Pkg}}.Optional{{.T}}
 {{end}}
 {{end}}
 
 func init() {
 	document := js.Global.Get("document")
 	{{- range .Embeds}}
-	{{- if .List}}
-	{{.Field}}.Init(runtime.WalkPath(document, {{PathItems .Path 1}}), {{Last .Path}})
-	{{- else}}
+	{{- if eq .Kind 0}}
 	{
 		container := runtime.WalkPath(document, {{PathItems .Path 1}})
 		{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
 	}
+	{{- else}}
+	{{.Field}}.Init(runtime.WalkPath(document, {{PathItems .Path 1}}), {{Last .Path}})
 	{{- end}}
 	{{- end}}
 }

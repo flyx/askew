@@ -68,23 +68,33 @@ type embedProcessor struct {
 }
 
 func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed, error) {
-	targetType := attrVal(n.Attr, "type")
-	if len(targetType) == 0 {
+	var attrs embedAttribs
+	if err := collectAttribs(n, &attrs); err != nil {
+		return data.Embed{}, err
+	}
+	if attrs.t == "" {
 		return data.Embed{}, errors.New(": attribute `type` missing")
 	}
-	target, pkgName, typeName, err := syms.ResolveComponent(targetType)
+	target, pkgName, typeName, err := syms.ResolveComponent(attrs.t)
 	if err != nil {
 		return data.Embed{}, errors.New(": attribute `type` invalid: %s" + err.Error())
 	}
-	e := data.Embed{Path: append([]int(nil), indexList...),
-		List: attrExists(n.Attr, "list")}
-	if e.List {
+	e := data.Embed{Kind: data.DirectEmbed, Path: append([]int(nil), indexList...)}
+	if attrs.list {
+		e.Kind = data.ListEmbed
 		target.NeedsList = true
+	}
+	if attrs.optional {
+		if e.Kind != data.DirectEmbed {
+			return data.Embed{}, errors.New(": cannot mix `list` and `optional`")
+		}
+		e.Kind = data.OptionalEmbed
+		target.NeedsOptional = true
 	}
 	if pkgName != syms.CurPkg {
 		e.Pkg = pkgName
 	}
-	e.Field = attrVal(n.Attr, "name")
+	e.Field = attrs.name
 	if e.Field == "" {
 		return data.Embed{}, errors.New(": attribute `name` missing")
 	}
@@ -92,19 +102,12 @@ func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed
 	if n.FirstChild != nil {
 		return data.Embed{}, errors.New(": illegal content")
 	}
-	args := attrVal(n.Attr, "args")
-	if e.List {
-		if args != "" {
-			return data.Embed{}, errors.New(": embed with `list` cannot have `args`")
+	if e.Kind != data.DirectEmbed {
+		if attrs.args.Count != 0 {
+			return data.Embed{}, errors.New(": embed with `list` or `optional` cannot have `args`")
 		}
 	} else {
-		if args != "" {
-			var err error
-			e.Args, err = parsers.AnalyseArguments(args)
-			if err != nil {
-				return data.Embed{}, errors.New(": in `args`: " + err.Error())
-			}
-		}
+		e.Args = attrs.args
 		if len(target.Parameters) != e.Args.Count {
 			return data.Embed{}, fmt.Errorf(
 				": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)

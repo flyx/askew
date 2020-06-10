@@ -37,4 +37,6 @@ func main() {
 	Test.Content.MonospaceTitle.Set(true)
 	Test.Content.A.Set("AAA")
 	Test.Content.B.Set("BBB")
+
+	Derp.Set(ui.NewHerp())
 }
