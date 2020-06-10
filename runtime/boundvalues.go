@@ -143,3 +143,28 @@ func (bfv *BoundFormValue) set(value interface{}) {
 	}
 	elm.Set("value", value)
 }
+
+// BoundSelf implements BoundValue by replacing the referenced node with a text node
+// containing the given value.
+type BoundSelf struct {
+	node *js.Object
+}
+
+// NewBoundSelf creates a BoundSelf for the node at the given path.
+func NewBoundSelf(root *js.Object, dummy string, path ...int) *BoundSelf {
+	return &BoundSelf{node: WalkPath(root, path...)}
+}
+
+func (bs *BoundSelf) get() *js.Object {
+	panic("BoundSelf doesn't support get()")
+}
+
+func (bs *BoundSelf) set(value interface{}) {
+	node := js.Global.Get("document").Call("createTextNode", value)
+	bs.node.Get("parentNode").Call("replaceChild", node, bs.node)
+}
+
+// Assign is low-level assignment of a value to a bound value.
+func Assign(bv BoundValue, value interface{}) {
+	bv.set(value)
+}

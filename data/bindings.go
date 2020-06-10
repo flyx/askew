@@ -15,6 +15,9 @@ const (
 	//
 	// The value is equal to the referenced element's `value` property.
 	BoundFormValue
+	// BoundSelf refers to the node itself and is used for substituting <a:text>
+	// elements with text nodes.
+	BoundSelf
 )
 
 // BoundValue specifies the target of a value binding.

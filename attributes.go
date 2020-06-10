@@ -86,7 +86,7 @@ type generalAttribs struct {
 	bindings []data.VariableMapping
 	capture  []data.EventMapping
 	_if      string
-	assign   []data.ParamAssignment
+	assign   []data.Assignment
 }
 
 func (g *generalAttribs) collect(name, val string) error {

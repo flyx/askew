@@ -19,10 +19,10 @@
   <hr/>
 </a:component>
 
-<a:component name="NameForms">
-  <p>Before the forms</p>
+<a:component name="NameForms" params="boldBefore bool, after string">
+  <p a:assign="class(bold) = boldBefore">Before the forms</p>
   <a:embed list name="Forms" type="NameForm"></a:embed>
-  <p>After the forms</p>
+  <p><a:text expr="after"></a:text></p>
 </a:component>
 
 <a:macro name="inputs">

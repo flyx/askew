@@ -37,13 +37,12 @@ type ComponentParam struct {
 	Name, Type string
 }
 
-// ParamAssignment assigns the value of a parameter to the attribute with the
-// given name of the element at the given path. If AttributeName is empty, the
-// element is replaced with a text node containing the parameter's value instead.
-type ParamAssignment struct {
-	Expression    string
-	Path          []int
-	AttributeName string
+// Assignment assigns an expression to a bound value during component instantiation.
+// This is usually used with component parameters.
+type Assignment struct {
+	Expression string
+	Path       []int
+	Target     BoundValue
 }
 
 // Conditional includes or excludes an element from a component instance depending
@@ -63,7 +62,7 @@ type Component struct {
 	Handlers        map[string]Handler
 	Captures        []Capture
 	Parameters      []ComponentParam
-	Assignments     []ParamAssignment
+	Assignments     []Assignment
 	Conditionals    []Conditional
 	Template        *html.Node
 	NeedsController bool

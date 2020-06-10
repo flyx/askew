@@ -279,6 +279,7 @@ func (seh *stdElementHandler) processBindings(arr []data.VariableMapping) error 
 	if seh.curFormPos != -1 {
 		formDepth = len(*seh.indexList) - seh.curFormPos
 	}
+	path := append([]int(nil), *seh.indexList...)
 
 	for _, vb := range arr {
 		if vb.Value.Kind == data.BoundFormValue {
@@ -286,9 +287,9 @@ func (seh *stdElementHandler) processBindings(arr []data.VariableMapping) error 
 				return errors.New(": illegal form() binding outside of <form> element")
 			}
 			vb.Value.FormDepth = formDepth
-			val, ok := seh.curForm[vb.Variable.Name]
+			val, ok := seh.curForm[vb.Value.ID]
 			if !ok {
-				return errors.New(": unknown form value name: `" + vb.Variable.Name + "`")
+				return errors.New(": unknown form value name: `" + vb.Value.ID + "`")
 			}
 			if vb.Variable.Type == data.AutoVar {
 				vb.Variable.Type = val.t
@@ -302,8 +303,32 @@ func (seh *stdElementHandler) processBindings(arr []data.VariableMapping) error 
 				}
 			}
 		}
-		vb.Path = append([]int(nil), *seh.indexList...)
+		vb.Path = path
 		seh.c.Variables = append(seh.c.Variables, vb)
+	}
+	return nil
+}
+
+func (seh *stdElementHandler) processAssignments(arr []data.Assignment) error {
+	formDepth := -1
+	if seh.curFormPos != -1 {
+		formDepth = len(*seh.indexList) - seh.curFormPos
+	}
+	path := append([]int(nil), *seh.indexList...)
+
+	for _, a := range arr {
+		if a.Target.Kind == data.BoundFormValue {
+			if formDepth == -1 {
+				return errors.New(": illegal form() binding outside of <form> element")
+			}
+			a.Target.FormDepth = formDepth
+			_, ok := seh.curForm[a.Target.ID]
+			if !ok {
+				return errors.New(": unknown form value name: `" + a.Target.ID + "`")
+			}
+		}
+		a.Path = path
+		seh.c.Assignments = append(seh.c.Assignments, a)
 	}
 	return nil
 }
@@ -348,12 +373,9 @@ func (seh *stdElementHandler) process(n *html.Node) (descend bool, replacement *
 		seh.c.Conditionals = append(seh.c.Conditionals, data.Conditional{
 			Condition: attrs._if, Path: append([]int(nil), *seh.indexList...)})
 	}
-	if attrs.assign != nil {
-		path := append([]int(nil), *seh.indexList...)
-		for i := range attrs.assign {
-			attrs.assign[i].Path = path
-		}
-		seh.c.Assignments = append(seh.c.Assignments, attrs.assign...)
+	err = seh.processAssignments(attrs.assign)
+	if err != nil {
+		return false, nil, err
 	}
 	err = seh.processBindings(attrs.bindings)
 	descend = err == nil
@@ -373,7 +395,8 @@ func (atp *aTextProcessor) process(n *html.Node) (descend bool, replacement *htm
 	if n.FirstChild != nil {
 		return false, nil, errors.New(": node may not have child nodes")
 	}
-	atp.c.Assignments = append(atp.c.Assignments, data.ParamAssignment{Expression: expr, Path: append([]int(nil), *atp.indexList...)})
+	atp.c.Assignments = append(atp.c.Assignments, data.Assignment{
+		Expression: expr, Path: append([]int(nil), *atp.indexList...), Target: data.BoundValue{Kind: data.BoundSelf}})
 	return false, &html.Node{Type: html.CommentNode, Data: "a:text"}, nil
 }
 

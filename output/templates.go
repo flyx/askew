@@ -49,6 +49,8 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 			return "NewBoundData"
 		case data.BoundClass:
 			return "NewBoundClass"
+		case data.BoundSelf:
+			return "NewBoundSelf"
 		default:
 			panic("unknown BoundKind")
 		}
@@ -127,15 +129,14 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	{{- end}}
 	{{- end}}
 	{{- range .Assignments}}
-	{{- if .AttributeName}}
-	runtime.WalkPath(o.root, {{PathItems .Path 0}}).Call("setAttribute", "{{.AttributeName}}", {{.Expression}})
-	{{- else}}
 	{
-		_item := runtime.WalkPath(o.root, {{PathItems .Path 0}})
-		_parent := _item.Get("parentNode")
-		_parent.Call("replaceChild", js.Global.Get("document").Call("createTextNode", {{.Expression}}), _item)
+		{{- if IsFormValue .Target.Kind}}
+		tmp := runtime.NewBoundFormValue(o.root, "{{.Target.ID}}", {{.Target.IsRadio}}, {{PathItems .Path .Target.FormDepth}})
+		{{- else}}
+		tmp := runtime.{{Constructor .Target.Kind}}(o.root, "{{.Target.ID}}", {{PathItems .Path 0}})
+		{{- end}}
+		runtime.Assign(tmp, {{.Expression}})
 	}
-	{{- end}}
 	{{- end}}
 	{{- range .Conditionals}}
 	if !(${{.Condition}}) {
@@ -281,7 +282,7 @@ var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
 {{- if .List}}
 var {{.Field}} {{.Pkg}}.{{.T}}List
 {{- else}}
-var {{.Field}} = {{.Pkg}}.New{{.T}}()
+var {{.Field}} = {{.Pkg}}.New{{.T}}({{.Args.Raw}})
 {{end}}
 {{end}}
 
