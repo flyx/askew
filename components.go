@@ -68,49 +68,59 @@ type embedProcessor struct {
 }
 
 func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed, error) {
+	if n.FirstChild != nil {
+		return data.Embed{}, errors.New(": illegal content")
+	}
 	var attrs embedAttribs
 	if err := collectAttribs(n, &attrs); err != nil {
 		return data.Embed{}, err
 	}
-	if attrs.t == "" {
-		return data.Embed{}, errors.New(": attribute `type` missing")
+	e := data.Embed{Kind: data.DirectEmbed, Path: append([]int(nil), indexList...),
+		Field: attrs.name}
+	if e.Field == "" {
+		return data.Embed{}, errors.New(": attribute `name` missing")
 	}
-	target, pkgName, typeName, err := syms.ResolveComponent(attrs.t)
-	if err != nil {
-		return data.Embed{}, errors.New(": attribute `type` invalid: %s" + err.Error())
-	}
-	e := data.Embed{Kind: data.DirectEmbed, Path: append([]int(nil), indexList...)}
 	if attrs.list {
 		e.Kind = data.ListEmbed
-		target.NeedsList = true
 	}
 	if attrs.optional {
 		if e.Kind != data.DirectEmbed {
 			return data.Embed{}, errors.New(": cannot mix `list` and `optional`")
 		}
 		e.Kind = data.OptionalEmbed
-		target.NeedsOptional = true
 	}
-	if pkgName != syms.CurPkg {
-		e.Pkg = pkgName
-	}
-	e.Field = attrs.name
-	if e.Field == "" {
-		return data.Embed{}, errors.New(": attribute `name` missing")
-	}
-	e.T = typeName
-	if n.FirstChild != nil {
-		return data.Embed{}, errors.New(": illegal content")
-	}
-	if e.Kind != data.DirectEmbed {
+	if attrs.t == "" {
+		if e.Kind == data.DirectEmbed {
+			return data.Embed{}, errors.New(": attribute `type` missing (may only be omitted for optional or list embeds)")
+		}
 		if attrs.args.Count != 0 {
 			return data.Embed{}, errors.New(": embed with `list` or `optional` cannot have `args`")
 		}
 	} else {
-		e.Args = attrs.args
-		if len(target.Parameters) != e.Args.Count {
-			return data.Embed{}, fmt.Errorf(
-				": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)
+		target, pkgName, typeName, err := syms.ResolveComponent(attrs.t)
+		if err != nil {
+			return data.Embed{}, errors.New(": attribute `type` invalid: %s" + err.Error())
+		}
+		switch e.Kind {
+		case data.ListEmbed:
+			target.NeedsList = true
+		case data.OptionalEmbed:
+			target.NeedsOptional = true
+		}
+		if pkgName != syms.CurPkg {
+			e.Pkg = pkgName
+		}
+		e.T = typeName
+		if e.Kind != data.DirectEmbed {
+			if attrs.args.Count != 0 {
+				return data.Embed{}, errors.New(": embed with `list` or `optional` cannot have `args`")
+			}
+		} else {
+			e.Args = attrs.args
+			if len(target.Parameters) != e.Args.Count {
+				return data.Embed{}, fmt.Errorf(
+					": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)
+			}
 		}
 	}
 	return e, nil

@@ -32,21 +32,25 @@ func (lm *ListManager) UpdateParent(
 		lm.parent = newParent
 		if lm.end == nil {
 			lm.end = newEnd
+		} else if newEnd == nil {
+			if !newParent.Call("contains", lm.end).Bool() {
+				lm.end = nil
+			}
 		}
 	}
 }
 
 // Remove removes the given object from the container.
-func (lm ListManager) Remove(o *js.Object) {
-	lm.parent.Call("removeChild", o)
+func (lm ListManager) Remove(c Component) {
+	c.Extract()
 }
 
 // Append appends the given object to the container.
-func (lm ListManager) Append(o *js.Object) {
-	lm.parent.Call("insertBefore", o, lm.end)
+func (lm ListManager) Append(c Component) {
+	c.InsertInto(lm.parent, lm.end)
 }
 
 // Insert inserts the given object in front of the object `before`.
-func (lm ListManager) Insert(o *js.Object, before *js.Object) {
-	lm.parent.Call("insertBefore", o, before)
+func (lm ListManager) Insert(c Component, before *js.Object) {
+	c.InsertInto(lm.parent, before)
 }

@@ -3,17 +3,15 @@ package runtime
 import "github.com/gopherjs/gopherjs/js"
 
 // InstantiateTemplate clones a template's content and returns it.
+// The return value will always be a DOM DocumentFragment.
 func InstantiateTemplate(tmpl *js.Object) *js.Object {
-	document := js.Global.Get("document")
-	copied := document.Call("importNode", tmpl, true)
-	return copied.Get("content")
+	return tmpl.Get("content").Call("cloneNode", true)
 }
 
 // InstantiateTemplateByID clones a template's content and returns it.
 // the template is identified by its ID.
+// The return value will always be a DOM DocumentFragment.
 func InstantiateTemplateByID(id string) *js.Object {
 	document := js.Global.Get("document")
-	elm := document.Call("getElementById", id)
-	copied := document.Call("importNode", elm, true)
-	return copied.Get("content")
+	return InstantiateTemplate(document.Call("getElementById", id))
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func writeFormatted(goCode string, file string) {
-	fmtcmd := exec.Command("gofmt")
+	fmtcmd := exec.Command("goimports")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

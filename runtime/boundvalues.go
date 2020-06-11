@@ -19,9 +19,9 @@ type BoundProperty struct {
 // NewBoundProperty creates a BoundProperty for the node found at the
 // given path (relative to root) and the given property name.
 func NewBoundProperty(
-	root *js.Object, pName string, path ...int) *BoundProperty {
+	d *ComponentData, pName string, path ...int) *BoundProperty {
 	return &BoundProperty{
-		node: WalkPath(root, path...), pName: pName}
+		node: d.Walk(path...), pName: pName}
 }
 
 // Init initializes the bound property with the given node and property name.
@@ -46,8 +46,8 @@ type BoundData struct {
 // NewBoundData creates a BoundData for the node found at the given
 // path (relative to root) and the given dataset item.
 func NewBoundData(
-	root *js.Object, dName string, path ...int) *BoundData {
-	return &BoundData{node: WalkPath(root, path...), dName: dName}
+	d *ComponentData, dName string, path ...int) *BoundData {
+	return &BoundData{node: d.Walk(path...), dName: dName}
 }
 
 // Init initializes the object with the given node and dataset item name.
@@ -73,9 +73,8 @@ type BoundClass struct {
 
 // NewBoundClass creates a BoundClass for the node at the given path,
 // which switches the class with the given name.
-func NewBoundClass(root *js.Object, className string, path ...int) *BoundClass {
-	return &BoundClass{
-		node: WalkPath(root, path...), className: className}
+func NewBoundClass(d *ComponentData, className string, path ...int) *BoundClass {
+	return &BoundClass{node: d.Walk(path...), className: className}
 }
 
 // Init initializes the BoundClass with the given node and class name.
@@ -105,9 +104,10 @@ type BoundFormValue struct {
 
 // NewBoundFormValue creates a BoundFormValue for the from at the given path.
 // radio must be true iff the input with the given name has type=radio.
-func NewBoundFormValue(root *js.Object, name string, radio bool, path ...int) *BoundFormValue {
-	return &BoundFormValue{
-		form: WalkPath(root, path...), name: name}
+func NewBoundFormValue(d *ComponentData, name string, radio bool, path ...int) *BoundFormValue {
+	ret := new(BoundFormValue)
+	ret.Init(d.Walk(path...), name, radio)
+	return ret
 }
 
 // Init initializes the BoundFormValue with the given form and element name.
@@ -151,8 +151,8 @@ type BoundSelf struct {
 }
 
 // NewBoundSelf creates a BoundSelf for the node at the given path.
-func NewBoundSelf(root *js.Object, dummy string, path ...int) *BoundSelf {
-	return &BoundSelf{node: WalkPath(root, path...)}
+func NewBoundSelf(d *ComponentData, dummy string, path ...int) *BoundSelf {
+	return &BoundSelf{node: d.Walk(path...)}
 }
 
 func (bs *BoundSelf) get() *js.Object {

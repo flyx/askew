@@ -39,4 +39,5 @@ func main() {
 	Test.Content.B.Set("BBB")
 
 	Derp.Set(ui.NewHerp())
+	Anything.Set(ui.NewHerp())
 }
