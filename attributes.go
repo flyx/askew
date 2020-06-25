@@ -99,10 +99,10 @@ func (e *embedAttribs) collect(name, val string) error {
 }
 
 type generalAttribs struct {
-	bindings []data.VariableMapping
-	capture  []data.EventMapping
-	_if      string
-	assign   []data.Assignment
+	bindings  []data.VariableMapping
+	capture   []data.EventMapping
+	_if, _for *data.ControlBlock
+	assign    []data.Assignment
 }
 
 func (g *generalAttribs) collect(name, val string) error {
@@ -111,21 +111,27 @@ func (g *generalAttribs) collect(name, val string) error {
 		var err error
 		g.bindings, err = parsers.ParseBindings(val)
 		if err != nil {
-			return errors.New("invalid bindings: " + err.Error())
+			return errors.New(": invalid bindings: " + err.Error())
 		}
 	case "capture":
 		var err error
 		g.capture, err = parsers.ParseCapture(val)
 		if err != nil {
-			return errors.New("invalid capture: " + err.Error())
+			return errors.New(": invalid capture: " + err.Error())
 		}
 	case "if":
-		g._if = val
+		g._if = &data.ControlBlock{Kind: data.IfBlock, Expression: val}
+	case "for":
+		var err error
+		g._for, err = parsers.ParseFor(val)
+		if err != nil {
+			return errors.New(": invalid for: " + err.Error())
+		}
 	case "assign":
 		var err error
 		g.assign, err = parsers.ParseAssignments(val)
 		if err != nil {
-			return errors.New("invalid assign: " + err.Error())
+			return errors.New(": invalid assign: " + err.Error())
 		}
 	default:
 		return invalidAttribute(name)

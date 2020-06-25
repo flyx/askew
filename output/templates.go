@@ -41,16 +41,16 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 	"IsFormValue": func(bk data.BoundKind) bool {
 		return bk == data.BoundFormValue
 	},
-	"Constructor": func(bk data.BoundKind) string {
+	"TypeForKind": func(bk data.BoundKind) string {
 		switch bk {
 		case data.BoundProperty:
-			return "NewBoundProperty"
+			return "BoundProperty"
 		case data.BoundData:
-			return "NewBoundData"
+			return "BoundData"
 		case data.BoundClass:
-			return "NewBoundClass"
+			return "BoundClass"
 		case data.BoundSelf:
-			return "NewBoundSelf"
+			return "BoundSelf"
 		default:
 			panic("unknown BoundKind")
 		}
@@ -111,7 +111,52 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 		}
 		return b.String()
 	},
+	"BlockNotEmpty": func(b data.Block) bool {
+		return len(b.Assignments) > 0 || len(b.Controlled) > 0
+	},
 }).Option("missingkey=error").Parse(`
+{{- define "Block"}}
+  {{- range .Assignments}}
+	{
+		{{- if IsFormValue .Target.Kind}}
+		var tmp runtime.BoundFormValue
+		tmp.Init(runtime.WalkPath(block, {{PathItems .Path .Target.FormDepth}}), "{{.Target.ID}}", {{.Target.IsRadio}})
+		{{- else}}
+		var tmp runtime.{{TypeForKind .Target.Kind}}
+		tmp.Init(runtime.WalkPath(block, {{PathItems .Path 0}}), "{{.Target.ID}}")
+		{{- end}}
+		runtime.Assign(&tmp, {{.Expression}})
+	}
+	{{- end}}
+	
+	{{- range .Controlled}}
+	{{- if eq .Kind 0}}
+	if {{.Expression}} {
+		{{if BlockNotEmpty .Block}}
+		block := runtime.WalkPath(block, {{PathItems .Path 0}})
+		{{template "Block" .Block}}
+		{{- end}}
+	} else {
+		_item := runtime.WalkPath(block, {{PathItems .Path 0}})
+		_parent := _item.Get("parentNode")
+		_parent.Call("replaceChild", js.Global.Get("document").Call("createComment", "removed"), _item)
+	}
+	{{- else }}
+	{
+		_orig := runtime.WalkPath(block, {{PathItems .Path 0}})
+		_parent := _orig.Get("parentNode")
+		_next := _orig.Get("nextSibling")
+		_parent.Call("removeChild", _orig)
+		for {{.Index}}{{with .Variable}}, {{.}}{{end}} := range {{.Expression}} {
+			block := _orig.Call("cloneNode", true)
+			{{template "Block" .Block}}
+			_parent.Call("insertBefore", block, _next)
+		}
+	}
+	{{- end}}
+	{{- end}}
+{{- end}}
+
 {{- if and .NeedsController .Handlers}}
 // {{.Name}}Controller is the interface for handling events captured from {{.Name}}
 type {{.Name}}Controller interface {
@@ -159,24 +204,13 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	{{- if IsFormValue .Value.Kind}}
 	o.{{.Variable.Name}}.BoundValue = runtime.NewBoundFormValue(&o.cd, "{{.Value.ID}}", {{.Value.IsRadio}}, {{PathItems .Path .Value.FormDepth}})
 	{{- else}}
-	o.{{.Variable.Name}}.BoundValue = runtime.{{Constructor .Value.Kind}}(&o.cd, "{{.Value.ID}}", {{PathItems .Path 0}})
+	o.{{.Variable.Name}}.BoundValue = runtime.New{{TypeForKind .Value.Kind}}(&o.cd, "{{.Value.ID}}", {{PathItems .Path 0}})
 	{{- end}}
 	{{- end}}
-	{{- range .Assignments}}
+	{{- if BlockNotEmpty .Block}}
 	{
-		{{- if IsFormValue .Target.Kind}}
-		tmp := runtime.NewBoundFormValue(&o.cd, "{{.Target.ID}}", {{.Target.IsRadio}}, {{PathItems .Path .Target.FormDepth}})
-		{{- else}}
-		tmp := runtime.{{Constructor .Target.Kind}}(&o.cd, "{{.Target.ID}}", {{PathItems .Path 0}})
-		{{- end}}
-		runtime.Assign(tmp, {{.Expression}})
-	}
-	{{- end}}
-	{{- range .Conditionals}}
-	if !(${{.Condition}}) {
-		_item := o.cd.Walk({{PathItems .Path 0}})
-		_parent := _item.Get("parentNode")
-		_parent.Call("replaceChild", js.Global.Get("document").Call("createComment", "removed"), _item)
+		block := o.cd.Walk()
+		{{- template "Block" .Block}}
 	}
 	{{- end}}
 	{{- range .Embeds }}

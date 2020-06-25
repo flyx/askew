@@ -57,25 +57,47 @@ type Assignment struct {
 	Target     BoundValue
 }
 
-// Conditional includes or excludes an element from a component instance depending
-// on a condition.
-type Conditional struct {
-	Condition string
-	Path      []int
+// Block is a subtree of a component.
+type Block struct {
+	Assignments []Assignment
+	Controlled  []*ControlBlock
+}
+
+// ControlBlockKind describes the kind of a control block.
+type ControlBlockKind int
+
+const (
+	// IfBlock removes the block if its expression evaluates to `false`.
+	IfBlock ControlBlockKind = iota
+	// ForBlock iterates over its expression and for each iteration, inserts
+	// a copy of the original element at its place while evaluating the loop
+	// variables in assignments in the original element.
+	// The original element is removed from the structure.
+	ForBlock
+)
+
+// ControlBlock is a block governed by some control structure.
+// It is to be processed by its control structure in the component's constructor.
+type ControlBlock struct {
+	Block
+	Kind            ControlBlockKind
+	Index, Variable string // only for ForBlock
+	Expression      string
+	Path            []int
 }
 
 // Component describes a <a:component> node.
 type Component struct {
 	EmbedHost
+	Block
 	Name string
 	// HTML id. internally generated.
-	ID              string
-	Variables       []VariableMapping
-	Handlers        map[string]Handler
-	Captures        []Capture
-	Parameters      []ComponentParam
-	Assignments     []Assignment
-	Conditionals    []Conditional
+	ID         string
+	Variables  []VariableMapping
+	Handlers   map[string]Handler
+	Captures   []Capture
+	Parameters []ComponentParam
+
 	Template        *html.Node
 	NeedsController bool
 	NeedsList       bool

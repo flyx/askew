@@ -2,7 +2,8 @@ package parsers
 
 var exprSyntax = `
   EXPR      ← (COMMALESS / ENCLOSING)+
-	COMMALESS ← IDENTIFIER / OPERATORS / STRING
+	COMMALESS ← IDENTIFIER / NUMBER / OPERATORS / STRING
+	NUMBER    ← < [0-9]+ >
 	OPERATORS ← < [+-*/|&^:=.]+ >
 	STRING    ← '` + "`" + `' (!'` + "`" + `' .)* '` + "`" + `'
 	ENCLOSING ← PARENS / BRACES / BRACKETS

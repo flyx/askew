@@ -40,22 +40,34 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 
 	var indexList []int
 	w := walker{
-		text: allow{}, aText: &aTextProcessor{cmp, &indexList},
+		text: allow{}, aText: &aTextProcessor{&cmp.Block, &indexList},
 		embed:       &embedProcessor{cp.syms, &indexList},
 		handler:     &handlerProcessor{cp.syms, &cmp.Handlers, &indexList},
-		stdElements: &stdElementHandler{cp.syms, &indexList, cmp, -1, nil},
+		stdElements: &componentElementHandler{stdElementHandler{cp.syms, &indexList, &cmp.Block, -1, nil}, cmp},
 		indexList:   &indexList}
 	replacement.FirstChild, replacement.LastChild, err = w.walkChildren(
 		replacement, &siblings{n.FirstChild})
 
-	// reverse Embed list so that they get embedded in reverse order.
-	// this is necessary because embedding may change the number of elements in
-	// a node, rendering the path of following embeds invalid.
-	tmp := make([]data.Embed, len(cmp.Embeds))
-	for i, e := range cmp.Embeds {
-		tmp[len(tmp)-i-1] = e
+	{
+		// reverse Embed list so that they get embedded in reverse order.
+		// this is necessary because embedding may change the number of elements in
+		// a node, rendering the path of following embeds invalid.
+		tmp := make([]data.Embed, len(cmp.Embeds))
+		for i, e := range cmp.Embeds {
+			tmp[len(tmp)-i-1] = e
+		}
+		cmp.Embeds = tmp
 	}
-	cmp.Embeds = tmp
+
+	{
+		// reverse contained control blocks so that they are processed back to front,
+		// ensuring that their paths are correct.
+		tmp := make([]*data.ControlBlock, len(cmp.Controlled))
+		for i, e := range cmp.Controlled {
+			tmp[len(tmp)-i-1] = e
+		}
+		cmp.Controlled = tmp
+	}
 
 	cp.syms.Packages[cp.syms.CurPkg].Components[cmpAttrs.name] = cmp
 
@@ -237,21 +249,26 @@ func discoverFormValues(form *html.Node) (map[string]formValue, error) {
 type stdElementHandler struct {
 	syms       *data.Symbols
 	indexList  *[]int
-	c          *data.Component
+	b          *data.Block
 	curFormPos int
 	curForm    map[string]formValue
 }
 
-func (seh *stdElementHandler) mapCaptures(n *html.Node, v []data.EventMapping) error {
+type componentElementHandler struct {
+	stdElementHandler
+	c *data.Component
+}
+
+func (ceh *componentElementHandler) mapCaptures(n *html.Node, v []data.EventMapping) error {
 	if len(v) == 0 {
 		return nil
 	}
 	formDepth := -1
-	if seh.curFormPos != -1 {
-		formDepth = len(*seh.indexList) - seh.curFormPos
+	if ceh.curFormPos != -1 {
+		formDepth = len(*ceh.indexList) - ceh.curFormPos
 	}
 	for _, m := range v {
-		h, ok := seh.c.Handlers[m.Handler]
+		h, ok := ceh.c.Handlers[m.Handler]
 		if !ok {
 			return errors.New("capture references unknown handler: " + m.Handler)
 		}
@@ -270,7 +287,7 @@ func (seh *stdElementHandler) mapCaptures(n *html.Node, v []data.EventMapping) e
 						return errors.New(": illegal form() binding outside of <form> element")
 					}
 					bVal.FormDepth = formDepth
-					_, ok := seh.curForm[bVal.ID]
+					_, ok := ceh.curForm[bVal.ID]
 					if !ok {
 						return errors.New(": unknown form value name: `" + bVal.ID + "`")
 					}
@@ -282,17 +299,17 @@ func (seh *stdElementHandler) mapCaptures(n *html.Node, v []data.EventMapping) e
 		}
 	}
 
-	seh.c.Captures = append(seh.c.Captures, data.Capture{
-		Path: append([]int(nil), *seh.indexList...), Mappings: v})
+	ceh.c.Captures = append(ceh.c.Captures, data.Capture{
+		Path: append([]int(nil), *ceh.indexList...), Mappings: v})
 	return nil
 }
 
-func (seh *stdElementHandler) processBindings(arr []data.VariableMapping) error {
+func (ceh *componentElementHandler) processBindings(arr []data.VariableMapping) error {
 	formDepth := -1
-	if seh.curFormPos != -1 {
-		formDepth = len(*seh.indexList) - seh.curFormPos
+	if ceh.curFormPos != -1 {
+		formDepth = len(*ceh.indexList) - ceh.curFormPos
 	}
-	path := append([]int(nil), *seh.indexList...)
+	path := append([]int(nil), *ceh.indexList...)
 
 	for _, vb := range arr {
 		if vb.Value.Kind == data.BoundFormValue {
@@ -300,7 +317,7 @@ func (seh *stdElementHandler) processBindings(arr []data.VariableMapping) error 
 				return errors.New(": illegal form() binding outside of <form> element")
 			}
 			vb.Value.FormDepth = formDepth
-			val, ok := seh.curForm[vb.Value.ID]
+			val, ok := ceh.curForm[vb.Value.ID]
 			if !ok {
 				return errors.New(": unknown form value name: `" + vb.Value.ID + "`")
 			}
@@ -317,17 +334,16 @@ func (seh *stdElementHandler) processBindings(arr []data.VariableMapping) error 
 			}
 		}
 		vb.Path = path
-		seh.c.Variables = append(seh.c.Variables, vb)
+		ceh.c.Variables = append(ceh.c.Variables, vb)
 	}
 	return nil
 }
 
-func (seh *stdElementHandler) processAssignments(arr []data.Assignment) error {
+func (seh *stdElementHandler) processAssignments(arr []data.Assignment, path []int) error {
 	formDepth := -1
 	if seh.curFormPos != -1 {
 		formDepth = len(*seh.indexList) - seh.curFormPos
 	}
-	path := append([]int(nil), *seh.indexList...)
 
 	for _, a := range arr {
 		if a.Target.Kind == data.BoundFormValue {
@@ -341,7 +357,7 @@ func (seh *stdElementHandler) processAssignments(arr []data.Assignment) error {
 			}
 		}
 		a.Path = path
-		seh.c.Assignments = append(seh.c.Assignments, a)
+		seh.b.Assignments = append(seh.b.Assignments, a)
 	}
 	return nil
 }
@@ -353,50 +369,126 @@ func (seh *stdElementHandler) formDepth() int {
 	return len(*seh.indexList) - seh.curFormPos
 }
 
-func (seh *stdElementHandler) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (seh *stdElementHandler) updateCurForm(n *html.Node) error {
 	if len(*seh.indexList) <= seh.curFormPos {
 		seh.curFormPos = -1
 		seh.curForm = nil
 	}
-
-	var attrs generalAttribs
-	err = extractAskewAttribs(n, &attrs)
-	if err != nil {
-		return
-	}
-	switch n.DataAtom {
-	case atom.Form:
+	if n.DataAtom == atom.Form {
 		if seh.curFormPos != -1 {
-			return false, nil, errors.New(": nested <form> not allowed")
+			return errors.New(": nested <form> not allowed")
 		}
 		seh.curFormPos = len(*seh.indexList)
 		vals, err := discoverFormValues(n)
 		if err != nil {
-			return false, nil, err
+			return err
 		}
 		seh.curForm = vals
-		break
-	default:
-		break
 	}
-	if err := seh.mapCaptures(n, attrs.capture); err != nil {
-		return false, nil, errors.New(": " + err.Error())
+	return nil
+}
+
+func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, attrs generalAttribs) (descend bool, err error) {
+	var block *data.ControlBlock
+
+	if attrs._if != nil {
+		block = attrs._if
 	}
-	if attrs._if != "" {
-		seh.c.Conditionals = append(seh.c.Conditionals, data.Conditional{
-			Condition: attrs._if, Path: append([]int(nil), *seh.indexList...)})
+	if attrs._for != nil {
+		if block != nil {
+			return false, errors.New(": cannot have a:if and a:for on same element")
+		}
+
+		block = attrs._for
 	}
-	err = seh.processAssignments(attrs.assign)
+	if block != nil {
+		block.Path = append([]int(nil), *seh.indexList...)
+		var indexList []int
+		cp := &ctrlBlockElementProcessor{stdElementHandler{seh.syms, &indexList, &block.Block, seh.curFormPos, seh.curForm}}
+		cp.processAssignments(attrs.assign, []int{})
+
+		w := walker{
+			text: allow{}, aText: &aTextProcessor{&block.Block, &indexList},
+			embed:       &embedProcessor{seh.syms, &indexList},
+			handler:     nil,
+			stdElements: cp,
+			indexList:   &indexList}
+		n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
+
+		// reverse contained control blocks so that they are processed back to front,
+		// ensuring that their paths are correct.
+		tmp := make([]*data.ControlBlock, len(block.Controlled))
+		for i, e := range block.Controlled {
+			tmp[len(tmp)-i-1] = e
+		}
+		block.Controlled = tmp
+
+		seh.b.Controlled = append(seh.b.Controlled, block)
+		return false, nil
+	}
+	err = seh.processAssignments(attrs.assign, append([]int(nil), *seh.indexList...))
 	if err != nil {
-		return false, nil, err
+		return false, err
 	}
-	err = seh.processBindings(attrs.bindings)
-	descend = err == nil
+	return true, nil
+}
+
+func (ceh *componentElementHandler) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+	if err = ceh.updateCurForm(n); err != nil {
+		return
+	}
+
+	var attrs generalAttribs
+	if err = extractAskewAttribs(n, &attrs); err != nil {
+		return
+	}
+	descend, err = ceh.handleControlBlocksAndAssignments(n, attrs)
+	if descend {
+		if err := ceh.mapCaptures(n, attrs.capture); err != nil {
+			return false, nil, errors.New(": " + err.Error())
+		}
+
+		if err = ceh.processBindings(attrs.bindings); err != nil {
+			return false, nil, err
+		}
+	} else {
+		if len(attrs.capture) > 0 {
+			return false, nil, errors.New(": cannot capture inside a:if or a:for")
+		}
+		if len(attrs.bindings) > 0 {
+			return false, nil, errors.New(": cannot bind inside a:if or a:for")
+		}
+	}
+
+	return
+}
+
+type ctrlBlockElementProcessor struct {
+	stdElementHandler
+}
+
+func (cbeh *ctrlBlockElementProcessor) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+	if err = cbeh.updateCurForm(n); err != nil {
+		return
+	}
+
+	var attrs generalAttribs
+	if err = extractAskewAttribs(n, &attrs); err != nil {
+		return
+	}
+
+	if len(attrs.capture) > 0 {
+		return false, nil, errors.New(": cannot capture inside a:if or a:for")
+	}
+	if len(attrs.bindings) > 0 {
+		return false, nil, errors.New(": cannot bind inside a:if or a:for")
+	}
+	descend, err = cbeh.handleControlBlocksAndAssignments(n, attrs)
 	return
 }
 
 type aTextProcessor struct {
-	c         *data.Component
+	b         *data.Block
 	indexList *[]int
 }
 
@@ -408,7 +500,7 @@ func (atp *aTextProcessor) process(n *html.Node) (descend bool, replacement *htm
 	if n.FirstChild != nil {
 		return false, nil, errors.New(": node may not have child nodes")
 	}
-	atp.c.Assignments = append(atp.c.Assignments, data.Assignment{
+	atp.b.Assignments = append(atp.b.Assignments, data.Assignment{
 		Expression: expr, Path: append([]int(nil), *atp.indexList...), Target: data.BoundValue{Kind: data.BoundSelf}})
 	return false, &html.Node{Type: html.CommentNode, Data: "a:text"}, nil
 }

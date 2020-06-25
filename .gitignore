@@ -5,6 +5,8 @@ test/ui/nameform.go
 test/ui/nameforms.go
 test/ui/macrotest.go
 test/extra/embedtest.go
+test/extra/optionalspam.go
+test/extra/matrix.go
 test/init.go
 test/site
 .DS_Store

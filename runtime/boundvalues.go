@@ -155,6 +155,11 @@ func NewBoundSelf(d *ComponentData, dummy string, path ...int) *BoundSelf {
 	return &BoundSelf{node: d.Walk(path...)}
 }
 
+// Init initializes the BoundSelf with the given node.
+func (bs *BoundSelf) Init(node *js.Object, dummy string) {
+	bs.node = node
+}
+
 func (bs *BoundSelf) get() *js.Object {
 	panic("BoundSelf doesn't support get()")
 }
