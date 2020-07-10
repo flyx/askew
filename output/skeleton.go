@@ -16,8 +16,8 @@ func WriteSkeleton(syms *data.Symbols, path string, s *data.Skeleton) {
 	b := strings.Builder{}
 	if err := fileHeader.Execute(&b, struct {
 		PackageName string
-		Deps        map[string]struct{}
-	}{"main", s.Dependencies}); err != nil {
+		Imports     map[string]string
+	}{"main", s.Imports}); err != nil {
 		panic(err)
 	}
 

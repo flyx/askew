@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/flyx/askew/data"
+	"github.com/flyx/askew/walker"
 	"golang.org/x/net/html"
 )
 
@@ -11,25 +12,31 @@ type macroDiscovery struct {
 	syms *data.Symbols
 }
 
-func (md *macroDiscovery) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (md *macroDiscovery) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	name := attrVal(n.Attr, "name")
 	if name == "" {
 		return false, nil, errors.New(": attribute `name` missing")
 	}
 	pkg, _ := md.syms.Packages[md.syms.CurPkg]
-	_, ok := pkg.Macros[name]
-	if ok {
-		return false, nil, errors.New(": duplicate name `" + name + "`")
+	for _, file := range pkg.Files {
+		_, ok := file.Macros[name]
+		if ok {
+			return false, nil, errors.New(": duplicate name `" + name + "`")
+		}
 	}
 	sd := slotDiscovery{slots: make([]data.Slot, 0, 16), syms: md.syms}
-	w := walker{text: allow{}, stdElements: allow{}, aText: allow{},
-		embed: allow{}, include: &includeProcessor{md.syms}, slot: &sd}
+	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{},
+		AText: walker.Allow{},
+		Embed: walker.Allow{}, Include: &includeProcessor{md.syms}, Slot: &sd}
 
-	first, last, err := w.walkChildren(n, &siblings{n.FirstChild})
+	first, last, err := w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	if err != nil {
 		return false, nil, err
 	}
-	pkg.Macros[name] = data.Macro{Slots: sd.slots, First: first, Last: last}
+	if md.syms.CurFile.Macros == nil {
+		md.syms.CurFile.Macros = make(map[string]data.Macro)
+	}
+	md.syms.CurFile.Macros[name] = data.Macro{Slots: sd.slots, First: first, Last: last}
 	// removes the macro and stops parent walker from descending
 	return false, &html.Node{Type: html.TextNode, Data: ""}, nil
 }
@@ -39,16 +46,16 @@ type slotDiscovery struct {
 	slots []data.Slot
 }
 
-func (sd *slotDiscovery) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (sd *slotDiscovery) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	name := attrVal(n.Attr, "name")
 	if name == "" {
 		return false, nil, errors.New("missing attribute `name`")
 	}
 	sd.slots = append(sd.slots, data.Slot{Name: name, Node: n})
 
-	w := walker{text: allow{}, stdElements: allow{}, aText: allow{},
-		include: &includeProcessor{sd.syms}}
-	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
+	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{},
+		AText: walker.Allow{}, Include: &includeProcessor{sd.syms}}
+	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return false, nil, err
 }
 
@@ -56,7 +63,7 @@ type includeProcessor struct {
 	syms *data.Symbols
 }
 
-func (ip *includeProcessor) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (ip *includeProcessor) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	name := attrVal(n.Attr, "name")
 	if name == "" {
 		return false, nil, errors.New(": `name` attribute missing")
@@ -68,8 +75,8 @@ func (ip *includeProcessor) process(n *html.Node) (descend bool, replacement *ht
 
 	vm := valueMapper{slots: m.Slots, values: make([]*html.Node, len(m.Slots)),
 		syms: ip.syms}
-	w := walker{text: whitespaceOnly{}, stdElements: &vm}
-	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
+	w := walker.Walker{Text: walker.WhitespaceOnly{}, StdElements: &vm}
+	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	if err != nil {
 		return
 	}
@@ -78,9 +85,9 @@ func (ip *includeProcessor) process(n *html.Node) (descend bool, replacement *ht
 		slots: m.Slots, values: vm.values}
 	ec := elmCopier{&instantiator}
 	instantiator.w =
-		walker{text: textCopier{}, stdElements: &ec, aText: &ec,
-			slot: &slotReplacer{&instantiator}}
-	replacement, _, err = instantiator.w.walkChildren(nil, &siblings{m.First})
+		walker.Walker{Text: textCopier{}, StdElements: &ec, AText: &ec,
+			Slot: &slotReplacer{&instantiator}}
+	replacement, _, err = instantiator.w.WalkChildren(nil, &walker.Siblings{Cur: m.First})
 	return
 }
 
@@ -90,7 +97,7 @@ type valueMapper struct {
 	values []*html.Node
 }
 
-func (vm *valueMapper) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (vm *valueMapper) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	var iAttrs includeChildAttribs
 	extractAskewAttribs(n, &iAttrs)
 
@@ -114,20 +121,21 @@ func (vm *valueMapper) process(n *html.Node) (descend bool, replacement *html.No
 	if !found {
 		return false, nil, errors.New(": unknown slot `" + iAttrs.slot + "`")
 	}
-	w := walker{text: allow{}, stdElements: allow{}, aText: allow{}, include: &includeProcessor{vm.syms}}
-	replacement, _, err = w.walkChildren(n, &siblings{n.FirstChild})
+	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{},
+		AText: walker.Allow{}, Include: &includeProcessor{vm.syms}}
+	replacement, _, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return
 }
 
 type macroInstantiator struct {
 	slots  []data.Slot
 	values []*html.Node
-	w      walker
+	w      walker.Walker
 }
 
 type textCopier struct{}
 
-func (textCopier) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (textCopier) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	replacement = &html.Node{Type: n.Type, Data: n.Data}
 	return
 }
@@ -136,12 +144,12 @@ type elmCopier struct {
 	mi *macroInstantiator
 }
 
-func (ec *elmCopier) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (ec *elmCopier) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	replacement = &html.Node{
 		Type: n.Type, DataAtom: n.DataAtom, Data: n.Data, Namespace: n.Namespace,
 		Attr: append([]html.Attribute(nil), n.Attr...)}
-	replacement.FirstChild, replacement.LastChild, err = ec.mi.w.walkChildren(
-		replacement, &siblings{n.FirstChild})
+	replacement.FirstChild, replacement.LastChild, err = ec.mi.w.WalkChildren(
+		replacement, &walker.Siblings{Cur: n.FirstChild})
 	return
 }
 
@@ -149,13 +157,13 @@ type slotReplacer struct {
 	mi *macroInstantiator
 }
 
-func (sl *slotReplacer) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (sl *slotReplacer) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	for i := range sl.mi.slots {
 		if sl.mi.slots[i].Node != n {
 			continue
 		}
 		if sl.mi.values[i] == nil {
-			replacement, _, err = sl.mi.w.walkChildren(nil, &siblings{n.FirstChild})
+			replacement, _, err = sl.mi.w.WalkChildren(nil, &walker.Siblings{Cur: n.FirstChild})
 		} else {
 			replacement = sl.mi.values[i]
 		}
@@ -168,36 +176,27 @@ type componentDescender struct {
 	syms *data.Symbols
 }
 
-func (cd *componentDescender) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	w := walker{text: allow{}, stdElements: allow{}, include: &includeProcessor{cd.syms},
-		handler: allow{}, embed: allow{}, aText: allow{}}
-	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
+func (cd *componentDescender) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{}, Include: &includeProcessor{cd.syms},
+		Handler: walker.Allow{}, Embed: walker.Allow{}, AText: walker.Allow{}}
+	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return false, nil, err
 }
 
-type packageDiscovery struct {
-	syms *data.Symbols
+type importRemover struct{}
+
+func (importRemover) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+	return false, &html.Node{Type: html.TextNode}, nil
 }
 
-func (pd *packageDiscovery) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	var attrs packageAttribs
-	collectAttribs(n, &attrs)
-	_, ok := pd.syms.Packages[attrs.name]
-	if ok {
-		return false, nil, errors.New("duplicate package name: " + attrs.name)
+func processMacros(nodes []*html.Node, syms *data.Symbols) (dummyParent *html.Node, err error) {
+	dummyParent = &html.Node{Type: html.ElementNode}
+	if len(nodes) > 0 {
+		dummyParent.FirstChild = nodes[0]
+		dummyParent.LastChild = nodes[len(nodes)-1]
+		w := walker.Walker{Text: walker.WhitespaceOnly{}, Component: &componentDescender{syms: syms},
+			Macro: &macroDiscovery{syms: syms}, AImport: importRemover{}}
+		_, _, err = w.WalkChildren(dummyParent, &walker.NodeSlice{Items: nodes})
 	}
-	pd.syms.CurPkg = attrs.name
-	pd.syms.Packages[attrs.name] = &data.Package{Macros: make(map[string]data.Macro)}
-
-	w := walker{
-		text: whitespaceOnly{}, component: &componentDescender{syms: pd.syms},
-		macro: &macroDiscovery{syms: pd.syms}}
-	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
-	return false, nil, err
-}
-
-func processMacros(nodes []*html.Node, syms *data.Symbols) (err error) {
-	w := walker{text: whitespaceOnly{}, aPackage: &packageDiscovery{syms: syms}}
-	_, _, err = w.walkChildren(nil, &nodeSlice{nodes, 0})
 	return
 }

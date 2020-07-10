@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/flyx/askew/parsers"
+	"github.com/flyx/askew/walker"
 
 	"github.com/flyx/askew/data"
 	"golang.org/x/net/html"
@@ -17,7 +18,7 @@ type componentProcessor struct {
 	counter *int
 }
 
-func (cp *componentProcessor) process(n *html.Node) (descend bool,
+func (cp *componentProcessor) Process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
 	var cmpAttrs componentAttribs
 	err = collectAttribs(n, &cmpAttrs)
@@ -30,7 +31,7 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 
 	replacement = &html.Node{Type: html.ElementNode, DataAtom: atom.Template,
 		Data: "template"}
-	cmp := &data.Component{EmbedHost: data.EmbedHost{Dependencies: make(map[string]struct{})},
+	cmp := &data.Component{EmbedHost: data.EmbedHost{},
 		Name: cmpAttrs.name, Template: replacement, NeedsController: cmpAttrs.controller,
 		Parameters: cmpAttrs.params}
 	cp.syms.CurHost = &cmp.EmbedHost
@@ -39,14 +40,14 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 	replacement.Attr = []html.Attribute{html.Attribute{Key: "id", Val: cmp.ID}}
 
 	var indexList []int
-	w := walker{
-		text: allow{}, aText: &aTextProcessor{&cmp.Block, &indexList},
-		embed:       &embedProcessor{cp.syms, &indexList},
-		handler:     &handlerProcessor{cp.syms, &cmp.Handlers, &indexList},
-		stdElements: &componentElementHandler{stdElementHandler{cp.syms, &indexList, &cmp.Block, -1, nil}, cmp},
-		indexList:   &indexList}
-	replacement.FirstChild, replacement.LastChild, err = w.walkChildren(
-		replacement, &siblings{n.FirstChild})
+	w := walker.Walker{
+		Text: walker.Allow{}, AText: &aTextProcessor{&cmp.Block, &indexList},
+		Embed:       &embedProcessor{cp.syms, &indexList},
+		Handler:     &handlerProcessor{cp.syms, &cmp.Handlers, &indexList},
+		StdElements: &componentElementHandler{stdElementHandler{cp.syms, &indexList, &cmp.Block, -1, nil}, cmp},
+		IndexList:   &indexList}
+	replacement.FirstChild, replacement.LastChild, err = w.WalkChildren(
+		replacement, &walker.Siblings{Cur: n.FirstChild})
 
 	{
 		// reverse Embed list so that they get embedded in reverse order.
@@ -69,7 +70,10 @@ func (cp *componentProcessor) process(n *html.Node) (descend bool,
 		cmp.Controlled = tmp
 	}
 
-	cp.syms.Packages[cp.syms.CurPkg].Components[cmpAttrs.name] = cmp
+	if cp.syms.CurFile.Components == nil {
+		cp.syms.CurFile.Components = make(map[string]*data.Component)
+	}
+	cp.syms.CurFile.Components[cmpAttrs.name] = cmp
 
 	return
 }
@@ -109,9 +113,9 @@ func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed
 			return data.Embed{}, errors.New(": embed with `list` or `optional` cannot have `args`")
 		}
 	} else {
-		target, pkgName, typeName, err := syms.ResolveComponent(attrs.t)
+		target, typeName, aliasName, err := syms.ResolveComponent(attrs.t)
 		if err != nil {
-			return data.Embed{}, errors.New(": attribute `type` invalid: %s" + err.Error())
+			return data.Embed{}, errors.New(": attribute `type` invalid: " + err.Error())
 		}
 		switch e.Kind {
 		case data.ListEmbed:
@@ -119,10 +123,8 @@ func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed
 		case data.OptionalEmbed:
 			target.NeedsOptional = true
 		}
-		if pkgName != syms.CurPkg {
-			e.Pkg = pkgName
-		}
 		e.T = typeName
+		e.Ns = aliasName
 		if e.Kind != data.DirectEmbed {
 			if attrs.args.Count != 0 {
 				return data.Embed{}, errors.New(": embed with `list` or `optional` cannot have `args`")
@@ -138,7 +140,7 @@ func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed
 	return e, nil
 }
 
-func (ep *embedProcessor) process(n *html.Node) (descend bool,
+func (ep *embedProcessor) Process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
 	e, err := resolveEmbed(n, ep.syms, *ep.indexList)
 	if err != nil {
@@ -157,7 +159,7 @@ type handlerProcessor struct {
 	indexList *[]int
 }
 
-func (hp *handlerProcessor) process(n *html.Node) (descend bool,
+func (hp *handlerProcessor) Process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
 	if len(*hp.indexList) != 1 {
 		return false, nil, errors.New(": must be defined as direct child of <a:component>")
@@ -192,7 +194,7 @@ type formValueDiscovery struct {
 	values map[string]formValue
 }
 
-func (d *formValueDiscovery) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (d *formValueDiscovery) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	var v formValue
 	name := attrVal(n.Attr, "name")
 	if name == "" {
@@ -236,10 +238,11 @@ func (d *formValueDiscovery) process(n *html.Node) (descend bool, replacement *h
 
 func discoverFormValues(form *html.Node) (map[string]formValue, error) {
 	fvd := formValueDiscovery{values: make(map[string]formValue)}
-	w := walker{text: allow{}, embed: dontDescend{}, handler: dontDescend{},
-		aText: allow{}, stdElements: &fvd}
+	w := walker.Walker{Text: walker.Allow{}, Embed: walker.DontDescend{},
+		Handler: walker.DontDescend{},
+		AText:   walker.Allow{}, StdElements: &fvd}
 	var err error
-	form.FirstChild, form.LastChild, err = w.walkChildren(form, &siblings{form.FirstChild})
+	form.FirstChild, form.LastChild, err = w.WalkChildren(form, &walker.Siblings{Cur: form.FirstChild})
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +262,7 @@ type componentElementHandler struct {
 	c *data.Component
 }
 
-func (ceh *componentElementHandler) mapCaptures(n *html.Node, v []data.EventMapping) error {
+func (ceh *componentElementHandler) mapCaptures(n *html.Node, v []data.UnboundEventMapping) error {
 	if len(v) == 0 {
 		return nil
 	}
@@ -267,19 +270,21 @@ func (ceh *componentElementHandler) mapCaptures(n *html.Node, v []data.EventMapp
 	if ceh.curFormPos != -1 {
 		formDepth = len(*ceh.indexList) - ceh.curFormPos
 	}
-	for _, m := range v {
-		h, ok := ceh.c.Handlers[m.Handler]
+	ret := make([]data.EventMapping, 0, len(v))
+	for _, unmapped := range v {
+		h, ok := ceh.c.Handlers[unmapped.Handler]
 		if !ok {
-			return errors.New("capture references unknown handler: " + m.Handler)
+			return errors.New("capture references unknown handler: " + unmapped.Handler)
 		}
 		notMapped := make(map[string]struct{})
-		for pName := range m.ParamMappings {
+		for pName := range unmapped.ParamMappings {
 			notMapped[pName] = struct{}{}
 		}
+		mapped := make([]data.BoundParam, 0, len(h.Params))
 		for _, p := range h.Params {
-			bVal, ok := m.ParamMappings[p.Name]
+			bVal, ok := unmapped.ParamMappings[p.Name]
 			if !ok {
-				m.ParamMappings[p.Name] = data.BoundValue{Kind: data.BoundData, ID: p.Name}
+				mapped = append(mapped, data.BoundParam{Param: p.Name, Value: data.BoundValue{Kind: data.BoundData, ID: p.Name}})
 			} else {
 				delete(notMapped, p.Name)
 				if bVal.Kind == data.BoundFormValue {
@@ -292,15 +297,17 @@ func (ceh *componentElementHandler) mapCaptures(n *html.Node, v []data.EventMapp
 						return errors.New(": unknown form value name: `" + bVal.ID + "`")
 					}
 				}
+				mapped = append(mapped, data.BoundParam{Param: p.Name, Value: bVal})
 			}
 		}
 		for unknown := range notMapped {
 			return errors.New("unknown param for capture mapping: " + unknown)
 		}
+		ret = append(ret, data.EventMapping{Event: unmapped.Event, Handler: unmapped.Handler, ParamMappings: mapped})
 	}
 
 	ceh.c.Captures = append(ceh.c.Captures, data.Capture{
-		Path: append([]int(nil), *ceh.indexList...), Mappings: v})
+		Path: append([]int(nil), *ceh.indexList...), Mappings: ret})
 	return nil
 }
 
@@ -407,13 +414,13 @@ func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, at
 		cp := &ctrlBlockElementProcessor{stdElementHandler{seh.syms, &indexList, &block.Block, seh.curFormPos, seh.curForm}}
 		cp.processAssignments(attrs.assign, []int{})
 
-		w := walker{
-			text: allow{}, aText: &aTextProcessor{&block.Block, &indexList},
-			embed:       &embedProcessor{seh.syms, &indexList},
-			handler:     nil,
-			stdElements: cp,
-			indexList:   &indexList}
-		n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
+		w := walker.Walker{
+			Text: walker.Allow{}, AText: &aTextProcessor{&block.Block, &indexList},
+			Embed:       &embedProcessor{seh.syms, &indexList},
+			Handler:     nil,
+			StdElements: cp,
+			IndexList:   &indexList}
+		n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 
 		// reverse contained control blocks so that they are processed back to front,
 		// ensuring that their paths are correct.
@@ -433,7 +440,7 @@ func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, at
 	return true, nil
 }
 
-func (ceh *componentElementHandler) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (ceh *componentElementHandler) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	if err = ceh.updateCurForm(n); err != nil {
 		return
 	}
@@ -467,7 +474,7 @@ type ctrlBlockElementProcessor struct {
 	stdElementHandler
 }
 
-func (cbeh *ctrlBlockElementProcessor) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (cbeh *ctrlBlockElementProcessor) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	if err = cbeh.updateCurForm(n); err != nil {
 		return
 	}
@@ -492,7 +499,7 @@ type aTextProcessor struct {
 	indexList *[]int
 }
 
-func (atp *aTextProcessor) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (atp *aTextProcessor) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	expr := attrVal(n.Attr, "expr")
 	if expr == "" {
 		return false, nil, errors.New(": missing attribute `expr`")
@@ -503,18 +510,4 @@ func (atp *aTextProcessor) process(n *html.Node) (descend bool, replacement *htm
 	atp.b.Assignments = append(atp.b.Assignments, data.Assignment{
 		Expression: expr, Path: append([]int(nil), *atp.indexList...), Target: data.BoundValue{Kind: data.BoundSelf}})
 	return false, &html.Node{Type: html.CommentNode, Data: "a:text"}, nil
-}
-
-type packageProcessor struct {
-	syms    *data.Symbols
-	counter *int
-}
-
-func (pp *packageProcessor) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	pp.syms.CurPkg = attrVal(n.Attr, "name")
-	p := pp.syms.Packages[pp.syms.CurPkg]
-	p.Components = make(map[string]*data.Component)
-	w := walker{text: whitespaceOnly{}, component: &componentProcessor{pp.syms, pp.counter}}
-	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
-	return false, nil, err
 }

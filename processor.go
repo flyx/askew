@@ -1,17 +1,14 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
-	"log"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/output"
-	"golang.org/x/net/html/atom"
+	"github.com/flyx/askew/walker"
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/net/html"
@@ -23,50 +20,21 @@ type processor struct {
 	mod     *modfile.File
 }
 
-// dummy body node to be used for fragment parsing
-var bodyEnv = html.Node{
-	Type:     html.ElementNode,
-	Data:     "body",
-	DataAtom: atom.Body}
-
-func (p *processor) init(outputPath string) bool {
-	p.syms.Packages = make(map[string]*data.Package)
-	raw, err := ioutil.ReadFile("go.mod")
-	if err != nil {
-		if os.IsNotExist(err) {
-			os.Stderr.WriteString("[error] did not find go.mod.\n")
-			os.Stderr.WriteString(
-				"[error] askew must be run in the root directory of your module.\n")
-		} else {
-			os.Stderr.WriteString("[error] while reading go.mod: ")
-			os.Stderr.WriteString(err.Error() + "\n")
-		}
-		return false
-	}
-	p.mod, err = modfile.Parse("go.mod", raw, nil)
-	if err != nil {
-		os.Stderr.WriteString("[error] unable to read go.mod:\n")
-		fmt.Fprintf(os.Stderr, "[error] %s\n", err.Error())
-		return false
-	}
-	p.syms.PkgBasePath = filepath.Join(p.mod.Module.Mod.Path, outputPath)
-	return true
+func (p *processor) init(base *data.BaseDir) {
+	p.syms.Packages = base.Packages
 }
 
-func (p *processor) process(file string) {
-	contents, err := ioutil.ReadFile(file)
-	if err != nil {
-		log.Println(file + ": unable to read file, skipping.")
-		return
-	}
-	nodes, err := html.ParseFragment(bytes.NewReader(contents), &bodyEnv)
-	if err != nil {
-		log.Printf("%s: failed to parse with error(s):\n  %s\n", file, err.Error())
-		return
-	}
-	{
-		if err = processMacros(nodes, &p.syms); err != nil {
-			panic(file + err.Error())
+func (p *processor) processMacros(pkgName string) error {
+	p.syms.CurPkg = pkgName
+	pkg := p.syms.Packages[pkgName]
+	for _, file := range pkg.Files {
+		var err error
+
+		p.syms.CurFile = file
+		os.Stdout.WriteString("[info] processing macros: " + file.Path + "\n")
+		var dummyParent *html.Node
+		if dummyParent, err = processMacros(file.Content, &p.syms); err != nil {
+			return errors.New(file.Path + err.Error())
 		}
 
 		// we need to write out the nodes and parse it again since text nodes may
@@ -74,31 +42,43 @@ func (p *processor) process(file string) {
 		// processed. If we don't do this, paths to access the dynamic objects will
 		// be wrong.
 		b := strings.Builder{}
-		for i := range nodes {
-			html.Render(&b, nodes[i])
+		for cur := dummyParent.FirstChild; cur != nil; cur = cur.NextSibling {
+			html.Render(&b, cur)
 		}
-		nodes, err = html.ParseFragment(strings.NewReader(b.String()), &bodyEnv)
+		file.Content, err = html.ParseFragment(strings.NewReader(b.String()), &data.BodyEnv)
 		if err != nil {
-			panic(err)
+			return errors.New(file.Path + ": " + err.Error())
 		}
 	}
-
-	w := walker{text: whitespaceOnly{}, aPackage: &packageProcessor{syms: &p.syms, counter: &p.counter}}
-	_, _, err = w.walkChildren(nil, &nodeSlice{nodes, 0})
-	if err != nil {
-		panic(file + err.Error())
-	}
+	return nil
 }
 
-func (p *processor) dump(skeleton *data.Skeleton, htmlPath, packageParent string) {
-	htmlFile, err := os.Create(htmlPath)
+func (p *processor) processComponents(pkgName string) error {
+	p.syms.CurPkg = pkgName
+	pkg := p.syms.Packages[pkgName]
+	for _, file := range pkg.Files {
+		p.syms.CurFile = file
+		os.Stdout.WriteString("[info] processing components: " + file.Path + "\n")
+		w := walker.Walker{Text: walker.WhitespaceOnly{}, Component: &componentProcessor{syms: &p.syms, counter: &p.counter}}
+		_, _, err := w.WalkChildren(nil, &walker.NodeSlice{Items: file.Content})
+		if err != nil {
+			return errors.New(file.Path + ": " + err.Error())
+		}
+	}
+	return nil
+}
+
+func (p *processor) dump(skeleton *data.Skeleton, outputPath, initPath string) {
+	htmlFile, err := os.Create(filepath.Join(outputPath, "index.html"))
 	if err != nil {
 		panic("unable to write HTML output: " + err.Error())
 	}
 	if skeleton == nil {
 		for _, pkg := range p.syms.Packages {
-			for _, c := range pkg.Components {
-				html.Render(htmlFile, c.Template)
+			for _, f := range pkg.Files {
+				for _, c := range f.Components {
+					html.Render(htmlFile, c.Template)
+				}
 			}
 		}
 	} else {
@@ -108,18 +88,18 @@ func (p *processor) dump(skeleton *data.Skeleton, htmlPath, packageParent string
 	htmlFile.Close()
 
 	for pkgName, pkg := range p.syms.Packages {
-		w := output.PackageWriter{Syms: &p.syms, PackageName: pkgName,
-			PackagePath: filepath.Join(packageParent, pkgName)}
+		w := output.PackageWriter{Syms: &p.syms, PackageName: filepath.Base(pkgName),
+			PackagePath: pkg.Path}
 		if err := os.MkdirAll(w.PackagePath, os.ModePerm); err != nil {
 			panic("failed to create package directory '" + w.PackagePath +
 				"': " + err.Error())
 		}
-		for name, t := range pkg.Components {
-			w.WriteComponent(name, t)
+		for _, f := range pkg.Files {
+			w.WriteFile(f)
 		}
 	}
 
 	if skeleton != nil {
-		output.WriteSkeleton(&p.syms, filepath.Join(packageParent, "init.go"), skeleton)
+		output.WriteSkeleton(&p.syms, initPath, skeleton)
 	}
 }

@@ -1,12 +1,7 @@
 askew.exe
 askew
-test/ui/herp.go
-test/ui/nameform.go
-test/ui/nameforms.go
-test/ui/macrotest.go
-test/extra/embedtest.go
-test/extra/optionalspam.go
-test/extra/matrix.go
+test/ui/ui.go
+test/extra/additionals.go
 test/init.go
 test/site
 .DS_Store

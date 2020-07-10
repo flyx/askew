@@ -2,24 +2,32 @@ package output
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"text/template"
 
 	"github.com/flyx/askew/data"
 )
 
-var fileHeader = template.Must(template.New("fileHeader").Parse(`
+var fileHeader = template.Must(template.New("fileHeader").Funcs(template.FuncMap{
+	"FormatImport": func(alias, path string) string {
+		if filepath.Base(path) == alias {
+			return "\"" + path + "\""
+		}
+		return alias + " \"" + path + "\""
+	},
+}).Parse(`
 package {{.PackageName}}
 
 import (
 	"github.com/flyx/askew/runtime"
 	"github.com/gopherjs/gopherjs/js"
-	{{- range $dep, $_ := .Deps }}
-	"{{$dep}}"{{ end }}
+	{{- range $alias, $path := .Imports }}
+	{{FormatImport $alias $path}}{{ end }}
 )
 `))
 
-var component = template.Must(template.New("component").Funcs(template.FuncMap{
+var file = template.Must(template.New("file").Funcs(template.FuncMap{
 	"Wrapper":      wrapperForType,
 	"PathItems":    pathItems,
 	"NameForBound": nameForBound,
@@ -31,10 +39,10 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 		}
 		return strings.Join(items, ", ")
 	},
-	"GenArgs": func(params map[string]data.BoundValue) string {
+	"GenArgs": func(params []data.BoundParam) string {
 		items := make([]string, 0, len(params))
-		for name := range params {
-			items = append(items, fmt.Sprintf("&p%s", name))
+		for _, p := range params {
+			items = append(items, fmt.Sprintf("&p%s", p.Param))
 		}
 		return strings.Join(items, ", ")
 	},
@@ -98,8 +106,8 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 		if e.Kind == data.DirectEmbed {
 			b.WriteRune('*')
 		}
-		if e.Pkg != "" {
-			b.WriteString(e.Pkg)
+		if e.Ns != "" {
+			b.WriteString(e.Ns)
 			b.WriteRune('.')
 		}
 		if e.Kind == data.OptionalEmbed {
@@ -128,7 +136,7 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 		runtime.Assign(&tmp, {{.Expression}})
 	}
 	{{- end}}
-	
+
 	{{- range .Controlled}}
 	{{- if eq .Kind 0}}
 	if {{.Expression}} {
@@ -157,6 +165,7 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 	{{- end}}
 {{- end}}
 
+{{- range .Components}}
 {{- if and .NeedsController .Handlers}}
 // {{.Name}}Controller is the interface for handling events captured from {{.Name}}
 type {{.Name}}Controller interface {
@@ -217,7 +226,7 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	{
 		container := o.cd.Walk({{PathItems .Path 1}})
 		{{- if eq .Kind 0}}
-		o.{{.Field}} = {{with .Pkg}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}})
+		o.{{.Field}} = {{with .Ns}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}})
 		o.{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
 		{{- else}}
 		o.{{.Field}}.Init(container, {{Last .Path}})
@@ -230,12 +239,12 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		{{- range .Mappings}}
 		{
 			wrapper := js.MakeFunc(func(this *js.Object, arguments []*js.Object) interface{} {
-				{{- range $pName, $bVal := .ParamMappings}}
-				var p{{$pName}} runtime.{{NameForBound $bVal.Kind}}
-				{{- if IsFormValue $bVal.Kind}}
-				p{{$pName}}.Init(this.Call("closest", "form"), "{{$bVal.ID}}", {{$bVal.IsRadio}})
+				{{- range .ParamMappings}}
+				var p{{.Param}} runtime.{{NameForBound .Value.Kind}}
+				{{- if IsFormValue .Value.Kind}}
+				p{{.Param}}.Init(this.Call("closest", "form"), "{{.Value.ID}}", {{.Value.IsRadio}})
 				{{- else}}
-				p{{$pName}}.Init(this, "{{$bVal.ID}}")
+				p{{.Param}}.Init(this, "{{.Value.ID}}")
 				{{- end}}
 				{{- end}}
 				if o.call{{.Handler}}({{GenArgs .ParamMappings}}) {
@@ -282,9 +291,11 @@ func (o *{{.Name}}) Extract() {
 	{{- end}}
 }
 
+{{$cName := .Name}}
+{{$needsController := .NeedsController}}
 {{- range $hName, $h := .Handlers}}
-func (o *{{$.Name}}) call{{$hName}}({{GenCallParams $h.Params}}) bool {
-	{{if $.NeedsController}}
+func (o *{{$cName}}) call{{$hName}}({{GenCallParams $h.Params}}) bool {
+	{{if $needsController}}
 	if o.Controller == nil {
 		return false
 	}
@@ -292,7 +303,7 @@ func (o *{{$.Name}}) call{{$hName}}({{GenCallParams $h.Params}}) bool {
 	{{- range $h.Params}}
 	_{{.Name}} := runtime.{{Wrapper .Type}}{BoundValue: {{.Name}}}
 	{{- end}}
-	{{- if $.NeedsController}}
+	{{- if $needsController}}
 	return o.Controller
 	{{- else}}
 	return o
@@ -394,7 +405,8 @@ func (o *Optional{{.Name}}) Set(value *{{.Name}}) {
 	}
 }
 
-{{end}}
+{{- end}}
+{{- end}}
 `))
 
 var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
@@ -404,16 +416,16 @@ var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
 {{range .Embeds}}
 // {{.Field}} is part of the main document.
 {{- if eq .Kind 0}}
-var {{.Field}} = {{.Pkg}}.New{{.T}}({{.Args.Raw}})
+var {{.Field}} = {{.Ns}}.New{{.T}}({{.Args.Raw}})
 {{- else if eq .Kind 1}}
 {{- if .T}}
-var {{.Field}} {{.Pkg}}.{{.T}}List
+var {{.Field}} {{.Ns}}.{{.T}}List
 {{- else}}
 var {{.Field}} runtime.GenericList
 {{- end}}
 {{- else}}
 {{- if .T}}
-var {{.Field}} {{.Pkg}}.Optional{{.T}}
+var {{.Field}} {{.Ns}}.Optional{{.T}}
 {{- else}}
 var {{.Field}} runtime.GenericOptional
 {{- end}}

@@ -26,10 +26,10 @@ const (
 
 // Embed describes a <a:embed> node.
 type Embed struct {
-	Kind          EmbedKind
-	Path          []int
-	Field, Pkg, T string
-	Args          Arguments
+	Kind         EmbedKind
+	Path         []int
+	Field, Ns, T string
+	Args         Arguments
 }
 
 // Handler describes a <a:handler> node.

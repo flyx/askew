@@ -3,75 +3,73 @@ package data
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 )
 
-// Package describes as <a:package>.
-type Package struct {
-	Macros     map[string]Macro
-	Components map[string]*Component
-}
-
 // EmbedHost is an entity that allows embedding components.
 type EmbedHost struct {
-	Dependencies map[string]struct{}
-	Embeds       []Embed
+	Embeds []Embed
 }
 
 // Symbols is the context of the procesor. It stores all seen symbols along
 // with the packages they are declared in.
 type Symbols struct {
-	PkgBasePath string
-	Packages    map[string]*Package
-	CurPkg      string
-	CurHost     *EmbedHost
+	BaseDir
+	CurPkg  string
+	CurFile *File
+	CurHost *EmbedHost
 }
 
 // split takes an identifier consisting of a symbol name optionally
 // prefixed by a package name. It returns the package name, the corresponding
 // package, and the remaining symbol name.
-func (s *Symbols) split(id string) (pkg *Package, pkgName string, symName string, err error) {
+func (s *Symbols) split(id string) (pkg *Package, symName string, aliasName string, err error) {
 	last := strings.LastIndexByte(id, '.')
 	if last == -1 {
-		return s.Packages[s.CurPkg], s.CurPkg, id, nil
+		if s.CurPkg == "" {
+			return nil, "", "", errors.New("identifier in skeleton requires package prefix")
+		}
+		return s.Packages[s.CurPkg], id, "", nil
 	}
-	pkgName = id[0:last]
-	if strings.LastIndexByte(pkgName, '.') != -1 {
+	aliasName = id[0:last]
+	if strings.LastIndexByte(aliasName, '.') != -1 {
 		return nil, "", "", errors.New("symbol id cannot include multiple '.': " + id)
 	}
-	pkg, ok := s.Packages[pkgName]
+	pkgPath, ok := s.CurFile.Imports[aliasName]
 	if !ok {
-		return nil, "", "", fmt.Errorf("unknown package '%s' in id '%s'", pkgName, id)
+		return nil, "", "", fmt.Errorf("unknown namespace '%s' in id '%s'", aliasName, id)
 	}
-	return pkg, pkgName, id[last+1:], nil
+	return s.Packages[pkgPath], id[last+1:], aliasName, nil
 }
 
 // ResolveMacro resolves the given identifier to a Macro.
 func (s *Symbols) ResolveMacro(id string) (Macro, error) {
-	pkg, _, name, err := s.split(id)
+	pkg, name, _, err := s.split(id)
 	if err != nil {
 		return Macro{}, err
 	}
-	ret, ok := pkg.Macros[name]
-	if !ok {
-		return Macro{}, fmt.Errorf("unknown macro: '%s'", id)
+	for _, file := range pkg.Files {
+		ret, ok := file.Macros[name]
+		if ok {
+			return ret, nil
+		}
 	}
-	return ret, nil
+
+	return Macro{}, fmt.Errorf("unknown macro: '%s'", id)
 }
 
 // ResolveComponent resolves the given identifier to a Component.
 func (s *Symbols) ResolveComponent(id string) (*Component, string, string, error) {
-	pkg, pkgName, name, err := s.split(id)
+	pkg, name, aliasName, err := s.split(id)
 	if err != nil {
 		return nil, "", "", err
 	}
-	ret, ok := pkg.Components[name]
-	if !ok {
-		return nil, "", "", fmt.Errorf("unknown component: '%s'", id)
+	for _, file := range pkg.Files {
+		ret, ok := file.Components[name]
+		if ok {
+			return ret, name, aliasName, nil
+		}
 	}
-	if pkgName != s.CurPkg {
-		s.CurHost.Dependencies[filepath.Join(s.PkgBasePath, pkgName)] = struct{}{}
-	}
-	return ret, pkgName, name, nil
+
+	return nil, "", "", fmt.Errorf("unknown component: '%s'", id)
 }

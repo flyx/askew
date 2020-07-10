@@ -100,7 +100,7 @@ func (e *embedAttribs) collect(name, val string) error {
 
 type generalAttribs struct {
 	bindings  []data.VariableMapping
-	capture   []data.EventMapping
+	capture   []data.UnboundEventMapping
 	_if, _for *data.ControlBlock
 	assign    []data.Assignment
 }

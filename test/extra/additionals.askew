@@ -1,0 +1,20 @@
+<a:import>"github.com/flyx/askew/test/ui"</a:import>
+
+<a:component name="EmbedTest">
+	<a:include name="ui.embedHeading"></a:include>
+	<a:embed name="Content" type="ui.MacroTest" args="`MacroTest`"></a:embed>
+</a:component>
+
+<a:component name="OptionalSpam" params="title string, spam bool">
+	<section>
+		<h2 a:assign="prop(textContent) = title"></h2>
+		<p><strong a:if="spam">spam</strong> egg sausage <strong a:if="spam">and spam</strong></p>
+	</section>
+</a:component>
+<a:component name="Matrix" params="numbers [][]int">
+	<table>
+		<tr a:for="_, row := range numbers">
+			<td a:for="_, item := range row" a:assign="prop(textContent) = item"></td>
+		</tr>
+	</table>
+</a:component>

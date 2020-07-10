@@ -1,4 +1,4 @@
-package main
+package walker
 
 import (
 	"errors"
@@ -8,8 +8,8 @@ import (
 	"golang.org/x/net/html"
 )
 
-// nodeHandler is a handler that processes a specific kind of node.
-type nodeHandler interface {
+// NodeHandler is a handler that processes a specific kind of node.
+type NodeHandler interface {
 	// processes the node. if descend is true, the walker will descend into the
 	// node's children afterwards.
 	//
@@ -18,36 +18,36 @@ type nodeHandler interface {
 	// its current context (usually the node list of its current parent).
 	//
 	// replacement may only be not nil if descend if false.
-	process(n *html.Node) (descend bool, replacement *html.Node, err error)
+	Process(n *html.Node) (descend bool, replacement *html.Node, err error)
 }
 
-// walker walks over a node graph. for each askew-specific element, a nodeHandler
-// must be registered for that element to be valid. for each standard HTML
-// element, a nodeHandler may be registered.
-type walker struct {
-	aPackage    nodeHandler
-	macro       nodeHandler
-	component   nodeHandler
-	slot        nodeHandler
-	include     nodeHandler
-	embed       nodeHandler
-	handler     nodeHandler
-	templates   nodeHandler
-	stdElements nodeHandler
-	text        nodeHandler
-	aText       nodeHandler
-	indexList   *[]int
+// Walker walks over a node graph. for each askew-specific element, a
+// NodeHandler must be registered for that element to be valid. for each
+// standard HTML element, a NodeHandler may be registered.
+type Walker struct {
+	AImport     NodeHandler
+	Macro       NodeHandler
+	Component   NodeHandler
+	Slot        NodeHandler
+	Include     NodeHandler
+	Embed       NodeHandler
+	Handler     NodeHandler
+	Templates   NodeHandler
+	StdElements NodeHandler
+	Text        NodeHandler
+	AText       NodeHandler
+	IndexList   *[]int
 }
 
-func (w *walker) walk(n *html.Node, nodesCount map[string]int) (replacement *html.Node, err error) {
+func (w *Walker) walk(n *html.Node, nodesCount map[string]int) (replacement *html.Node, err error) {
 	switch n.Type {
 	case html.ErrorNode:
 		return nil, errors.New(": encountered error node: " + n.Data)
 	case html.TextNode:
-		if w.text == nil {
+		if w.Text == nil {
 			return nil, errors.New(": text content not allowed here")
 		}
-		_, replacement, err = w.text.process(n)
+		_, replacement, err = w.Text.Process(n)
 		return
 	case html.ElementNode:
 		break
@@ -69,28 +69,28 @@ func (w *walker) walk(n *html.Node, nodesCount map[string]int) (replacement *htm
 // processElement walks over the subtree with node n, which must be an html.ElementNode.
 // each time a child node is encountered for which a nodeHandler is available,
 // that nodeHandler's process() func is called.
-func (w *walker) processElement(n *html.Node) (replacement *html.Node, err error) {
-	var h nodeHandler
+func (w *Walker) processElement(n *html.Node) (replacement *html.Node, err error) {
+	var h NodeHandler
 	if n.DataAtom == 0 {
 		switch n.Data {
-		case "a:package":
-			h = w.aPackage
+		case "a:import":
+			h = w.AImport
 		case "a:macro":
-			h = w.macro
+			h = w.Macro
 		case "a:component":
-			h = w.component
+			h = w.Component
 		case "a:slot":
-			h = w.slot
+			h = w.Slot
 		case "a:include":
-			h = w.include
+			h = w.Include
 		case "a:embed":
-			h = w.embed
+			h = w.Embed
 		case "a:handler":
-			h = w.handler
+			h = w.Handler
 		case "a:templates":
-			h = w.templates
+			h = w.Templates
 		case "a:text":
-			h = w.aText
+			h = w.AText
 		default:
 			return nil, errors.New(": unknown element")
 		}
@@ -98,54 +98,59 @@ func (w *walker) processElement(n *html.Node) (replacement *html.Node, err error
 			return nil, errors.New(": element not allowed here")
 		}
 	} else {
-		h = w.stdElements
+		h = w.StdElements
 	}
 	if h != nil {
 		var descend bool
-		descend, replacement, err = h.process(n)
+		descend, replacement, err = h.Process(n)
 		if err != nil || !descend {
 			return
 		}
 	}
-	n.FirstChild, n.LastChild, err = w.walkChildren(n, &siblings{n.FirstChild})
+	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &Siblings{n.FirstChild})
 	return
 }
 
-type nodeList interface {
+// NodeList is a list of node that can be iterated over
+type NodeList interface {
 	next() *html.Node
 }
 
-type siblings struct {
-	cur *html.Node
+// Siblings is a NodeList of sibling nodes
+type Siblings struct {
+	Cur *html.Node
 }
 
-func (s *siblings) next() (ret *html.Node) {
-	ret = s.cur
+func (s *Siblings) next() (ret *html.Node) {
+	ret = s.Cur
 	if ret != nil {
-		s.cur = s.cur.NextSibling
+		s.Cur = s.Cur.NextSibling
 	}
 	return
 }
 
-type nodeSlice struct {
-	items []*html.Node
+// NodeSlice is a NodeList backed by a slice.
+type NodeSlice struct {
+	Items []*html.Node
 	cur   int
 }
 
-func (ns *nodeSlice) next() (ret *html.Node) {
-	if ns.cur == len(ns.items) {
+func (ns *NodeSlice) next() (ret *html.Node) {
+	if ns.cur == len(ns.Items) {
 		return nil
 	}
-	ret = ns.items[ns.cur]
+	ret = ns.Items[ns.cur]
 	ns.cur++
 	return
 }
 
-func (w *walker) walkChildren(parent *html.Node,
-	l nodeList) (repFirst, repLast *html.Node, err error) {
+// WalkChildren walks over each node of the given list, treating them as
+// children of the given parent (which may be nil)
+func (w *Walker) WalkChildren(parent *html.Node,
+	l NodeList) (repFirst, repLast *html.Node, err error) {
 	nodesCount := make(map[string]int)
-	if w.indexList != nil {
-		*w.indexList = append(*w.indexList, 0)
+	if w.IndexList != nil {
+		*w.IndexList = append(*w.IndexList, 0)
 	}
 	for c := l.next(); c != nil; c = l.next() {
 		f, err := w.walk(c, nodesCount)
@@ -159,7 +164,7 @@ func (w *walker) walkChildren(parent *html.Node,
 				repFirst = f
 			}
 			if parent != nil {
-				parent.FirstChild = repLast
+				parent.FirstChild = repFirst
 			}
 			repLast = repFirst
 		} else {
@@ -187,12 +192,12 @@ func (w *walker) walkChildren(parent *html.Node,
 				}
 			}
 		}
-		if w.indexList != nil {
-			(*w.indexList)[len(*w.indexList)-1]++
+		if w.IndexList != nil {
+			(*w.IndexList)[len(*w.IndexList)-1]++
 		}
 	}
-	if w.indexList != nil {
-		*w.indexList = (*w.indexList)[:len(*w.indexList)-1]
+	if w.IndexList != nil {
+		*w.IndexList = (*w.IndexList)[:len(*w.IndexList)-1]
 	}
 	if parent != nil {
 		parent.LastChild = repLast
@@ -200,26 +205,29 @@ func (w *walker) walkChildren(parent *html.Node,
 	return
 }
 
-// allow can be used to signal that certain special elements are allowed to be
+// Allow can be used to signal that certain special elements are allowed to be
 // encountered by the walker, but won't be processed.
-type allow struct{}
+type Allow struct{}
 
-func (allow) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+// Process alsways returns true
+func (Allow) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	return true, nil, nil
 }
 
-// dontDescend can be used to signal that certain elements are allowed and
+// DontDescend can be used to signal that certain elements are allowed and
 // should not be descended into.
-type dontDescend struct{}
+type DontDescend struct{}
 
-func (dontDescend) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+// Process always returns false
+func (DontDescend) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	return false, nil, nil
 }
 
-// whitespaceOnly can be used to force TextNodes to be empty.
-type whitespaceOnly struct{}
+// WhitespaceOnly can be used to force TextNodes to be empty.
+type WhitespaceOnly struct{}
 
-func (whitespaceOnly) process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+// Process asserts the text node contains only whitespace.
+func (WhitespaceOnly) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	if strings.TrimSpace(n.Data) != "" {
 		err = errors.New(": contains illegal text content")
 	}

@@ -50,7 +50,7 @@ func init() {
 		return ret, nil
 	}
 	g["CAPTURE"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		ret := data.EventMapping{Event: v.ToStr(0), Handler: v.ToStr(1)}
+		ret := data.UnboundEventMapping{Event: v.ToStr(0), Handler: v.ToStr(1)}
 		if v.Len() == 3 {
 			ret.ParamMappings = v.Vs[2].(map[string]data.BoundValue)
 		} else {
@@ -59,19 +59,19 @@ func init() {
 		return ret, nil
 	}
 	g["ROOT"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		ret := make([]data.EventMapping, v.Len())
+		ret := make([]data.UnboundEventMapping, v.Len())
 		for i, c := range v.Vs {
-			ret[i] = c.(data.EventMapping)
+			ret[i] = c.(data.UnboundEventMapping)
 		}
 		return ret, nil
 	}
 }
 
 // ParseCapture parses the content of an a:capture attribute.
-func ParseCapture(s string) ([]data.EventMapping, error) {
+func ParseCapture(s string) ([]data.UnboundEventMapping, error) {
 	ret, err := captureParser.ParseAndGetValue(s, nil)
 	if err != nil {
 		return nil, err
 	}
-	return ret.([]data.EventMapping), nil
+	return ret.([]data.UnboundEventMapping), nil
 }
