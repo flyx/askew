@@ -1,9 +1,11 @@
-package main
+package components
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/flyx/askew/attributes"
 
 	"github.com/flyx/askew/parsers"
 	"github.com/flyx/askew/walker"
@@ -13,38 +15,45 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-type componentProcessor struct {
+// Processor reads all components.
+type Processor struct {
 	syms    *data.Symbols
 	counter *int
 }
 
-func (cp *componentProcessor) Process(n *html.Node) (descend bool,
+// NewProcessor creates a new processor.
+func NewProcessor(syms *data.Symbols, counter *int) *Processor {
+	return &Processor{syms: syms, counter: counter}
+}
+
+// Process reads the given component element.
+func (p *Processor) Process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
-	var cmpAttrs componentAttribs
-	err = collectAttribs(n, &cmpAttrs)
+	var cmpAttrs attributes.Component
+	err = attributes.Collect(n, &cmpAttrs)
 	if err != nil {
 		return
 	}
-	if len(cmpAttrs.name) == 0 {
+	if len(cmpAttrs.Name) == 0 {
 		return false, nil, errors.New(": attribute `name` missing")
 	}
 
 	replacement = &html.Node{Type: html.ElementNode, DataAtom: atom.Template,
 		Data: "template"}
 	cmp := &data.Component{EmbedHost: data.EmbedHost{},
-		Name: cmpAttrs.name, Template: replacement, NeedsController: cmpAttrs.controller,
-		Parameters: cmpAttrs.params}
-	cp.syms.CurHost = &cmp.EmbedHost
-	(*cp.counter)++
-	cmp.ID = fmt.Sprintf("askew-component-%d-%s", *cp.counter, strings.ToLower(cmpAttrs.name))
+		Name: cmpAttrs.Name, Template: replacement, NeedsController: cmpAttrs.Controller,
+		Parameters: cmpAttrs.Params}
+	p.syms.CurHost = &cmp.EmbedHost
+	(*p.counter)++
+	cmp.ID = fmt.Sprintf("askew-component-%d-%s", *p.counter, strings.ToLower(cmpAttrs.Name))
 	replacement.Attr = []html.Attribute{html.Attribute{Key: "id", Val: cmp.ID}}
 
 	var indexList []int
 	w := walker.Walker{
 		Text: walker.Allow{}, AText: &aTextProcessor{&cmp.Block, &indexList},
-		Embed:       &embedProcessor{cp.syms, &indexList},
-		Handler:     &handlerProcessor{cp.syms, &cmp.Handlers, &indexList},
-		StdElements: &componentElementHandler{stdElementHandler{cp.syms, &indexList, &cmp.Block, -1, nil}, cmp},
+		Embed:       &EmbedProcessor{p.syms, &indexList},
+		Handler:     &handlerProcessor{p.syms, &cmp.Handlers, &indexList},
+		StdElements: &componentElementHandler{stdElementHandler{p.syms, &indexList, &cmp.Block, -1, nil}, cmp},
 		IndexList:   &indexList}
 	replacement.FirstChild, replacement.LastChild, err = w.WalkChildren(
 		replacement, &walker.Siblings{Cur: n.FirstChild})
@@ -70,50 +79,56 @@ func (cp *componentProcessor) Process(n *html.Node) (descend bool,
 		cmp.Controlled = tmp
 	}
 
-	if cp.syms.CurFile.Components == nil {
-		cp.syms.CurFile.Components = make(map[string]*data.Component)
+	if p.syms.CurFile.Components == nil {
+		p.syms.CurFile.Components = make(map[string]*data.Component)
 	}
-	cp.syms.CurFile.Components[cmpAttrs.name] = cmp
+	p.syms.CurFile.Components[cmpAttrs.Name] = cmp
 
 	return
 }
 
-type embedProcessor struct {
+// EmbedProcessor processes <a:embed> elements.
+type EmbedProcessor struct {
 	syms      *data.Symbols
 	indexList *[]int
+}
+
+// NewEmbedProcessor creates a new EmbedProcessor
+func NewEmbedProcessor(syms *data.Symbols, indexList *[]int) *EmbedProcessor {
+	return &EmbedProcessor{syms: syms, indexList: indexList}
 }
 
 func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed, error) {
 	if n.FirstChild != nil {
 		return data.Embed{}, errors.New(": illegal content")
 	}
-	var attrs embedAttribs
-	if err := collectAttribs(n, &attrs); err != nil {
+	var attrs attributes.Embed
+	if err := attributes.Collect(n, &attrs); err != nil {
 		return data.Embed{}, err
 	}
 	e := data.Embed{Kind: data.DirectEmbed, Path: append([]int(nil), indexList...),
-		Field: attrs.name}
+		Field: attrs.Name}
 	if e.Field == "" {
 		return data.Embed{}, errors.New(": attribute `name` missing")
 	}
-	if attrs.list {
+	if attrs.List {
 		e.Kind = data.ListEmbed
 	}
-	if attrs.optional {
+	if attrs.Optional {
 		if e.Kind != data.DirectEmbed {
 			return data.Embed{}, errors.New(": cannot mix `list` and `optional`")
 		}
 		e.Kind = data.OptionalEmbed
 	}
-	if attrs.t == "" {
+	if attrs.T == "" {
 		if e.Kind == data.DirectEmbed {
 			return data.Embed{}, errors.New(": attribute `type` missing (may only be omitted for optional or list embeds)")
 		}
-		if attrs.args.Count != 0 {
+		if attrs.Args.Count != 0 {
 			return data.Embed{}, errors.New(": embed with `list` or `optional` cannot have `args`")
 		}
 	} else {
-		target, typeName, aliasName, err := syms.ResolveComponent(attrs.t)
+		target, typeName, aliasName, err := syms.ResolveComponent(attrs.T)
 		if err != nil {
 			return data.Embed{}, errors.New(": attribute `type` invalid: " + err.Error())
 		}
@@ -126,11 +141,11 @@ func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed
 		e.T = typeName
 		e.Ns = aliasName
 		if e.Kind != data.DirectEmbed {
-			if attrs.args.Count != 0 {
+			if attrs.Args.Count != 0 {
 				return data.Embed{}, errors.New(": embed with `list` or `optional` cannot have `args`")
 			}
 		} else {
-			e.Args = attrs.args
+			e.Args = attrs.Args
 			if len(target.Parameters) != e.Args.Count {
 				return data.Embed{}, fmt.Errorf(
 					": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)
@@ -140,7 +155,8 @@ func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed
 	return e, nil
 }
 
-func (ep *embedProcessor) Process(n *html.Node) (descend bool,
+// Process implements Walker.NodeHandler.
+func (ep *EmbedProcessor) Process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
 	e, err := resolveEmbed(n, ep.syms, *ep.indexList)
 	if err != nil {
@@ -196,20 +212,20 @@ type formValueDiscovery struct {
 
 func (d *formValueDiscovery) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	var v formValue
-	name := attrVal(n.Attr, "name")
+	name := attributes.Val(n.Attr, "name")
 	if name == "" {
 		return false, nil, nil
 	}
 	switch n.DataAtom {
 	case atom.Input:
-		switch inputType := attrVal(n.Attr, "type"); inputType {
+		switch inputType := attributes.Val(n.Attr, "type"); inputType {
 		case "radio":
 			v.radio = true
 			v.t = data.StringVar
 		case "number", "range":
-			if strings.ContainsRune(attrVal(n.Attr, "min"), '.') ||
-				strings.ContainsRune(attrVal(n.Attr, "max"), '.') ||
-				strings.ContainsRune(attrVal(n.Attr, "step"), '.') {
+			if strings.ContainsRune(attributes.Val(n.Attr, "min"), '.') ||
+				strings.ContainsRune(attributes.Val(n.Attr, "max"), '.') ||
+				strings.ContainsRune(attributes.Val(n.Attr, "step"), '.') {
 				return false, nil, errors.New(": non-integer " + inputType + " inputs not supported")
 			}
 			v.t = data.IntVar
@@ -395,28 +411,28 @@ func (seh *stdElementHandler) updateCurForm(n *html.Node) error {
 	return nil
 }
 
-func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, attrs generalAttribs) (descend bool, err error) {
+func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, attrs attributes.General) (descend bool, err error) {
 	var block *data.ControlBlock
 
-	if attrs._if != nil {
-		block = attrs._if
+	if attrs.If != nil {
+		block = attrs.If
 	}
-	if attrs._for != nil {
+	if attrs.For != nil {
 		if block != nil {
 			return false, errors.New(": cannot have a:if and a:for on same element")
 		}
 
-		block = attrs._for
+		block = attrs.For
 	}
 	if block != nil {
 		block.Path = append([]int(nil), *seh.indexList...)
 		var indexList []int
 		cp := &ctrlBlockElementProcessor{stdElementHandler{seh.syms, &indexList, &block.Block, seh.curFormPos, seh.curForm}}
-		cp.processAssignments(attrs.assign, []int{})
+		cp.processAssignments(attrs.Assign, []int{})
 
 		w := walker.Walker{
 			Text: walker.Allow{}, AText: &aTextProcessor{&block.Block, &indexList},
-			Embed:       &embedProcessor{seh.syms, &indexList},
+			Embed:       &EmbedProcessor{seh.syms, &indexList},
 			Handler:     nil,
 			StdElements: cp,
 			IndexList:   &indexList}
@@ -433,7 +449,7 @@ func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, at
 		seh.b.Controlled = append(seh.b.Controlled, block)
 		return false, nil
 	}
-	err = seh.processAssignments(attrs.assign, append([]int(nil), *seh.indexList...))
+	err = seh.processAssignments(attrs.Assign, append([]int(nil), *seh.indexList...))
 	if err != nil {
 		return false, err
 	}
@@ -445,24 +461,24 @@ func (ceh *componentElementHandler) Process(n *html.Node) (descend bool, replace
 		return
 	}
 
-	var attrs generalAttribs
-	if err = extractAskewAttribs(n, &attrs); err != nil {
+	var attrs attributes.General
+	if err = attributes.ExtractAskewAttribs(n, &attrs); err != nil {
 		return
 	}
 	descend, err = ceh.handleControlBlocksAndAssignments(n, attrs)
 	if descend {
-		if err := ceh.mapCaptures(n, attrs.capture); err != nil {
+		if err := ceh.mapCaptures(n, attrs.Capture); err != nil {
 			return false, nil, errors.New(": " + err.Error())
 		}
 
-		if err = ceh.processBindings(attrs.bindings); err != nil {
+		if err = ceh.processBindings(attrs.Bindings); err != nil {
 			return false, nil, err
 		}
 	} else {
-		if len(attrs.capture) > 0 {
+		if len(attrs.Capture) > 0 {
 			return false, nil, errors.New(": cannot capture inside a:if or a:for")
 		}
-		if len(attrs.bindings) > 0 {
+		if len(attrs.Bindings) > 0 {
 			return false, nil, errors.New(": cannot bind inside a:if or a:for")
 		}
 	}
@@ -479,15 +495,15 @@ func (cbeh *ctrlBlockElementProcessor) Process(n *html.Node) (descend bool, repl
 		return
 	}
 
-	var attrs generalAttribs
-	if err = extractAskewAttribs(n, &attrs); err != nil {
+	var attrs attributes.General
+	if err = attributes.ExtractAskewAttribs(n, &attrs); err != nil {
 		return
 	}
 
-	if len(attrs.capture) > 0 {
+	if len(attrs.Capture) > 0 {
 		return false, nil, errors.New(": cannot capture inside a:if or a:for")
 	}
-	if len(attrs.bindings) > 0 {
+	if len(attrs.Bindings) > 0 {
 		return false, nil, errors.New(": cannot bind inside a:if or a:for")
 	}
 	descend, err = cbeh.handleControlBlocksAndAssignments(n, attrs)
@@ -500,7 +516,7 @@ type aTextProcessor struct {
 }
 
 func (atp *aTextProcessor) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	expr := attrVal(n.Attr, "expr")
+	expr := attributes.Val(n.Attr, "expr")
 	if expr == "" {
 		return false, nil, errors.New(": missing attribute `expr`")
 	}

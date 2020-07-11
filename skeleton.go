@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/flyx/askew/components"
+
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/parsers"
 	"github.com/flyx/askew/walker"
@@ -91,7 +93,7 @@ func readSkeleton(syms *data.Symbols) (*data.Skeleton, error) {
 
 	w := walker.Walker{Text: walker.Allow{}, Templates: &templateInjector{syms, false},
 		StdElements: walker.Allow{}, AImport: &importHandler{syms, s},
-		Embed: &embedProcessor{syms, &indexList}, IndexList: &indexList}
+		Embed: components.NewEmbedProcessor(syms, &indexList), IndexList: &indexList}
 	root.FirstChild, root.LastChild, err = w.WalkChildren(root, &walker.Siblings{Cur: root.FirstChild})
 	if err != nil {
 		return nil, errors.New("skeleton.html" + err.Error())

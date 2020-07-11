@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/flyx/askew/discovery"
+	"github.com/flyx/askew/packages"
 
 	"github.com/flyx/askew/data"
 
@@ -50,12 +50,12 @@ func main() {
 		panic("output path is not a directory: " + *output)
 	}
 
-	base, err := discovery.Discover()
+	base, err := packages.Discover()
 	if err != nil {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)
 	}
-	order, err := discovery.Sort(base.Packages)
+	order, err := packages.Sort(base.Packages)
 	if err != nil {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)

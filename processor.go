@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/flyx/askew/components"
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/output"
 	"github.com/flyx/askew/walker"
@@ -59,7 +60,7 @@ func (p *processor) processComponents(pkgName string) error {
 	for _, file := range pkg.Files {
 		p.syms.CurFile = file
 		os.Stdout.WriteString("[info] processing components: " + file.Path + "\n")
-		w := walker.Walker{Text: walker.WhitespaceOnly{}, Component: &componentProcessor{syms: &p.syms, counter: &p.counter}}
+		w := walker.Walker{Text: walker.WhitespaceOnly{}, Component: components.NewProcessor(&p.syms, &p.counter)}
 		_, _, err := w.WalkChildren(nil, &walker.NodeSlice{Items: file.Content})
 		if err != nil {
 			return errors.New(file.Path + ": " + err.Error())

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 
+	"github.com/flyx/askew/attributes"
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/walker"
 	"golang.org/x/net/html"
@@ -13,7 +14,7 @@ type macroDiscovery struct {
 }
 
 func (md *macroDiscovery) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	name := attrVal(n.Attr, "name")
+	name := attributes.Val(n.Attr, "name")
 	if name == "" {
 		return false, nil, errors.New(": attribute `name` missing")
 	}
@@ -47,7 +48,7 @@ type slotDiscovery struct {
 }
 
 func (sd *slotDiscovery) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	name := attrVal(n.Attr, "name")
+	name := attributes.Val(n.Attr, "name")
 	if name == "" {
 		return false, nil, errors.New("missing attribute `name`")
 	}
@@ -64,7 +65,7 @@ type includeProcessor struct {
 }
 
 func (ip *includeProcessor) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	name := attrVal(n.Attr, "name")
+	name := attributes.Val(n.Attr, "name")
 	if name == "" {
 		return false, nil, errors.New(": `name` attribute missing")
 	}
@@ -98,17 +99,17 @@ type valueMapper struct {
 }
 
 func (vm *valueMapper) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	var iAttrs includeChildAttribs
-	extractAskewAttribs(n, &iAttrs)
+	var iAttrs attributes.IncludeChild
+	attributes.ExtractAskewAttribs(n, &iAttrs)
 
-	if iAttrs.slot == "" {
+	if iAttrs.Slot == "" {
 		return false, nil, errors.New(": child of a:include has no attribute `a:slot`")
 	}
 	found := false
 	for i := range vm.slots {
-		if vm.slots[i].Name == iAttrs.slot {
+		if vm.slots[i].Name == iAttrs.Slot {
 			if vm.values[i] != nil {
-				return false, nil, errors.New(": dupicate value for slot `" + iAttrs.slot + "`")
+				return false, nil, errors.New(": dupicate value for slot `" + iAttrs.Slot + "`")
 			}
 			vm.values[i] = n
 			n.PrevSibling = nil
@@ -119,7 +120,7 @@ func (vm *valueMapper) Process(n *html.Node) (descend bool, replacement *html.No
 		}
 	}
 	if !found {
-		return false, nil, errors.New(": unknown slot `" + iAttrs.slot + "`")
+		return false, nil, errors.New(": unknown slot `" + iAttrs.Slot + "`")
 	}
 	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{},
 		AText: walker.Allow{}, Include: &includeProcessor{vm.syms}}
