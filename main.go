@@ -16,10 +16,21 @@ func main() {
 		"outputDir", 'o', ".", "output directory for index.html")
 	initPath := getopt.StringLong(
 		"initPath", 'i', "init.go", "path where the Go initialization code should be written to")
+	skeletonPath := getopt.StringLong(
+		"skeletonPath", 's', "", "path to the skeleton HTML file")
 	getopt.Parse()
+	var err error
 	outputDirPath, err := filepath.Abs(*output)
 	if err != nil {
 		panic(err)
+	}
+	if *skeletonPath == "" {
+		// will be resolved relative to given working path
+		*skeletonPath = "skeleton.html"
+	} else {
+		if *skeletonPath, err = filepath.Abs(*skeletonPath); err != nil {
+			panic(err)
+		}
 	}
 
 	args := getopt.Args()
@@ -77,7 +88,7 @@ func main() {
 	}
 
 	var s *data.Skeleton
-	if s, err = readSkeleton(&p.syms); err != nil {
+	if s, err = readSkeleton(&p.syms, *skeletonPath); err != nil {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)
 	}

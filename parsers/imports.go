@@ -17,7 +17,7 @@ type importItem struct {
 func init() {
 	var err error
 	importsParser, err = peg.NewParser(`
-	ROOT        ← [\n;]* IMPORT ([\n;]+ IMPORT)* [\n;]*
+	ROOT        ← < [\n;]* > IMPORT ( < [\n;]+ > IMPORT)* < [\n;]* >
 	IMPORT      ← IDENTIFIER? '"' IMPORTPATH '"'
 	IMPORTPATH  ← < [a-zA-Z_0-9./]* >
 	` + identifierSyntax + whitespace)

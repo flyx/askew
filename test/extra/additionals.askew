@@ -1,4 +1,6 @@
-<a:import>"github.com/flyx/askew/test/ui"</a:import>
+<a:import>
+  "github.com/flyx/askew/test/ui"
+</a:import>
 
 <a:component name="EmbedTest">
 	<a:include name="ui.embedHeading"></a:include>

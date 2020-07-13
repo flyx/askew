@@ -69,18 +69,18 @@ func (ih *importHandler) Process(n *html.Node) (descend bool, replacement *html.
 	return false, &html.Node{Type: html.CommentNode, Data: "import"}, nil
 }
 
-func readSkeleton(syms *data.Symbols) (*data.Skeleton, error) {
-	raw, err := ioutil.ReadFile("skeleton.html")
+func readSkeleton(syms *data.Symbols, path string) (*data.Skeleton, error) {
+	raw, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	os.Stdout.WriteString("[info] processing skeleton.html\n")
+	os.Stdout.WriteString("[info] processing skeleton file " + path + "\n")
 	root, err := html.Parse(bytes.NewReader(raw))
 	if err != nil {
-		return nil, errors.New("skeleton.html: " + err.Error())
+		return nil, errors.New(path + ": " + err.Error())
 	}
 	if root.Type != html.DocumentNode {
-		panic("skeleton.html: HTML document is not a DocumentNode")
+		return nil, errors.New(path + ": HTML document is not a DocumentNode")
 	}
 
 	indexList := make([]int, 0, 32)
@@ -96,7 +96,7 @@ func readSkeleton(syms *data.Symbols) (*data.Skeleton, error) {
 		Embed: components.NewEmbedProcessor(syms, &indexList), IndexList: &indexList}
 	root.FirstChild, root.LastChild, err = w.WalkChildren(root, &walker.Siblings{Cur: root.FirstChild})
 	if err != nil {
-		return nil, errors.New("skeleton.html" + err.Error())
+		return nil, errors.New(path + ": " + err.Error())
 	}
 
 	tmp := make([]data.Embed, len(s.Embeds))
