@@ -39,7 +39,11 @@ func (s *Symbols) split(id string) (pkg *Package, symName string, aliasName stri
 	if !ok {
 		return nil, "", "", fmt.Errorf("unknown namespace '%s' in id '%s'", aliasName, id)
 	}
-	return s.Packages[pkgPath], id[last+1:], aliasName, nil
+	retPkg, ok := s.Packages[pkgPath]
+	if !ok {
+		return nil, "", "", fmt.Errorf("cannot use controls from import path '%s' which is outside current module", pkgPath)
+	}
+	return retPkg, id[last+1:], aliasName, nil
 }
 
 // ResolveMacro resolves the given identifier to a Macro.

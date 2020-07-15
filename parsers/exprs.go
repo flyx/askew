@@ -4,7 +4,7 @@ var exprSyntax = `
   EXPR      ← (COMMALESS / ENCLOSING)+
 	COMMALESS ← IDENTIFIER / NUMBER / OPERATORS / STRING
 	NUMBER    ← < [0-9]+ >
-	OPERATORS ← < [+-*/|&^:=.]+ >
+	OPERATORS ← < [+-*/|&^:=.!<>]+ >
 	STRING    ← '` + "`" + `' (!'` + "`" + `' .)* '` + "`" + `'
 	ENCLOSING ← PARENS / BRACES / BRACKETS
 	PARENS    ← '(' ENCLOSED ')'

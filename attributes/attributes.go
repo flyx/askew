@@ -9,7 +9,7 @@ import (
 )
 
 func invalidAttribute(name string) error {
-	return errors.New("element does not allow attribute `" + name + "`")
+	return errors.New(": element does not allow attribute `" + name + "`")
 }
 
 // Collector collects askew attributes (attributes with `a:` prefix).

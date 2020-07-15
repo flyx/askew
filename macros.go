@@ -123,7 +123,8 @@ func (vm *valueMapper) Process(n *html.Node) (descend bool, replacement *html.No
 		return false, nil, errors.New(": unknown slot `" + iAttrs.Slot + "`")
 	}
 	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{},
-		AText: walker.Allow{}, Include: &includeProcessor{vm.syms}}
+		AText: walker.Allow{}, Embed: walker.Allow{},
+		Include: &includeProcessor{vm.syms}}
 	replacement, _, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return
 }
@@ -165,6 +166,9 @@ func (sl *slotReplacer) Process(n *html.Node) (descend bool, replacement *html.N
 		}
 		if sl.mi.values[i] == nil {
 			replacement, _, err = sl.mi.w.WalkChildren(nil, &walker.Siblings{Cur: n.FirstChild})
+			if replacement == nil {
+				replacement = &html.Node{Type: html.TextNode}
+			}
 		} else {
 			replacement = sl.mi.values[i]
 		}
