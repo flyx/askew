@@ -247,9 +247,16 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 				p{{.Param}}.Init(this, "{{.Value.ID}}")
 				{{- end}}
 				{{- end}}
+				{{- if eq .Handling 0}}
+				o.call{{.Handler}}({{GenArgs .ParamMappings}})
+				arguments[0].Call("preventDefault")
+				{{- else if eq .Handling 2}}
 				if o.call{{.Handler}}({{GenArgs .ParamMappings}}) {
 					arguments[0].Call("preventDefault")
 				}
+				{{- else }}
+				o.call{{.Handler}}({{GenArgs .ParamMappings}})
+				{{- end}}
 				return nil
 			})
 			src.Call("addEventListener", "{{.Event}}", wrapper)

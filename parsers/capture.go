@@ -2,6 +2,7 @@ package parsers
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/flyx/askew/data"
 	peg "github.com/yhirose/go-peg"
@@ -12,17 +13,24 @@ type paramMapping struct {
 	supplier data.BoundValue
 }
 
+type tag struct {
+	name   string
+	params []string
+}
+
 var captureParser *peg.Parser
 
 func init() {
 	var err error
 	captureParser, err = peg.NewParser(`
 	ROOT        ← CAPTURE (',' CAPTURE)*
-	CAPTURE     ← EVENT ':' HANDLER ('(' MAPPINGS? ')')?
+	CAPTURE     ← EVENT ':' HANDLER MAPPINGS TAGS
 	EVENT       ← < [a-z]+ >
 	HANDLER     ← < [a-zA-Z_][a-zA-Z_0-9]* >
-	MAPPINGS    ← MAPPING (',' MAPPING)*
+	MAPPINGS    ← ('(' (MAPPING (',' MAPPING)*)? ')')?
 	MAPPING     ← IDENTIFIER '=' BOUND
+	TAGS        ← ('{' (TAG (',' TAG)*)? '}')?
+	TAG         ← IDENTIFIER ( '(' (IDENTIFIER (',' IDENTIFIER)*)? ')' )?
 	` + identifierSyntax + boundSyntax + whitespace)
 	if err != nil {
 		panic(err)
@@ -37,6 +45,9 @@ func init() {
 	}
 	g["MAPPINGS"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		ret := make(map[string]data.BoundValue)
+		if len(v.Vs) == 0 {
+			return ret, nil
+		}
 		first := v.Vs[0].(paramMapping)
 		ret[first.param] = first.supplier
 		for i := 1; i < len(v.Vs); i++ {
@@ -49,14 +60,52 @@ func init() {
 		}
 		return ret, nil
 	}
-	g["CAPTURE"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		ret := data.UnboundEventMapping{Event: v.ToStr(0), Handler: v.ToStr(1)}
-		if v.Len() == 3 {
-			ret.ParamMappings = v.Vs[2].(map[string]data.BoundValue)
-		} else {
-			ret.ParamMappings = make(map[string]data.BoundValue)
+	g["TAG"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
+		ret := tag{name: v.ToStr(0)}
+		if len(v.Vs) > 1 {
+			ret.params = make([]string, len(v.Vs)-1)
+			for i := 1; i < len(v.Vs); i++ {
+				ret.params[i] = v.ToStr(i)
+			}
 		}
 		return ret, nil
+	}
+	g["TAGS"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
+		handling := data.AutoPreventDefault
+		for i := range v.Vs {
+			t := v.Vs[i].(tag)
+			switch t.name {
+			case "preventDefault":
+				if handling != data.AutoPreventDefault {
+					return nil, errors.New("duplicate preventDefault")
+				}
+				switch len(t.params) {
+				case 0:
+					handling = data.PreventDefault
+				case 1:
+					switch t.params[0] {
+					case "true":
+						handling = data.PreventDefault
+					case "false":
+						handling = data.DontPreventDefault
+					case "ask":
+						handling = data.AskPreventDefault
+					default:
+						return nil, fmt.Errorf("unsupported value for preventDefault: %s", t.params[0])
+					}
+				default:
+					return nil, errors.New("too many parameters for preventDefault")
+				}
+			default:
+				return nil, errors.New("unknown tag: " + t.name)
+			}
+		}
+		return handling, nil
+	}
+	g["CAPTURE"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
+		return data.UnboundEventMapping{Event: v.ToStr(0), Handler: v.ToStr(1),
+			ParamMappings: v.Vs[2].(map[string]data.BoundValue),
+			Handling:      v.Vs[3].(data.EventHandling)}, nil
 	}
 	g["ROOT"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		ret := make([]data.UnboundEventMapping, v.Len())

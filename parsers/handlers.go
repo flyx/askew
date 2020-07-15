@@ -11,8 +11,9 @@ import (
 
 // HandlerSpec describes the content of an <a:handler> node.
 type HandlerSpec struct {
-	Name   string
-	Params []data.GoValue
+	Name        string
+	Params      []data.GoValue
+	ReturnsBool bool
 }
 
 var handlerParser *peg.Parser
@@ -20,8 +21,8 @@ var handlerParser *peg.Parser
 func init() {
 	var err error
 	handlerParser, err = peg.NewParser(`
-	ROOT        ← IDENTIFIER '(' PARAMLIST? ')'
-	PARAMLIST   ← PARAM (',' PARAM)*
+	ROOT        ← IDENTIFIER PARAMLIST IDENTIFIER?
+	PARAMLIST   ← '(' (PARAM (',' PARAM)*)? ')'
   PARAM       ← IDENTIFIER IDENTIFIER` + identifierSyntax + whitespace)
 	if err != nil {
 		panic(err)
@@ -61,11 +62,17 @@ func init() {
 	}
 
 	g["ROOT"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		var params []data.GoValue
-		if len(v.Vs) > 1 {
-			params = v.Vs[1].([]data.GoValue)
+		params := v.Vs[1].([]data.GoValue)
+		returnsBool := false
+		if len(v.Vs) == 3 {
+			retType := v.ToStr(2)
+			if retType == "bool" {
+				returnsBool = true
+			}
+			return nil, errors.New("unsupported return type: " + retType)
 		}
-		return HandlerSpec{Name: v.ToStr(0), Params: params}, nil
+		return HandlerSpec{
+			Name: v.ToStr(0), Params: params, ReturnsBool: returnsBool}, nil
 	}
 }
 

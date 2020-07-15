@@ -196,7 +196,8 @@ func (hp *handlerProcessor) Process(n *html.Node) (descend bool,
 			return false, nil, errors.New(": duplicate handler name: " + parsed.Name)
 		}
 	}
-	(*hp.handlers)[parsed.Name] = data.Handler{Params: parsed.Params}
+	(*hp.handlers)[parsed.Name] =
+		data.Handler{Params: parsed.Params, ReturnsBool: parsed.ReturnsBool}
 	replacement = &html.Node{Type: html.CommentNode, Data: "handler: " + def.Data}
 	return
 }
@@ -319,7 +320,17 @@ func (ceh *componentElementHandler) mapCaptures(n *html.Node, v []data.UnboundEv
 		for unknown := range notMapped {
 			return errors.New("unknown param for capture mapping: " + unknown)
 		}
-		ret = append(ret, data.EventMapping{Event: unmapped.Event, Handler: unmapped.Handler, ParamMappings: mapped})
+		handling := unmapped.Handling
+		if handling == data.AutoPreventDefault {
+			if h.ReturnsBool {
+				handling = data.AskPreventDefault
+			} else {
+				handling = data.DontPreventDefault
+			}
+		}
+		ret = append(ret, data.EventMapping{
+			Event: unmapped.Event, Handler: unmapped.Handler, ParamMappings: mapped,
+			Handling: handling})
 	}
 
 	ceh.c.Captures = append(ceh.c.Captures, data.Capture{

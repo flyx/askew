@@ -3,7 +3,7 @@
 	<a:handler>Reset(foo string)</a:handler>
 	<section>
 		<h2 a:bindings="prop(textContent):Heading">Test</h2>
-		<form data-foo="bar" class="form" a:capture="submit:Submit(name=form(Name), age=form(Age)),reset:Reset"
+		<form data-foo="bar" class="form" a:capture="submit:Submit(name=form(Name), age=form(Age)) {preventDefault},reset:Reset"
 				a:bindings="form(Name):Name, form(Age):Age">
 			This is form #<a:text expr="index"></a:text><br/>
 			<label for="Name">Name:</label>
