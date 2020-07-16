@@ -45,10 +45,12 @@ Let's define a component as well as the skeleton of our website in annotated HTM
   <!-- defines a handler for the component. Handlers translate to Go methods.
         A handler may have parameters, which will be mapped to DOM items when
         calling it. -->
-  <a:handler>Greet(name string)</a:handler>
+  <a:handlers>Greet(name string)</a:handlers>
   <!-- a:capture binds DOM events to defined handlers.
-        form(Name) binds to the form's value with the given name. -->
-  <form a:capture="submit:Greet(name=form(Name))">
+        form(Name) binds to the form's value with the given name.
+        a binding can have tags; in this case, the tag preventDefault prevents
+        the default action of the submit event. -->
+  <form a:capture="submit:Greet(name=form(Name)) {preventDefault}">
     <label for="Name">What's your name?</label>
     <!-- a:bindings binds items in the DOM to Go accessors.
           in this case, we get a bool accessor that switches

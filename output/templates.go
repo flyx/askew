@@ -32,10 +32,22 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 	"PathItems":    pathItems,
 	"NameForBound": nameForBound,
 	"Last":         last,
-	"GenParams": func(params []data.GoValue) string {
+	"TWrapper": func(t *data.ParamType) string {
+		switch t.Kind {
+		case data.IntType:
+			return wrapperForType(data.IntVar)
+		case data.StringType:
+			return wrapperForType(data.StringVar)
+		case data.BoolType:
+			return wrapperForType(data.BoolVar)
+		default:
+			panic("cannot gen wrapper for this type")
+		}
+	},
+	"GenParams": func(params []data.Param) string {
 		var items []string
 		for _, p := range params {
-			items = append(items, p.Name+" "+nameForType(p.Type))
+			items = append(items, p.String())
 		}
 		return strings.Join(items, ", ")
 	},
@@ -63,14 +75,14 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 			panic("unknown BoundKind")
 		}
 	},
-	"GenCallParams": func(params []data.GoValue) string {
+	"GenCallParams": func(params []data.Param) string {
 		items := make([]string, 0, len(params))
 		for _, p := range params {
 			items = append(items, p.Name+" runtime.BoundValue")
 		}
 		return strings.Join(items, ", ")
 	},
-	"GenTypedArgs": func(params []data.GoValue) string {
+	"GenTypedArgs": func(params []data.Param) string {
 		items := make([]string, 0, len(params))
 		for _, p := range params {
 			items = append(items, fmt.Sprintf("_%s.Get()", p.Name))
@@ -308,7 +320,7 @@ func (o *{{$cName}}) call{{$hName}}({{GenCallParams $h.Params}}) bool {
 	}
 	{{- end}}
 	{{- range $h.Params}}
-	_{{.Name}} := runtime.{{Wrapper .Type}}{BoundValue: {{.Name}}}
+	_{{.Name}} := runtime.{{TWrapper .Type}}{BoundValue: {{.Name}}}
 	{{- end}}
 	{{- if $needsController}}
 	return o.Controller

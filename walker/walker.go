@@ -31,7 +31,7 @@ type Walker struct {
 	Slot        NodeHandler
 	Include     NodeHandler
 	Embed       NodeHandler
-	Handler     NodeHandler
+	Handlers    NodeHandler
 	Templates   NodeHandler
 	StdElements NodeHandler
 	Text        NodeHandler
@@ -85,8 +85,8 @@ func (w *Walker) processElement(n *html.Node) (replacement *html.Node, err error
 			h = w.Include
 		case "a:embed":
 			h = w.Embed
-		case "a:handler":
-			h = w.Handler
+		case "a:handlers":
+			h = w.Handlers
 		case "a:templates":
 			h = w.Templates
 		case "a:text":

@@ -34,8 +34,8 @@ type Embed struct {
 
 // Handler describes a <a:handler> node.
 type Handler struct {
-	Params      []GoValue
-	ReturnsBool bool
+	Params  []Param
+	Returns *ParamType
 }
 
 // Capture describe a `a:capture` attribute.

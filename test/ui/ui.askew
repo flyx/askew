@@ -1,6 +1,8 @@
 <a:component name="NameForm" controller params="index int">
-	<a:handler>Submit(name string, age int)</a:handler>
-	<a:handler>Reset(foo string)</a:handler>
+	<a:handlers>
+		Submit(name string, age int)
+		Reset(foo string)
+	</a:handlers>
 	<section>
 		<h2 a:bindings="prop(textContent):Heading">Test</h2>
 		<form data-foo="bar" class="form" a:capture="submit:Submit(name=form(Name), age=form(Age)) {preventDefault},reset:Reset"
@@ -36,7 +38,7 @@
 </a:macro>
 
 <a:component name="MacroTest" params="title string">
-	<a:handler>SetTitle(v string)</a:handler>
+	<a:handlers>SetTitle(v string)</a:handlers>
 	<section>
 		<h2 a:bindings="class(teletype):MonospaceTitle"><a:text expr="title"></a:text></h2>
 		<h3 a:bindings="prop(textContent):Title">Changeable Title</h3>

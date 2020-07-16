@@ -52,7 +52,7 @@ func (p *Processor) Process(n *html.Node) (descend bool,
 	w := walker.Walker{
 		Text: walker.Allow{}, AText: &aTextProcessor{&cmp.Block, &indexList},
 		Embed:       &EmbedProcessor{p.syms, &indexList},
-		Handler:     &handlerProcessor{p.syms, &cmp.Handlers, &indexList},
+		Handlers:    &handlersProcessor{p.syms, &cmp.Handlers, &indexList},
 		StdElements: &componentElementHandler{stdElementHandler{p.syms, &indexList, &cmp.Block, -1, nil}, cmp},
 		IndexList:   &indexList}
 	replacement.FirstChild, replacement.LastChild, err = w.WalkChildren(
@@ -169,13 +169,13 @@ func (ep *EmbedProcessor) Process(n *html.Node) (descend bool,
 	return
 }
 
-type handlerProcessor struct {
+type handlersProcessor struct {
 	syms      *data.Symbols
 	handlers  *map[string]data.Handler
 	indexList *[]int
 }
 
-func (hp *handlerProcessor) Process(n *html.Node) (descend bool,
+func (hp *handlersProcessor) Process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
 	if len(*hp.indexList) != 1 {
 		return false, nil, errors.New(": must be defined as direct child of <a:component>")
@@ -184,21 +184,22 @@ func (hp *handlerProcessor) Process(n *html.Node) (descend bool,
 	if def.Type != html.TextNode || def.NextSibling != nil {
 		return false, nil, errors.New(": must have plain text as content and nothing else")
 	}
-	parsed, err := parsers.ParseHandler(def.Data)
+	parsed, err := parsers.ParseHandlers(def.Data)
 	if err != nil {
 		return false, nil, errors.New(": unable to parse `" + def.Data + "`: " + err.Error())
 	}
 	if *hp.handlers == nil {
 		*hp.handlers = make(map[string]data.Handler)
-	} else {
-		_, ok := (*hp.handlers)[parsed.Name]
-		if ok {
-			return false, nil, errors.New(": duplicate handler name: " + parsed.Name)
-		}
 	}
-	(*hp.handlers)[parsed.Name] =
-		data.Handler{Params: parsed.Params, ReturnsBool: parsed.ReturnsBool}
-	replacement = &html.Node{Type: html.CommentNode, Data: "handler: " + def.Data}
+	for _, raw := range parsed {
+		if _, ok := (*hp.handlers)[raw.Name]; ok {
+			return false, nil, errors.New(": duplicate handler name: " + raw.Name)
+		}
+		(*hp.handlers)[raw.Name] =
+			data.Handler{Params: raw.Params, Returns: raw.Returns}
+	}
+
+	replacement = &html.Node{Type: html.CommentNode, Data: "handlers"}
 	return
 }
 
@@ -256,8 +257,8 @@ func (d *formValueDiscovery) Process(n *html.Node) (descend bool, replacement *h
 func discoverFormValues(form *html.Node) (map[string]formValue, error) {
 	fvd := formValueDiscovery{values: make(map[string]formValue)}
 	w := walker.Walker{Text: walker.Allow{}, Embed: walker.DontDescend{},
-		Handler: walker.DontDescend{},
-		AText:   walker.Allow{}, StdElements: &fvd}
+		Handlers: walker.DontDescend{},
+		AText:    walker.Allow{}, StdElements: &fvd}
 	var err error
 	form.FirstChild, form.LastChild, err = w.WalkChildren(form, &walker.Siblings{Cur: form.FirstChild})
 	if err != nil {
@@ -322,7 +323,7 @@ func (ceh *componentElementHandler) mapCaptures(n *html.Node, v []data.UnboundEv
 		}
 		handling := unmapped.Handling
 		if handling == data.AutoPreventDefault {
-			if h.ReturnsBool {
+			if h.Returns != nil && h.Returns.Kind == data.BoolType {
 				handling = data.AskPreventDefault
 			} else {
 				handling = data.DontPreventDefault
@@ -444,7 +445,6 @@ func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, at
 		w := walker.Walker{
 			Text: walker.Allow{}, AText: &aTextProcessor{&block.Block, &indexList},
 			Embed:       &EmbedProcessor{seh.syms, &indexList},
-			Handler:     nil,
 			StdElements: cp,
 			IndexList:   &indexList}
 		n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
