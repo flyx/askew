@@ -38,6 +38,15 @@ type Handler struct {
 	Returns *ParamType
 }
 
+// ControllerMethod is a method of a controller declared with <a:controller>.
+type ControllerMethod struct {
+	Handler
+	// CanCapture specifies whether this method may be used for capturing events.
+	// Only methods with nothing but int, string and bool types occurring in
+	// parameters can capture events.
+	CanCapture bool
+}
+
 // Capture describe a `a:capture` attribute.
 type Capture struct {
 	Path     []int
@@ -96,11 +105,11 @@ type Component struct {
 	ID         string
 	Variables  []VariableMapping
 	Handlers   map[string]Handler
+	Controller map[string]ControllerMethod
 	Captures   []Capture
 	Parameters []ComponentParam
 
-	Template        *html.Node
-	NeedsController bool
-	NeedsList       bool
-	NeedsOptional   bool
+	Template      *html.Node
+	NeedsList     bool
+	NeedsOptional bool
 }

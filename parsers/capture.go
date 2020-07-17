@@ -65,7 +65,7 @@ func init() {
 		if len(v.Vs) > 1 {
 			ret.params = make([]string, len(v.Vs)-1)
 			for i := 1; i < len(v.Vs); i++ {
-				ret.params[i] = v.ToStr(i)
+				ret.params[i-1] = v.ToStr(i)
 			}
 		}
 		return ret, nil

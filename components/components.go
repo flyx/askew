@@ -41,7 +41,7 @@ func (p *Processor) Process(n *html.Node) (descend bool,
 	replacement = &html.Node{Type: html.ElementNode, DataAtom: atom.Template,
 		Data: "template"}
 	cmp := &data.Component{EmbedHost: data.EmbedHost{},
-		Name: cmpAttrs.Name, Template: replacement, NeedsController: cmpAttrs.Controller,
+		Name: cmpAttrs.Name, Template: replacement,
 		Parameters: cmpAttrs.Params}
 	p.syms.CurHost = &cmp.EmbedHost
 	(*p.counter)++
@@ -52,7 +52,8 @@ func (p *Processor) Process(n *html.Node) (descend bool,
 	w := walker.Walker{
 		Text: walker.Allow{}, AText: &aTextProcessor{&cmp.Block, &indexList},
 		Embed:       &EmbedProcessor{p.syms, &indexList},
-		Handlers:    &handlersProcessor{p.syms, &cmp.Handlers, &indexList},
+		Handlers:    &handlersProcessor{p.syms, cmp, &indexList},
+		AController: &controllerProcessor{p.syms, cmp, &indexList},
 		StdElements: &componentElementHandler{stdElementHandler{p.syms, &indexList, &cmp.Block, -1, nil}, cmp},
 		IndexList:   &indexList}
 	replacement.FirstChild, replacement.LastChild, err = w.WalkChildren(
@@ -169,9 +170,21 @@ func (ep *EmbedProcessor) Process(n *html.Node) (descend bool,
 	return
 }
 
+func canCapture(params []data.Param) bool {
+	for _, p := range params {
+		switch p.Type.Kind {
+		case data.IntType, data.StringType, data.BoolType:
+			break
+		default:
+			return false
+		}
+	}
+	return true
+}
+
 type handlersProcessor struct {
 	syms      *data.Symbols
-	handlers  *map[string]data.Handler
+	component *data.Component
 	indexList *[]int
 }
 
@@ -188,15 +201,64 @@ func (hp *handlersProcessor) Process(n *html.Node) (descend bool,
 	if err != nil {
 		return false, nil, errors.New(": unable to parse `" + def.Data + "`: " + err.Error())
 	}
-	if *hp.handlers == nil {
-		*hp.handlers = make(map[string]data.Handler)
+	if hp.component.Handlers != nil {
+		return false, nil, errors.New(": only one <a:handlers> allowed per <a:component>")
 	}
+	hp.component.Handlers = make(map[string]data.Handler)
 	for _, raw := range parsed {
-		if _, ok := (*hp.handlers)[raw.Name]; ok {
+		_, ok := hp.component.Handlers[raw.Name]
+		if !ok && hp.component.Controller != nil {
+			_, ok = hp.component.Controller[raw.Name]
+		}
+		if ok {
 			return false, nil, errors.New(": duplicate handler name: " + raw.Name)
 		}
-		(*hp.handlers)[raw.Name] =
+		if !canCapture(raw.Params) {
+			return false, nil, errors.New(": handlers must only use int, string and bool as parameter types")
+		}
+		hp.component.Handlers[raw.Name] =
 			data.Handler{Params: raw.Params, Returns: raw.Returns}
+	}
+
+	replacement = &html.Node{Type: html.CommentNode, Data: "handlers"}
+	return
+}
+
+type controllerProcessor struct {
+	syms      *data.Symbols
+	component *data.Component
+	indexList *[]int
+}
+
+func (cp *controllerProcessor) Process(n *html.Node) (descend bool,
+	replacement *html.Node, err error) {
+	if len(*cp.indexList) != 1 {
+		return false, nil, errors.New(": must be defined as direct child of <a:component>")
+	}
+	def := n.FirstChild
+	if def.Type != html.TextNode || def.NextSibling != nil {
+		return false, nil, errors.New(": must have plain text as content and nothing else")
+	}
+	if cp.component.Controller != nil {
+		return false, nil, errors.New(": only one <a:controller> allowed per <a:component>")
+	}
+	parsed, err := parsers.ParseHandlers(def.Data)
+	if err != nil {
+		return false, nil, errors.New(": unable to parse `" + def.Data + "`: " + err.Error())
+	}
+	cp.component.Controller = make(map[string]data.ControllerMethod)
+	for _, raw := range parsed {
+		_, ok := cp.component.Controller[raw.Name]
+		if !ok && cp.component.Handlers != nil {
+			_, ok = cp.component.Handlers[raw.Name]
+		}
+		if ok {
+			return false, nil, errors.New(": duplicate handler name: " + raw.Name)
+		}
+		cp.component.Controller[raw.Name] =
+			data.ControllerMethod{
+				Handler:    data.Handler{Params: raw.Params, Returns: raw.Returns},
+				CanCapture: canCapture(raw.Params)}
 	}
 
 	replacement = &html.Node{Type: html.CommentNode, Data: "handlers"}
@@ -290,9 +352,27 @@ func (ceh *componentElementHandler) mapCaptures(n *html.Node, v []data.UnboundEv
 	}
 	ret := make([]data.EventMapping, 0, len(v))
 	for _, unmapped := range v {
-		h, ok := ceh.c.Handlers[unmapped.Handler]
+		fromController := false
+		var h data.Handler
+		ok := false
+		if ceh.c.Handlers != nil {
+			h, ok = ceh.c.Handlers[unmapped.Handler]
+		}
 		if !ok {
-			return errors.New("capture references unknown handler: " + unmapped.Handler)
+			if ceh.c.Controller != nil {
+				var c data.ControllerMethod
+				c, ok = ceh.c.Controller[unmapped.Handler]
+				if ok {
+					if !c.CanCapture {
+						return errors.New("capture references handler whose parameter types are not only int, string and bool: " + unmapped.Handler)
+					}
+					h = c.Handler
+					fromController = true
+				}
+			}
+			if !ok {
+				return errors.New("capture references unknown handler: " + unmapped.Handler)
+			}
 		}
 		notMapped := make(map[string]struct{})
 		for pName := range unmapped.ParamMappings {
@@ -331,7 +411,7 @@ func (ceh *componentElementHandler) mapCaptures(n *html.Node, v []data.UnboundEv
 		}
 		ret = append(ret, data.EventMapping{
 			Event: unmapped.Event, Handler: unmapped.Handler, ParamMappings: mapped,
-			Handling: handling})
+			Handling: handling, FromController: fromController})
 	}
 
 	ceh.c.Captures = append(ceh.c.Captures, data.Capture{

@@ -19,18 +19,14 @@ type Collector interface {
 
 // Component lists the attributes of a component
 type Component struct {
-	Name       string
-	Controller bool
-	Params     []data.ComponentParam
+	Name   string
+	Params []data.ComponentParam
 }
 
 func (t *Component) collect(name, val string) error {
 	switch name {
 	case "name":
 		t.Name = val
-		return nil
-	case "controller":
-		t.Controller = true
 		return nil
 	case "params":
 		var err error

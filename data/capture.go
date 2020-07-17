@@ -25,10 +25,11 @@ type BoundParam struct {
 
 // EventMapping describes the mapping of a DOM node's event to a declared handler.
 type EventMapping struct {
-	Event         string
-	Handler       string
-	ParamMappings []BoundParam
-	Handling      EventHandling
+	Event          string
+	Handler        string
+	FromController bool
+	ParamMappings  []BoundParam
+	Handling       EventHandling
 }
 
 // UnboundEventMapping describes an event mapping for which the parameter names

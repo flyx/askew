@@ -183,7 +183,7 @@ type componentDescender struct {
 
 func (cd *componentDescender) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{}, Include: &includeProcessor{cd.syms},
-		Handlers: walker.Allow{}, Embed: walker.Allow{}, AText: walker.Allow{}}
+		Handlers: walker.Allow{}, AController: walker.Allow{}, Embed: walker.Allow{}, AText: walker.Allow{}}
 	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return false, nil, err
 }
