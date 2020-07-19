@@ -72,6 +72,11 @@
 	<button a:capture="click:click(caption=prop(textContent))" a:assign="prop(textContent)=caption"></button>
 </a:component>
 
-<a:component name="OneTwoThree">
-  <a:embed name="Buttons" type="ottButton" list control></a:embed>
+<a:component name="OneTwoThree" params="additional []string">
+  <a:embed name="Buttons" type="ottButton" list control>
+		<a:construct args="`one`"></a:construct>
+		<a:construct args="`two`"></a:construct>
+		<a:construct args="`three`"></a:construct>
+		<a:construct a:for="_, s := range additional" args="s"></a:construct>
+	</a:embed>
 </a:component>

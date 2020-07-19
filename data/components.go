@@ -24,13 +24,40 @@ const (
 	OptionalEmbed
 )
 
+// ConstructorCall constructs a component as part of an <a:embed>.
+type ConstructorCall struct {
+	Args Arguments
+}
+
+// NestedConstructorCallKind describes the kind of a nested constructor call.
+type NestedConstructorCallKind int
+
+const (
+	// NestedDirect creates exactly one instance.
+	NestedDirect NestedConstructorCallKind = iota
+	// NestedIf creates one instance if the expression evaluates to true
+	NestedIf
+	// NestedFor creates instances with a loop.
+	NestedFor
+)
+
+// NestedConstructorCall describes a <a:construct> node inside <a:embed>.
+type NestedConstructorCall struct {
+	ConstructorCall
+	Kind            NestedConstructorCallKind
+	Index, Variable string // only for NestedFor
+	Expression      string // only for NestedIf and NestedFor
+}
+
 // Embed describes a <a:embed> node.
 type Embed struct {
-	Kind         EmbedKind
-	Path         []int
-	Field, Ns, T string
-	Args         Arguments
-	Control      bool
+	// is a constructor call if Kind == DirectEmbed.
+	ConstructorCall
+	Kind             EmbedKind
+	Path             []int
+	Field, Ns, T     string
+	Control          bool
+	ConstructorCalls []NestedConstructorCall
 }
 
 // Handler describes a <a:handler> node.

@@ -100,76 +100,140 @@ func NewEmbedProcessor(syms *data.Symbols, indexList *[]int) *EmbedProcessor {
 	return &EmbedProcessor{syms: syms, indexList: indexList}
 }
 
-func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed, error) {
-	if n.FirstChild != nil {
-		return data.Embed{}, errors.New(": illegal content")
-	}
+func resolveEmbed(n *html.Node, syms *data.Symbols,
+	indexList []int) (data.Embed, *data.Component, error) {
 	var attrs attributes.Embed
 	if err := attributes.Collect(n, &attrs); err != nil {
-		return data.Embed{}, err
+		return data.Embed{}, nil, err
 	}
 
 	e := data.Embed{Kind: data.DirectEmbed, Path: append([]int(nil), indexList...),
 		Field: attrs.Name, Control: attrs.Control}
 	if e.Field == "" {
-		return data.Embed{}, errors.New(": attribute `name` missing")
+		return data.Embed{}, nil, errors.New(": attribute `name` missing")
 	}
 	if attrs.List {
 		e.Kind = data.ListEmbed
 	}
 	if attrs.Optional {
 		if e.Kind != data.DirectEmbed {
-			return data.Embed{}, errors.New(": cannot mix `list` and `optional`")
+			return data.Embed{}, nil, errors.New(": cannot mix `list` and `optional`")
 		}
 		e.Kind = data.OptionalEmbed
 	}
 	if attrs.T == "" {
 		if e.Kind == data.DirectEmbed {
-			return data.Embed{}, errors.New(": attribute `type` missing (may only be omitted for optional or list embeds)")
+			return data.Embed{}, nil, errors.New(": attribute `type` missing (may only be omitted for optional or list embeds)")
 		}
 		if attrs.Args.Count != 0 {
-			return data.Embed{}, errors.New(": embed with `list` or `optional` cannot have `args`")
+			return data.Embed{}, nil, errors.New(": embed with `list` or `optional` cannot have `args`")
+		}
+		return e, nil, nil
+	}
+	target, typeName, aliasName, err := syms.ResolveComponent(attrs.T)
+	if err != nil {
+		return data.Embed{}, nil, errors.New(": attribute `type` invalid: " + err.Error())
+	}
+	switch e.Kind {
+	case data.ListEmbed:
+		target.NeedsList = true
+	case data.OptionalEmbed:
+		target.NeedsOptional = true
+	}
+	e.T = typeName
+	e.Ns = aliasName
+	if e.Kind != data.DirectEmbed {
+		if attrs.Args.Count != 0 {
+			return data.Embed{}, nil, errors.New(": embed with `list` or `optional` cannot have `args`")
 		}
 	} else {
-		target, typeName, aliasName, err := syms.ResolveComponent(attrs.T)
-		if err != nil {
-			return data.Embed{}, errors.New(": attribute `type` invalid: " + err.Error())
-		}
-		switch e.Kind {
-		case data.ListEmbed:
-			target.NeedsList = true
-		case data.OptionalEmbed:
-			target.NeedsOptional = true
-		}
-		e.T = typeName
-		e.Ns = aliasName
-		if e.Kind != data.DirectEmbed {
-			if attrs.Args.Count != 0 {
-				return data.Embed{}, errors.New(": embed with `list` or `optional` cannot have `args`")
-			}
-		} else {
-			e.Args = attrs.Args
-			if len(target.Parameters) != e.Args.Count {
-				return data.Embed{}, fmt.Errorf(
-					": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)
-			}
+		e.Args = attrs.Args
+		if len(target.Parameters) != e.Args.Count {
+			return data.Embed{}, nil, fmt.Errorf(
+				": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)
 		}
 	}
-	return e, nil
+	return e, target, nil
 }
 
 // Process implements Walker.NodeHandler.
 func (ep *EmbedProcessor) Process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
-	e, err := resolveEmbed(n, ep.syms, *ep.indexList)
+	e, target, err := resolveEmbed(n, ep.syms, *ep.indexList)
 	if err != nil {
 		return false, nil, err
 	}
 
+	w := walker.Walker{TextNode: &walker.WhitespaceOnly{},
+		Construct: &constructProcessor{&e, target}}
+	_, _, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
+	if e.Kind == data.OptionalEmbed && len(e.ConstructorCalls) > 1 {
+		return false, nil, errors.New(": too many <a:construct> for optional embed")
+	}
 	ep.syms.CurHost.Embeds = append(ep.syms.CurHost.Embeds, e)
 	replacement = &html.Node{Type: html.CommentNode,
 		Data: "embed(" + e.Field + ")"}
 	return
+}
+
+type constructProcessor struct {
+	e      *data.Embed
+	target *data.Component
+}
+
+func (cp *constructProcessor) Process(n *html.Node) (descend bool,
+	replacement *html.Node, err error) {
+	if cp.e.Kind == data.DirectEmbed {
+		return false, nil, errors.New(": element requires list or optional embed as parent")
+	}
+	if cp.target == nil {
+		return false, nil, errors.New(": element requires embed with explicit type as parent")
+	}
+
+	var attrs attributes.General
+	if err = attributes.ExtractAskewAttribs(n, &attrs); err != nil {
+		return
+	}
+	if attrs.Assign != nil {
+		return false, nil, errors.New(": a:assign not allowed here")
+	}
+	if attrs.Bindings != nil {
+		return false, nil, errors.New(": a:bindings not allowed here")
+	}
+	if attrs.Capture != nil {
+		return false, nil, errors.New(": a:capture not allowed here")
+	}
+	if attrs.For != nil && attrs.If != nil {
+		return false, nil, errors.New(": cannot have both a:if and a:for here")
+	}
+	args, err := parsers.AnalyseArguments(attributes.Val(n.Attr, "args"))
+	if err != nil {
+		return false, nil, errors.New(": in args: " + err.Error())
+	}
+	if args.Count != len(cp.target.Parameters) {
+		return false, nil, fmt.Errorf(
+			": target component requires %d arguments, but %d were given", len(cp.target.Parameters), args.Count)
+	}
+	if attrs.If != nil {
+		cp.e.ConstructorCalls = append(cp.e.ConstructorCalls,
+			data.NestedConstructorCall{ConstructorCall: data.ConstructorCall{Args: args},
+				Kind: data.NestedIf, Expression: attrs.If.Expression})
+	} else if attrs.For != nil {
+		if cp.e.Kind == data.OptionalEmbed {
+			return false, nil, errors.New(": a:for not allowed inside optional embed")
+		}
+		cp.e.ConstructorCalls = append(cp.e.ConstructorCalls,
+			data.NestedConstructorCall{ConstructorCall: data.ConstructorCall{Args: args},
+				Kind: data.NestedFor, Index: attrs.For.Index,
+				Variable: attrs.For.Variable, Expression: attrs.For.Expression})
+	} else {
+		cp.e.ConstructorCalls = append(cp.e.ConstructorCalls,
+			data.NestedConstructorCall{ConstructorCall: data.ConstructorCall{Args: args},
+				Kind: data.NestedDirect})
+	}
+	w := walker.Walker{TextNode: walker.WhitespaceOnly{}}
+	_, _, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
+	return false, nil, err
 }
 
 func canCapture(params []data.Param) bool {

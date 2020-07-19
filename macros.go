@@ -27,8 +27,8 @@ func (md *macroDiscovery) Process(n *html.Node) (descend bool, replacement *html
 	}
 	sd := slotDiscovery{slots: make([]data.Slot, 0, 16), syms: md.syms}
 	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{},
-		Text:  walker.Allow{},
-		Embed: walker.Allow{}, Include: &includeProcessor{md.syms}, Slot: &sd}
+		Text: walker.Allow{}, Embed: walker.Allow{}, Construct: walker.Allow{},
+		Include: &includeProcessor{md.syms}, Slot: &sd}
 
 	first, last, err := w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	if err != nil {
@@ -123,7 +123,7 @@ func (vm *valueMapper) Process(n *html.Node) (descend bool, replacement *html.No
 		return false, nil, errors.New(": unknown slot `" + iAttrs.Slot + "`")
 	}
 	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{},
-		Text: walker.Allow{}, Embed: walker.Allow{},
+		Text: walker.Allow{}, Embed: walker.Allow{}, Construct: walker.Allow{},
 		Include: &includeProcessor{vm.syms}}
 	replacement, _, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return
@@ -184,7 +184,7 @@ type componentDescender struct {
 func (cd *componentDescender) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{}, Include: &includeProcessor{cd.syms},
 		Handlers: walker.Allow{}, Controller: walker.Allow{}, Data: walker.Allow{},
-		Embed: walker.Allow{}, Text: walker.Allow{}}
+		Embed: walker.Allow{}, Construct: walker.Allow{}, Text: walker.Allow{}}
 	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return false, nil, err
 }

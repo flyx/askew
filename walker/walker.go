@@ -38,6 +38,7 @@ type Walker struct {
 	Text        NodeHandler
 	Controller  NodeHandler
 	Data        NodeHandler
+	Construct   NodeHandler
 	IndexList   *[]int
 }
 
@@ -97,6 +98,8 @@ func (w *Walker) processElement(n *html.Node) (replacement *html.Node, err error
 			h = w.Controller
 		case "a:data":
 			h = w.Data
+		case "a:construct":
+			h = w.Construct
 		default:
 			return nil, errors.New(": unknown element")
 		}

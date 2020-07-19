@@ -264,6 +264,22 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		{{- if .Control}}
 		o.{{.Field}}.DefaultController = o
 		{{- end}}
+		{{$e := .}}
+		{{- range .ConstructorCalls}}
+		{{- if eq .Kind 1}}
+		if {{.Expression}} {
+		{{- else if eq .Kind 2}}
+		for {{.Index}}, {{.Variable}} := range {{.Expression}} {
+		{{- end}}
+		{{- if eq $e.Kind 2}}
+		o.{{$e.Field}}.Set(
+		{{- else}}
+		o.{{$e.Field}}.Append(
+		{{- end}}{{with $e.Ns}}{{.}}.{{end}}New{{$e.T}}({{.Args.Raw}}))
+		{{- if ne .Kind 0}}
+		}
+		{{- end}}
+		{{- end}}
 		{{- end}}
 	}
 	{{- end}}
