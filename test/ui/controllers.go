@@ -16,3 +16,7 @@ func (o *Herp) click() {
 	o.count++
 	js.Global.Call("alert", "Derp"+strconv.Itoa(o.count))
 }
+
+func (o *OneTwoThree) click(caption string) {
+	js.Global.Call("alert", caption)
+}

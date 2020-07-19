@@ -261,6 +261,9 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		{{- end}}
 		{{- else}}
 		o.{{.Field}}.Init(container, {{Last .Path}})
+		{{- if .Control}}
+		o.{{.Field}}.DefaultController = o
+		{{- end}}
 		{{- end}}
 	}
 	{{- end}}
@@ -358,6 +361,9 @@ func (o *{{$cName}}) call{{$hName}}({{GenCallParams $m.Params}}) {{if IsBool $m.
 type {{.Name}}List struct {
 	mgr runtime.ListManager
 	items []*{{.Name}}
+	{{- if .Controller}}
+	DefaultController {{.Name}}Controller
+	{{- end}}
 }
 
 // Init initializes the list, discarding previous data.
@@ -385,6 +391,9 @@ func (l *{{.Name}}List) Append(item *{{.Name}}) {
 	}
 	l.mgr.Append(item)
 	l.items = append(l.items, item)
+	{{- if .Controller}}
+	item.Controller = l.DefaultController
+	{{- end}}
 	return
 }
 
@@ -401,6 +410,9 @@ func (l *{{.Name}}List) Insert(index int, item *{{.Name}}) {
 	l.items = append(l.items, nil)
 	copy(l.items[index+1:], l.items[index:])
 	l.items[index] = item
+	{{- if .Controller}}
+	item.Controller = l.DefaultController
+	{{- end}}
 	return
 }
 
@@ -419,6 +431,9 @@ func (l *{{.Name}}List) Remove(index int) *{{.Name}} {
 type Optional{{.Name}} struct {
 	cur *{{.Name}}
 	mgr runtime.ListManager
+	{{- if .Controller}}
+	DefaultController {{.Name}}Controller
+	{{- end}}
 }
 
 // Init initializes the container to be empty.
@@ -443,6 +458,9 @@ func (o *Optional{{.Name}}) Set(value *{{.Name}}) {
 	o.cur = value
 	if value != nil {
 		o.mgr.Append(value)
+		{{- if .Controller}}
+		value.Controller = o.DefaultController
+		{{- end}}
 	}
 }
 

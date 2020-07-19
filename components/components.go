@@ -115,17 +115,11 @@ func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed
 		return data.Embed{}, errors.New(": attribute `name` missing")
 	}
 	if attrs.List {
-		if attrs.Control {
-			return data.Embed{}, errors.New(": cannot mix `control` and `list`")
-		}
 		e.Kind = data.ListEmbed
 	}
 	if attrs.Optional {
 		if e.Kind != data.DirectEmbed {
 			return data.Embed{}, errors.New(": cannot mix `list` and `optional`")
-		}
-		if attrs.Control {
-			return data.Embed{}, errors.New(": cannot max `optional` and `control`")
 		}
 		e.Kind = data.OptionalEmbed
 	}

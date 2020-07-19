@@ -39,4 +39,7 @@ func main() {
 
 	Derp.Set(ui.NewHerp())
 	Anything.Set(ui.NewHerp())
+	OTT.Buttons.Append(ui.NewottButton("one"))
+	OTT.Buttons.Append(ui.NewottButton("two"))
+	OTT.Buttons.Append(ui.NewottButton("three"))
 }

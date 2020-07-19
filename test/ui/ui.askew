@@ -64,3 +64,14 @@
 	</a:data>
   <a:embed name="Button" type="HerpBtn" control></a:embed>
 </a:component>
+
+<a:component name="ottButton" params="caption string">
+  <a:controller>
+	  click(caption string)
+  </a:controller>
+	<button a:capture="click:click(caption=prop(textContent))" a:assign="prop(textContent)=caption"></button>
+</a:component>
+
+<a:component name="OneTwoThree">
+  <a:embed name="Buttons" type="ottButton" list control></a:embed>
+</a:component>
