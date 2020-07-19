@@ -17,5 +17,5 @@ test/site:
 	mkdir -p test/site
 
 test/site/main.js: export GOPHERJS_GOROOT = $(shell go1.12.16 env GOROOT)
-test/site/main.js: test/site test/ui/ui.go test/ui/macrotestcontrol.go test/extra/additionals.go
+test/site/main.js: test/site test/ui/ui.go test/ui/controllers.go test/extra/additionals.go test/extra/init.go
 	cd test && gopherjs build -o site/main.js

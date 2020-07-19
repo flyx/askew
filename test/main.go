@@ -15,9 +15,8 @@ func (*handler) Reset(foo string) bool {
 	return true
 }
 
-func (*handler) Submit(name string, age int) bool {
+func (*handler) Submit(name string, age int) {
 	js.Global.Call("alert", "name="+name+", age="+strconv.FormatInt(int64(age), 10))
-	return true
 }
 
 func main() {

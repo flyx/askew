@@ -30,6 +30,7 @@ type Embed struct {
 	Path         []int
 	Field, Ns, T string
 	Args         Arguments
+	Control      bool
 }
 
 // Handler describes a <a:handler> node.
@@ -112,4 +113,5 @@ type Component struct {
 	Template      *html.Node
 	NeedsList     bool
 	NeedsOptional bool
+	Init          bool
 }

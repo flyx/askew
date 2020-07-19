@@ -21,6 +21,7 @@ type Collector interface {
 type Component struct {
 	Name   string
 	Params []data.ComponentParam
+	Init   bool
 }
 
 func (t *Component) collect(name, val string) error {
@@ -32,6 +33,9 @@ func (t *Component) collect(name, val string) error {
 		var err error
 		t.Params, err = parsers.ParseParameters(val)
 		return err
+	case "init":
+		t.Init = true
+		return nil
 	}
 	return invalidAttribute(name)
 }
@@ -55,6 +59,7 @@ type Embed struct {
 	List, Optional bool
 	T, Name        string
 	Args           data.Arguments
+	Control        bool
 }
 
 func (e *Embed) collect(name, val string) error {
@@ -75,6 +80,9 @@ func (e *Embed) collect(name, val string) error {
 		var err error
 		e.Args, err = parsers.AnalyseArguments(val)
 		return err
+	case "control":
+		e.Control = true
+		return nil
 	}
 	return invalidAttribute(name)
 }

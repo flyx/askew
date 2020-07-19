@@ -53,6 +53,11 @@
 	<h1>EmbedTest</h1>
 </a:macro>
 
+<a:component name="HerpBtn">
+  <a:controller>click()</a:controller>
+	<button a:capture="click:click">Herp</button>
+</a:component>
+
 <a:component name="Herp">
-	<p>Herp</p>
+  <a:embed name="Button" type="HerpBtn" control></a:embed>
 </a:component>

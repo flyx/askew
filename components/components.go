@@ -42,7 +42,7 @@ func (p *Processor) Process(n *html.Node) (descend bool,
 		Data: "template"}
 	cmp := &data.Component{EmbedHost: data.EmbedHost{},
 		Name: cmpAttrs.Name, Template: replacement,
-		Parameters: cmpAttrs.Params}
+		Parameters: cmpAttrs.Params, Init: cmpAttrs.Init}
 	p.syms.CurHost = &cmp.EmbedHost
 	(*p.counter)++
 	cmp.ID = fmt.Sprintf("askew-component-%d-%s", *p.counter, strings.ToLower(cmpAttrs.Name))
@@ -107,17 +107,24 @@ func resolveEmbed(n *html.Node, syms *data.Symbols, indexList []int) (data.Embed
 	if err := attributes.Collect(n, &attrs); err != nil {
 		return data.Embed{}, err
 	}
+
 	e := data.Embed{Kind: data.DirectEmbed, Path: append([]int(nil), indexList...),
-		Field: attrs.Name}
+		Field: attrs.Name, Control: attrs.Control}
 	if e.Field == "" {
 		return data.Embed{}, errors.New(": attribute `name` missing")
 	}
 	if attrs.List {
+		if attrs.Control {
+			return data.Embed{}, errors.New(": cannot mix `control` and `list`")
+		}
 		e.Kind = data.ListEmbed
 	}
 	if attrs.Optional {
 		if e.Kind != data.DirectEmbed {
 			return data.Embed{}, errors.New(": cannot mix `list` and `optional`")
+		}
+		if attrs.Control {
+			return data.Embed{}, errors.New(": cannot max `optional` and `control`")
 		}
 		e.Kind = data.OptionalEmbed
 	}
