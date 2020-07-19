@@ -59,5 +59,8 @@
 </a:component>
 
 <a:component name="Herp">
+  <a:data>
+	  count int
+	</a:data>
   <a:embed name="Button" type="HerpBtn" control></a:embed>
 </a:component>

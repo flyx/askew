@@ -208,6 +208,9 @@ type {{.Name}} struct {
 	{{- range .Variables }}
 	{{.Variable.Name}} runtime.{{Wrapper .Variable.Type}}
 	{{- end}}
+	{{- range $name, $type := .Fields}}
+	{{$name}} {{$type}}
+	{{- end}}
 	{{- range .Embeds }}
 	{{.Field}} {{FieldType .}}
 	{{- end}}

@@ -26,8 +26,8 @@ func (md *macroDiscovery) Process(n *html.Node) (descend bool, replacement *html
 		}
 	}
 	sd := slotDiscovery{slots: make([]data.Slot, 0, 16), syms: md.syms}
-	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{},
-		AText: walker.Allow{},
+	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{},
+		Text:  walker.Allow{},
 		Embed: walker.Allow{}, Include: &includeProcessor{md.syms}, Slot: &sd}
 
 	first, last, err := w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
@@ -54,8 +54,8 @@ func (sd *slotDiscovery) Process(n *html.Node) (descend bool, replacement *html.
 	}
 	sd.slots = append(sd.slots, data.Slot{Name: name, Node: n})
 
-	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{},
-		AText: walker.Allow{}, Include: &includeProcessor{sd.syms}}
+	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{},
+		Text: walker.Allow{}, Include: &includeProcessor{sd.syms}}
 	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return false, nil, err
 }
@@ -76,7 +76,7 @@ func (ip *includeProcessor) Process(n *html.Node) (descend bool, replacement *ht
 
 	vm := valueMapper{slots: m.Slots, values: make([]*html.Node, len(m.Slots)),
 		syms: ip.syms}
-	w := walker.Walker{Text: walker.WhitespaceOnly{}, StdElements: &vm}
+	w := walker.Walker{TextNode: walker.WhitespaceOnly{}, StdElements: &vm}
 	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	if err != nil {
 		return
@@ -86,7 +86,7 @@ func (ip *includeProcessor) Process(n *html.Node) (descend bool, replacement *ht
 		slots: m.Slots, values: vm.values}
 	ec := elmCopier{&instantiator}
 	instantiator.w =
-		walker.Walker{Text: textCopier{}, StdElements: &ec, AText: &ec,
+		walker.Walker{TextNode: textCopier{}, StdElements: &ec, Text: &ec,
 			Slot: &slotReplacer{&instantiator}}
 	replacement, _, err = instantiator.w.WalkChildren(nil, &walker.Siblings{Cur: m.First})
 	return
@@ -122,8 +122,8 @@ func (vm *valueMapper) Process(n *html.Node) (descend bool, replacement *html.No
 	if !found {
 		return false, nil, errors.New(": unknown slot `" + iAttrs.Slot + "`")
 	}
-	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{},
-		AText: walker.Allow{}, Embed: walker.Allow{},
+	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{},
+		Text: walker.Allow{}, Embed: walker.Allow{},
 		Include: &includeProcessor{vm.syms}}
 	replacement, _, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return
@@ -182,8 +182,9 @@ type componentDescender struct {
 }
 
 func (cd *componentDescender) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
-	w := walker.Walker{Text: walker.Allow{}, StdElements: walker.Allow{}, Include: &includeProcessor{cd.syms},
-		Handlers: walker.Allow{}, AController: walker.Allow{}, Embed: walker.Allow{}, AText: walker.Allow{}}
+	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{}, Include: &includeProcessor{cd.syms},
+		Handlers: walker.Allow{}, Controller: walker.Allow{}, Data: walker.Allow{},
+		Embed: walker.Allow{}, Text: walker.Allow{}}
 	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return false, nil, err
 }
@@ -199,8 +200,8 @@ func processMacros(nodes []*html.Node, syms *data.Symbols) (dummyParent *html.No
 	if len(nodes) > 0 {
 		dummyParent.FirstChild = nodes[0]
 		dummyParent.LastChild = nodes[len(nodes)-1]
-		w := walker.Walker{Text: walker.WhitespaceOnly{}, Component: &componentDescender{syms: syms},
-			Macro: &macroDiscovery{syms: syms}, AImport: importRemover{}}
+		w := walker.Walker{TextNode: walker.WhitespaceOnly{}, Component: &componentDescender{syms: syms},
+			Macro: &macroDiscovery{syms: syms}, Import: importRemover{}}
 		_, _, err = w.WalkChildren(dummyParent, &walker.NodeSlice{Items: nodes})
 	}
 	return

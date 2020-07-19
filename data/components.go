@@ -105,6 +105,7 @@ type Component struct {
 	// HTML id. internally generated.
 	ID         string
 	Variables  []VariableMapping
+	Fields     map[string]*ParamType
 	Handlers   map[string]Handler
 	Controller map[string]ControllerMethod
 	Captures   []Capture

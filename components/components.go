@@ -50,10 +50,11 @@ func (p *Processor) Process(n *html.Node) (descend bool,
 
 	var indexList []int
 	w := walker.Walker{
-		Text: walker.Allow{}, AText: &aTextProcessor{&cmp.Block, &indexList},
+		TextNode: walker.Allow{}, Text: &aTextProcessor{&cmp.Block, &indexList},
 		Embed:       &EmbedProcessor{p.syms, &indexList},
 		Handlers:    &handlersProcessor{p.syms, cmp, &indexList},
-		AController: &controllerProcessor{p.syms, cmp, &indexList},
+		Controller:  &controllerProcessor{p.syms, cmp, &indexList},
+		Data:        &aDataProcessor{cmp, &indexList},
 		StdElements: &componentElementHandler{stdElementHandler{p.syms, &indexList, &cmp.Block, -1, nil}, cmp},
 		IndexList:   &indexList}
 	replacement.FirstChild, replacement.LastChild, err = w.WalkChildren(
@@ -272,6 +273,30 @@ func (cp *controllerProcessor) Process(n *html.Node) (descend bool,
 	return
 }
 
+type aDataProcessor struct {
+	component *data.Component
+	indexList *[]int
+}
+
+func (dp *aDataProcessor) Process(n *html.Node) (descend bool,
+	replacement *html.Node, err error) {
+	if dp.component.Fields != nil {
+		return false, nil, errors.New(": duplicate a:data for component")
+	}
+	if len(*dp.indexList) != 1 {
+		return false, nil, errors.New(": must be defined as direct child of <a:component>")
+	}
+	def := n.FirstChild
+	if def.Type != html.TextNode || def.NextSibling != nil {
+		return false, nil, errors.New(": must have plain text as content and nothing else")
+	}
+	dp.component.Fields, err = parsers.ParseFields(def.Data)
+	if err != nil {
+		return false, nil, errors.New(": unable to parse fields: " + err.Error())
+	}
+	return false, nil, nil
+}
+
 type formValue struct {
 	t     data.VariableType
 	radio bool
@@ -325,9 +350,9 @@ func (d *formValueDiscovery) Process(n *html.Node) (descend bool, replacement *h
 
 func discoverFormValues(form *html.Node) (map[string]formValue, error) {
 	fvd := formValueDiscovery{values: make(map[string]formValue)}
-	w := walker.Walker{Text: walker.Allow{}, Embed: walker.DontDescend{},
+	w := walker.Walker{TextNode: walker.Allow{}, Embed: walker.DontDescend{},
 		Handlers: walker.DontDescend{},
-		AText:    walker.Allow{}, StdElements: &fvd}
+		Text:     walker.Allow{}, StdElements: &fvd}
 	var err error
 	form.FirstChild, form.LastChild, err = w.WalkChildren(form, &walker.Siblings{Cur: form.FirstChild})
 	if err != nil {
@@ -530,7 +555,7 @@ func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, at
 		cp.processAssignments(attrs.Assign, []int{})
 
 		w := walker.Walker{
-			Text: walker.Allow{}, AText: &aTextProcessor{&block.Block, &indexList},
+			TextNode: walker.Allow{}, Text: &aTextProcessor{&block.Block, &indexList},
 			Embed:       &EmbedProcessor{seh.syms, &indexList},
 			StdElements: cp,
 			IndexList:   &indexList}

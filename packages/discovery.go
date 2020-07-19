@@ -87,10 +87,10 @@ func Discover() (*data.BaseDir, error) {
 		}
 
 		w := walker.Walker{
-			AImport:   &importHandler{file: file},
+			Import:    &importHandler{file: file},
 			Component: walker.DontDescend{},
 			Macro:     walker.DontDescend{},
-			Text:      walker.WhitespaceOnly{}}
+			TextNode:  walker.WhitespaceOnly{}}
 		_, _, err = w.WalkChildren(nil, &walker.NodeSlice{Items: file.Content})
 		if err != nil {
 			return fmt.Errorf("%s: %s", path, err.Error())

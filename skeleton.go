@@ -91,8 +91,8 @@ func readSkeleton(syms *data.Symbols, path string) (*data.Skeleton, error) {
 	syms.CurPkg = ""
 	syms.CurFile = &data.File{}
 
-	w := walker.Walker{Text: walker.Allow{}, Templates: &templateInjector{syms, false},
-		StdElements: walker.Allow{}, AImport: &importHandler{syms, s},
+	w := walker.Walker{TextNode: walker.Allow{}, Templates: &templateInjector{syms, false},
+		StdElements: walker.Allow{}, Import: &importHandler{syms, s},
 		Embed: components.NewEmbedProcessor(syms, &indexList), IndexList: &indexList}
 	root.FirstChild, root.LastChild, err = w.WalkChildren(root, &walker.Siblings{Cur: root.FirstChild})
 	if err != nil {

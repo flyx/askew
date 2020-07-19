@@ -25,7 +25,7 @@ type NodeHandler interface {
 // NodeHandler must be registered for that element to be valid. for each
 // standard HTML element, a NodeHandler may be registered.
 type Walker struct {
-	AImport     NodeHandler
+	Import      NodeHandler
 	Macro       NodeHandler
 	Component   NodeHandler
 	Slot        NodeHandler
@@ -34,9 +34,10 @@ type Walker struct {
 	Handlers    NodeHandler
 	Templates   NodeHandler
 	StdElements NodeHandler
+	TextNode    NodeHandler
 	Text        NodeHandler
-	AText       NodeHandler
-	AController NodeHandler
+	Controller  NodeHandler
+	Data        NodeHandler
 	IndexList   *[]int
 }
 
@@ -45,10 +46,10 @@ func (w *Walker) walk(n *html.Node, nodesCount map[string]int) (replacement *htm
 	case html.ErrorNode:
 		return nil, errors.New(": encountered error node: " + n.Data)
 	case html.TextNode:
-		if w.Text == nil {
+		if w.TextNode == nil {
 			return nil, errors.New(": text content not allowed here")
 		}
-		_, replacement, err = w.Text.Process(n)
+		_, replacement, err = w.TextNode.Process(n)
 		return
 	case html.ElementNode:
 		break
@@ -75,7 +76,7 @@ func (w *Walker) processElement(n *html.Node) (replacement *html.Node, err error
 	if n.DataAtom == 0 {
 		switch n.Data {
 		case "a:import":
-			h = w.AImport
+			h = w.Import
 		case "a:macro":
 			h = w.Macro
 		case "a:component":
@@ -91,9 +92,11 @@ func (w *Walker) processElement(n *html.Node) (replacement *html.Node, err error
 		case "a:templates":
 			h = w.Templates
 		case "a:text":
-			h = w.AText
+			h = w.Text
 		case "a:controller":
-			h = w.AController
+			h = w.Controller
+		case "a:data":
+			h = w.Data
 		default:
 			return nil, errors.New(": unknown element")
 		}
