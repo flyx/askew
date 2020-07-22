@@ -220,9 +220,6 @@ type {{.Name}} struct {
 func New{{.Name}}({{GenComponentParams .Parameters}}) *{{.Name}} {
 	ret := new({{.Name}})
 	ret.Init({{ListParamVars .Parameters}})
-	{{- if .Init}}
-	ret.init()
-	{{- end}}
 	return ret
 }
 
@@ -313,6 +310,9 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		}
 		{{- end}}
 	}
+	{{- end}}
+	{{- if .Init}}
+	o.init({{ListParamVars .Parameters}})
 	{{- end}}
 }
 
