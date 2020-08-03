@@ -14,25 +14,14 @@ import (
 func main() {
 	output := getopt.StringLong(
 		"outputDir", 'o', ".", "output directory for index.html")
-	initPath := getopt.StringLong(
-		"initPath", 'i', "init.go", "path where the Go initialization code should be written to")
-	initPkg := getopt.StringLong(
-		"initPkg", 'p', "main", "name of the package for the Go initialization code")
-	skeletonPath := getopt.StringLong(
-		"skeletonPath", 's', "", "path to the skeleton HTML file")
+	basePath := getopt.StringLong(
+		"base", 'b', "", "relative path to the base package. must contain skeleton.html")
+	basePkg := getopt.StringLong("basePkg", 'p', "", "name of the base package. will be derived from path if missing.")
 	getopt.Parse()
 	var err error
 	outputDirPath, err := filepath.Abs(*output)
 	if err != nil {
 		panic(err)
-	}
-	if *skeletonPath == "" {
-		// will be resolved relative to given working path
-		*skeletonPath = "skeleton.html"
-	} else {
-		if *skeletonPath, err = filepath.Abs(*skeletonPath); err != nil {
-			panic(err)
-		}
 	}
 
 	args := getopt.Args()
@@ -90,11 +79,17 @@ func main() {
 	}
 
 	var s *data.Skeleton
-	if s, err = readSkeleton(&p.syms, *skeletonPath); err != nil {
+	if s, err = readSkeleton(&p.syms, base.ImportPath, *basePath); err != nil {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)
 	}
 
+	if *basePkg == "" {
+		abs, _ := filepath.Abs(*basePath)
+		*basePkg = filepath.Base(abs)
+		os.Stdout.WriteString("[info] set base package to '" + *basePkg + "'\n")
+	}
+
 	os.Stdout.WriteString("[info] generating code\n")
-	p.dump(s, outputDirPath, *initPath, *initPkg)
+	p.dump(s, outputDirPath, *basePath, *basePkg)
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/flyx/askew/components"
 
@@ -69,18 +70,20 @@ func (ih *importHandler) Process(n *html.Node) (descend bool, replacement *html.
 	return false, &html.Node{Type: html.CommentNode, Data: "import"}, nil
 }
 
-func readSkeleton(syms *data.Symbols, path string) (*data.Skeleton, error) {
-	raw, err := ioutil.ReadFile(path)
+func readSkeleton(syms *data.Symbols, importPath, path string) (*data.Skeleton, error) {
+	skeletonPath := filepath.Join(path, "skeleton.html")
+
+	raw, err := ioutil.ReadFile(skeletonPath)
 	if err != nil {
 		return nil, err
 	}
-	os.Stdout.WriteString("[info] processing skeleton file " + path + "\n")
+	os.Stdout.WriteString("[info] processing skeleton file " + skeletonPath + "\n")
 	root, err := html.Parse(bytes.NewReader(raw))
 	if err != nil {
-		return nil, errors.New(path + ": " + err.Error())
+		return nil, errors.New(skeletonPath + ": " + err.Error())
 	}
 	if root.Type != html.DocumentNode {
-		return nil, errors.New(path + ": HTML document is not a DocumentNode")
+		return nil, errors.New(skeletonPath + ": HTML document is not a DocumentNode")
 	}
 
 	indexList := make([]int, 0, 32)
@@ -88,7 +91,7 @@ func readSkeleton(syms *data.Symbols, path string) (*data.Skeleton, error) {
 	s := &data.Skeleton{EmbedHost: data.EmbedHost{}, Root: root}
 
 	syms.CurHost = &s.EmbedHost
-	syms.CurPkg = ""
+	syms.CurPkg = filepath.ToSlash(filepath.Join(importPath, path))
 	syms.CurFile = &data.File{}
 
 	w := walker.Walker{TextNode: walker.Allow{}, Templates: &templateInjector{syms, false},
@@ -96,7 +99,7 @@ func readSkeleton(syms *data.Symbols, path string) (*data.Skeleton, error) {
 		Embed: components.NewEmbedProcessor(syms, &indexList), IndexList: &indexList}
 	root.FirstChild, root.LastChild, err = w.WalkChildren(root, &walker.Siblings{Cur: root.FirstChild})
 	if err != nil {
-		return nil, errors.New(path + ": " + err.Error())
+		return nil, errors.New(skeletonPath + ": " + err.Error())
 	}
 
 	tmp := make([]data.Embed, len(s.Embeds))

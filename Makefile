@@ -5,7 +5,7 @@ askew:
 	go build
 
 run-askew: askew test/site
-	./askew -o test/site test
+	./askew -o test/site -p main test
 
 .PHONY: askew test-run-askew test
 

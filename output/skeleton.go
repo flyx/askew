@@ -1,6 +1,7 @@
 package output
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/flyx/askew/data"
@@ -25,5 +26,5 @@ func WriteSkeleton(syms *data.Symbols, path string, pkgName string, s *data.Skel
 		panic(err)
 	}
 
-	writeFormatted(b.String(), path)
+	writeFormatted(b.String(), filepath.Join(path, "init.go"))
 }
