@@ -491,10 +491,10 @@ var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
 {{if .VarName}}
 // {{.VarName}} holds the embedded components of the document's skeleton
 var {{.VarName}} = struct {
-	{{range .Embeds}}
+	{{- range .Embeds}}
 		// {{.Field}} is part of the main document.
 		{{- if eq .Kind 0}}
-			{{.Field}} {{with .Ns}}{{.}}.{{end}}{{.T}}
+			{{.Field}} *{{with .Ns}}{{.}}.{{end}}{{.T}}
 		{{- else if eq .Kind 1}}
 			{{- if .T}}
 				{{.Field}} {{with .Ns}}{{.}}.{{end}}{{.T}}List
@@ -510,7 +510,7 @@ var {{.VarName}} = struct {
 		{{- end}}
 	{{- end -}}
 }{
-	{{range .Embeds}}
+	{{- range .Embeds}}
 		{{- if eq .Kind 0}}
 			{{.Field}}: {{with .Ns}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}}),
 		{{- else if eq .Kind 1}}
