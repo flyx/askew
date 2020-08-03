@@ -16,6 +16,8 @@ func main() {
 		"outputDir", 'o', ".", "output directory for index.html")
 	initPath := getopt.StringLong(
 		"initPath", 'i', "init.go", "path where the Go initialization code should be written to")
+	initPkg := getopt.StringLong(
+		"initPkg", 'p', "main", "name of the package for the Go initialization code")
 	skeletonPath := getopt.StringLong(
 		"skeletonPath", 's', "", "path to the skeleton HTML file")
 	getopt.Parse()
@@ -94,5 +96,5 @@ func main() {
 	}
 
 	os.Stdout.WriteString("[info] generating code\n")
-	p.dump(s, outputDirPath, *initPath)
+	p.dump(s, outputDirPath, *initPath, *initPkg)
 }

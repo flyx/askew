@@ -12,12 +12,12 @@ type skeletonWriter struct {
 }
 
 // WriteSkeleton writes the the go file that initializes embeds in the skeletons.
-func WriteSkeleton(syms *data.Symbols, path string, s *data.Skeleton) {
+func WriteSkeleton(syms *data.Symbols, path string, pkgName string, s *data.Skeleton) {
 	b := strings.Builder{}
 	if err := fileHeader.Execute(&b, struct {
 		PackageName string
 		Imports     map[string]string
-	}{"main", s.Imports}); err != nil {
+	}{pkgName, s.Imports}); err != nil {
 		panic(err)
 	}
 
