@@ -69,7 +69,7 @@ func (p *processor) processComponents(pkgName string) error {
 	return nil
 }
 
-func (p *processor) dump(skeleton *data.Skeleton, outputPath, basePath string, basePkg string) {
+func (p *processor) dump(skeleton *data.Skeleton, outputPath, basePath string, basePkg, skeletonVarName string) {
 	htmlFile, err := os.Create(filepath.Join(outputPath, "index.html"))
 	if err != nil {
 		panic("unable to write HTML output: " + err.Error())
@@ -101,6 +101,6 @@ func (p *processor) dump(skeleton *data.Skeleton, outputPath, basePath string, b
 	}
 
 	if skeleton != nil {
-		output.WriteSkeleton(&p.syms, basePath, basePkg, skeleton)
+		output.WriteSkeleton(&p.syms, basePath, basePkg, skeletonVarName, skeleton)
 	}
 }

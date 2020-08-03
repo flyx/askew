@@ -24,8 +24,8 @@ func main() {
 	first.Heading.Set("First Form")
 	first.Name.Set("First")
 	first.Age.Set(42)
-	first.Controller = &handler{}
 	Forms.Forms.Append(first)
+	first.Controller = &handler{}
 
 	second := ui.NewNameForm(2)
 	second.Heading.Set("Second Form")

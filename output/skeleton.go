@@ -13,7 +13,7 @@ type skeletonWriter struct {
 }
 
 // WriteSkeleton writes the the go file that initializes embeds in the skeletons.
-func WriteSkeleton(syms *data.Symbols, path string, pkgName string, s *data.Skeleton) {
+func WriteSkeleton(syms *data.Symbols, path string, pkgName, skeletonVarName string, s *data.Skeleton) {
 	b := strings.Builder{}
 	if err := fileHeader.Execute(&b, struct {
 		PackageName string
@@ -22,7 +22,10 @@ func WriteSkeleton(syms *data.Symbols, path string, pkgName string, s *data.Skel
 		panic(err)
 	}
 
-	if err := skeleton.Execute(&b, s); err != nil {
+	if err := skeleton.Execute(&b, struct {
+		*data.Skeleton
+		VarName string
+	}{Skeleton: s, VarName: skeletonVarName}); err != nil {
 		panic(err)
 	}
 

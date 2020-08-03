@@ -488,35 +488,78 @@ var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
 	"PathItems": pathItems,
 	"Last":      last,
 }).Parse(`
-{{range .Embeds}}
-// {{.Field}} is part of the main document.
-{{- if eq .Kind 0}}
-var {{.Field}} = {{.Ns}}.New{{.T}}({{.Args.Raw}})
-{{- else if eq .Kind 1}}
-{{- if .T}}
-var {{.Field}} {{.Ns}}.{{.T}}List
+{{if .VarName}}
+// {{.VarName}} holds the embedded components of the document's skeleton
+var {{.VarName}} = struct {
+	{{range .Embeds}}
+		// {{.Field}} is part of the main document.
+		{{- if eq .Kind 0}}
+			{{.Field}} {{with .Ns}}{{.}}.{{end}}{{.T}}
+		{{- else if eq .Kind 1}}
+			{{- if .T}}
+				{{.Field}} {{with .Ns}}{{.}}.{{end}}{{.T}}List
+			{{- else}}
+				{{.Field}} runtime.GenericList
+			{{- end}}
+		{{- else}}
+			{{- if .T}}
+				{{.Field}} {{with .Ns}}{{.}}.{{end}}Optional{{.T}}
+			{{- else}}
+				{{.Field}} runtime.GenericOptional
+			{{- end}}
+		{{- end}}
+	{{- end -}}
+}{
+	{{range .Embeds}}
+		{{- if eq .Kind 0}}
+			{{.Field}}: {{with .Ns}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}}),
+		{{- else if eq .Kind 1}}
+			{{- if .T}}
+				{{.Field}}: {{with .Ns}}{{.}}.{{end}}{{.T}}List{},
+			{{- else}}
+				{{.Field}}: runtime.GenericList{},
+			{{- end}}
+		{{- else}}
+			{{- if .T}}
+				{{.Field}}: {{with .Ns}}{{.}}.{{end}}Optional{{.T}}{},
+			{{- else}}
+				{{.Field}}: runtime.GenericOptional{},
+			{{- end}}
+		{{- end}}
+	{{- end}}
+}
 {{- else}}
-var {{.Field}} runtime.GenericList
-{{- end}}
-{{- else}}
-{{- if .T}}
-var {{.Field}} {{.Ns}}.Optional{{.T}}
-{{- else}}
-var {{.Field}} runtime.GenericOptional
-{{- end}}
-{{- end}}
+	{{range .Embeds}}
+		// {{.Field}} is part of the main document.
+		{{- if eq .Kind 0}}
+			var {{.Field}} = {{with .Ns}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}})
+		{{- else if eq .Kind 1}}
+			{{- if .T}}
+				var {{.Field}} {{with .Ns}}{{.}}.{{end}}{{.T}}List
+			{{- else}}
+				var {{.Field}} runtime.GenericList
+			{{- end}}
+		{{- else}}
+			{{- if .T}}
+				var {{.Field}} {{with .Ns}}{{.}}.{{end}}Optional{{.T}}
+			{{- else}}
+				var {{.Field}} runtime.GenericOptional
+			{{- end}}
+		{{- end}}
+	{{- end}}
 {{- end}}
 
+{{$varName := .VarName}}
 func init() {
 	document := js.Global.Get("document")
 	{{- range .Embeds}}
 	{{- if eq .Kind 0}}
 	{
 		container := runtime.WalkPath(document, {{PathItems .Path 1}})
-		{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
+		{{with $varName}}{{.}}.{{end}}{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
 	}
 	{{- else}}
-	{{.Field}}.Init(runtime.WalkPath(document, {{PathItems .Path 1}}), {{Last .Path}})
+	{{with $varName}}{{.}}.{{end}}{{.Field}}.Init(runtime.WalkPath(document, {{PathItems .Path 1}}), {{Last .Path}})
 	{{- end}}
 	{{- end}}
 }

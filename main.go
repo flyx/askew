@@ -17,6 +17,7 @@ func main() {
 	basePath := getopt.StringLong(
 		"base", 'b', "", "relative path to the base package. must contain skeleton.html")
 	basePkg := getopt.StringLong("basePkg", 'p', "", "name of the base package. will be derived from path if missing.")
+	skeletonVarName := getopt.StringLong("skeletonVarName", 's', "", "name of the global variable containing the variables of the components embedded in the skeleton. If empty, each embed creates a global variable directly.")
 	getopt.Parse()
 	var err error
 	outputDirPath, err := filepath.Abs(*output)
@@ -91,5 +92,5 @@ func main() {
 	}
 
 	os.Stdout.WriteString("[info] generating code\n")
-	p.dump(s, outputDirPath, *basePath, *basePkg)
+	p.dump(s, outputDirPath, *basePath, *basePkg, *skeletonVarName)
 }
