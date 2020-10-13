@@ -6,18 +6,48 @@ import (
 	"strings"
 )
 
-// EmbedHost is an entity that allows embedding components.
-type EmbedHost struct {
-	Embeds []Embed
+// Unit is a top-level named unit (either the main site or <a:component>)
+// that may have embedded components.
+type Unit struct {
+	Block
+
+	Variables []VariableMapping
+	Embeds    []Embed
 }
 
 // Symbols is the context of the procesor. It stores all seen symbols along
 // with the packages they are declared in.
 type Symbols struct {
 	BaseDir
-	CurPkg  string
-	CurFile *File
-	CurHost *EmbedHost
+	CurPkg       string
+	curAskewFile *AskewFile
+	curAsiteFile *ASiteFile
+	CurUnit      *Unit
+}
+
+// SetAskewFile sets the currently processed file to be the given .askew file.
+func (s *Symbols) SetAskewFile(f *AskewFile) {
+	s.curAskewFile = f
+	s.curAsiteFile = nil
+}
+
+// SetASiteFile sets the currently processed file to be the given .asite file.
+func (s *Symbols) SetASiteFile(f *ASiteFile) {
+	s.curAskewFile = nil
+	s.curAsiteFile = f
+}
+
+// CurFile returns the currently processed file.
+func (s *Symbols) CurFile() *File {
+	if s.curAskewFile == nil {
+		return &s.curAsiteFile.File
+	}
+	return &s.curAskewFile.File
+}
+
+// CurAskewFile returns the currently processed .askew file.
+func (s *Symbols) CurAskewFile() *AskewFile {
+	return s.curAskewFile
 }
 
 // split takes an identifier consisting of a symbol name optionally
@@ -35,7 +65,7 @@ func (s *Symbols) split(id string) (pkg *Package, symName string, aliasName stri
 	if strings.LastIndexByte(aliasName, '.') != -1 {
 		return nil, "", "", errors.New("symbol id cannot include multiple '.': " + id)
 	}
-	pkgPath, ok := s.CurFile.Imports[aliasName]
+	pkgPath, ok := s.CurFile().Imports[aliasName]
 	if !ok {
 		return nil, "", "", fmt.Errorf("unknown namespace '%s' in id '%s'", aliasName, id)
 	}

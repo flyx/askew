@@ -15,6 +15,7 @@ import (
 	"github.com/flyx/askew/walker"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 func findBasePath() (string, error) {
@@ -51,6 +52,44 @@ func findBasePath() (string, error) {
 	}
 }
 
+type suffix int
+
+const (
+	dotAskew suffix = iota
+	dotAsite
+	dotOther
+)
+
+func fileKind(name string) suffix {
+	lower := strings.ToLower(name)
+
+	if strings.HasSuffix(lower, ".askew") {
+		return dotAskew
+	}
+	if strings.HasSuffix(lower, ".asite") {
+		return dotAsite
+	}
+	return dotOther
+}
+
+func descend(start *html.Node, path []atom.Atom) (*html.Node, error) {
+	cur := start
+	for _, a := range path {
+		found := false
+		for c := cur.FirstChild; c != nil; c = c.NextSibling {
+			if c.DataAtom == a {
+				cur = c
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, errors.New("missing HTML element: " + a.String())
+		}
+	}
+	return cur, nil
+}
+
 // Discover searches for a go.mod in the cwd, then walks through the file system
 // to discover .askew files.
 // For each file, the imports are parsed.
@@ -64,7 +103,8 @@ func Discover() (*data.BaseDir, error) {
 
 	ret.Packages = make(map[string]*data.Package)
 	err = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() || !strings.HasSuffix(info.Name(), ".askew") {
+		kind := fileKind(info.Name())
+		if info.IsDir() || kind == dotOther {
 			return nil
 		}
 		os.Stdout.WriteString("[info] discovered: " + path + "\n")
@@ -72,7 +112,7 @@ func Discover() (*data.BaseDir, error) {
 		pkgPath := filepath.ToSlash(filepath.Join(ret.ImportPath, relPath))
 		pkg, ok := ret.Packages[pkgPath]
 		if !ok {
-			pkg = &data.Package{Files: make([]*data.File, 0, 32), Path: relPath}
+			pkg = &data.Package{Files: make([]*data.AskewFile, 0, 32), Path: relPath}
 			ret.Packages[pkgPath] = pkg
 		}
 
@@ -80,22 +120,79 @@ func Discover() (*data.BaseDir, error) {
 		if err != nil {
 			return err
 		}
-		file := &data.File{BaseName: info.Name()[:len(info.Name())-6], Path: path}
-		file.Content, err = html.ParseFragment(bytes.NewReader(contents), &data.BodyEnv)
-		if err != nil {
-			return fmt.Errorf("%s: %s", path, err.Error())
+
+		baseName := info.Name()[:len(info.Name())-6]
+		if kind == dotAskew {
+			askewFile := &data.AskewFile{File: data.File{BaseName: baseName, Path: path}}
+			askewFile.Content, err = html.ParseFragment(bytes.NewReader(contents), &data.BodyEnv)
+			if err != nil {
+				return fmt.Errorf("%s: %s", path, err.Error())
+			}
+			w := walker.Walker{
+				Import:    &importHandler{file: &askewFile.File},
+				Component: walker.DontDescend{},
+				Macro:     walker.DontDescend{},
+				TextNode:  walker.WhitespaceOnly{}}
+			_, _, err = w.WalkChildren(nil, &walker.NodeSlice{Items: askewFile.Content})
+			if err != nil {
+				return fmt.Errorf("%s: %s", path, err.Error())
+			}
+			pkg.Files = append(pkg.Files, askewFile)
+		} else {
+			if pkg.Site != nil {
+				return fmt.Errorf("%s: a package cannot contain multiple sites", path)
+			}
+
+			asiteFile := &data.ASiteFile{File: data.File{BaseName: baseName, Path: path}}
+			asiteFile.Document, err = html.Parse(bytes.NewReader(contents))
+			if err != nil {
+				return fmt.Errorf("%s: %s", path, err.Error())
+			}
+			if asiteFile.Document.Type != html.DocumentNode ||
+				asiteFile.Document.FirstChild.Type != html.DoctypeNode {
+				return fmt.Errorf("%s: does not contain a complete HTML 5 document (doctype missing?)", path)
+			}
+			if asiteFile.Document.FirstChild.NextSibling.Type != html.ElementNode {
+				return fmt.Errorf("%s: root is not a proper <html> node", path)
+			}
+			w := walker.Walker{
+				Import:   &importHandler{file: &asiteFile.File},
+				TextNode: walker.WhitespaceOnly{}}
+			body, err := descend(asiteFile.Document, []atom.Atom{atom.Html, atom.Body})
+			if err != nil {
+				return fmt.Errorf("%s: %s", path, err.Error())
+			}
+			for c := body.FirstChild; c != nil; c = c.NextSibling {
+				if c.Data == "a:site" {
+					if asiteFile.Descriptor != nil {
+						return fmt.Errorf("%s: duplicate <a:site> element", path)
+					}
+					_, _, err = w.WalkChildren(nil, &walker.Siblings{Cur: c.FirstChild})
+					if err != nil {
+						return fmt.Errorf("%s: %s", path, err.Error())
+					}
+					asiteFile.Descriptor = c
+					if c.NextSibling != nil {
+						c.NextSibling.PrevSibling = c.PrevSibling
+					} else {
+						c.Parent.LastChild = c.PrevSibling
+					}
+					if c.PrevSibling != nil {
+						c.PrevSibling.NextSibling = c.NextSibling
+					} else {
+						c.Parent.FirstChild = c.NextSibling
+					}
+				}
+			}
+			if asiteFile.Descriptor == nil {
+				return fmt.Errorf("%s: missing <a:site> in /html/body", path)
+			}
+			asiteFile.Descriptor.NextSibling = nil
+			asiteFile.Descriptor.PrevSibling = nil
+			asiteFile.Descriptor.Parent = nil
+			pkg.Site = asiteFile
 		}
 
-		w := walker.Walker{
-			Import:    &importHandler{file: file},
-			Component: walker.DontDescend{},
-			Macro:     walker.DontDescend{},
-			TextNode:  walker.WhitespaceOnly{}}
-		_, _, err = w.WalkChildren(nil, &walker.NodeSlice{Items: file.Content})
-		if err != nil {
-			return fmt.Errorf("%s: %s", path, err.Error())
-		}
-		pkg.Files = append(pkg.Files, file)
 		return nil
 	})
 	if err != nil {

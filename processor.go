@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/flyx/askew/components"
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/output"
-	"github.com/flyx/askew/walker"
+	"github.com/flyx/askew/units"
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/net/html"
@@ -31,7 +30,7 @@ func (p *processor) processMacros(pkgName string) error {
 	for _, file := range pkg.Files {
 		var err error
 
-		p.syms.CurFile = file
+		p.syms.SetAskewFile(file)
 		os.Stdout.WriteString("[info] processing macros: " + file.Path + "\n")
 		var dummyParent *html.Node
 		if dummyParent, err = processMacros(file.Content, &p.syms); err != nil {
@@ -58,36 +57,17 @@ func (p *processor) processComponents(pkgName string) error {
 	p.syms.CurPkg = pkgName
 	pkg := p.syms.Packages[pkgName]
 	for _, file := range pkg.Files {
-		p.syms.CurFile = file
-		os.Stdout.WriteString("[info] processing components: " + file.Path + "\n")
-		w := walker.Walker{TextNode: walker.WhitespaceOnly{}, Component: components.NewProcessor(&p.syms, &p.counter)}
-		_, _, err := w.WalkChildren(nil, &walker.NodeSlice{Items: file.Content})
-		if err != nil {
-			return errors.New(file.Path + ": " + err.Error())
+		if err := units.ProcessFile(file, &p.syms, &p.counter); err != nil {
+			return err
 		}
+	}
+	if pkg.Site != nil {
+		return units.ProcessSite(pkg.Site, &p.syms)
 	}
 	return nil
 }
 
-func (p *processor) dump(skeleton *data.Skeleton, outputPath, basePath string, basePkg, skeletonVarName string) {
-	htmlFile, err := os.Create(filepath.Join(outputPath, "index.html"))
-	if err != nil {
-		panic("unable to write HTML output: " + err.Error())
-	}
-	if skeleton == nil {
-		for _, pkg := range p.syms.Packages {
-			for _, f := range pkg.Files {
-				for _, c := range f.Components {
-					html.Render(htmlFile, c.Template)
-				}
-			}
-		}
-	} else {
-		html.Render(htmlFile, skeleton.Root)
-	}
-
-	htmlFile.Close()
-
+func (p *processor) dump(outputPath string) error {
 	for pkgName, pkg := range p.syms.Packages {
 		w := output.PackageWriter{Syms: &p.syms, PackageName: filepath.Base(pkgName),
 			PackagePath: pkg.Path}
@@ -96,11 +76,15 @@ func (p *processor) dump(skeleton *data.Skeleton, outputPath, basePath string, b
 				"': " + err.Error())
 		}
 		for _, f := range pkg.Files {
-			w.WriteFile(f)
+			if err := w.WriteFile(f); err != nil {
+				return err
+			}
+		}
+		if pkg.Site != nil {
+			if err := w.WriteSite(pkg.Site, outputPath); err != nil {
+				return err
+			}
 		}
 	}
-
-	if skeleton != nil {
-		output.WriteSkeleton(&p.syms, basePath, basePkg, skeletonVarName, skeleton)
-	}
+	return nil
 }

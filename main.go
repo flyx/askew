@@ -6,18 +6,12 @@ import (
 
 	"github.com/flyx/askew/packages"
 
-	"github.com/flyx/askew/data"
-
 	"github.com/pborman/getopt/v2"
 )
 
 func main() {
 	output := getopt.StringLong(
 		"outputDir", 'o', ".", "output directory for index.html")
-	basePath := getopt.StringLong(
-		"base", 'b', "", "relative path to the base package. must contain skeleton.html")
-	basePkg := getopt.StringLong("basePkg", 'p', "", "name of the base package. will be derived from path if missing.")
-	skeletonVarName := getopt.StringLong("skeletonVarName", 's', "", "name of the global variable containing the variables of the components embedded in the skeleton. If empty, each embed creates a global variable directly.")
 	getopt.Parse()
 	var err error
 	outputDirPath, err := filepath.Abs(*output)
@@ -79,18 +73,9 @@ func main() {
 		}
 	}
 
-	var s *data.Skeleton
-	if s, err = readSkeleton(&p.syms, base.ImportPath, *basePath); err != nil {
+	os.Stdout.WriteString("[info] generating code\n")
+	if err := p.dump(outputDirPath); err != nil {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)
 	}
-
-	if *basePkg == "" {
-		abs, _ := filepath.Abs(*basePath)
-		*basePkg = filepath.Base(abs)
-		os.Stdout.WriteString("[info] set base package to '" + *basePkg + "'\n")
-	}
-
-	os.Stdout.WriteString("[info] generating code\n")
-	p.dump(s, outputDirPath, *basePath, *basePkg, *skeletonVarName)
 }

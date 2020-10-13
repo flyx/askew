@@ -126,20 +126,17 @@ type ControlBlock struct {
 
 // Component describes a <a:component> node.
 type Component struct {
-	EmbedHost
-	Block
-	Name string
+	Unit
 	// HTML id. internally generated.
-	ID         string
-	Variables  []VariableMapping
-	Fields     map[string]*ParamType
-	Handlers   map[string]Handler
-	Controller map[string]ControllerMethod
-	Captures   []Capture
-	Parameters []ComponentParam
-
+	ID            string
+	Name          string
+	Parameters    []ComponentParam
 	Template      *html.Node
 	NeedsList     bool
 	NeedsOptional bool
+	Fields        map[string]*ParamType
+	Handlers      map[string]Handler
+	Controller    map[string]ControllerMethod
+	Captures      []Capture
 	Init          bool
 }

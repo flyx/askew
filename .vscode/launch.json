@@ -11,7 +11,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}",
       "env": {},
-      "args": ["-o", "test/site", "-p", "main", "test"]
+      "args": ["-o", "test/site", "test"]
     }
   ]
 }

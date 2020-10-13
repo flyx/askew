@@ -551,15 +551,15 @@ var {{.VarName}} = struct {
 
 {{$varName := .VarName}}
 func init() {
-	document := js.Global.Get("document")
+	html := js.Global.Get("document").Get("childNodes").Index(1)
 	{{- range .Embeds}}
 	{{- if eq .Kind 0}}
 	{
-		container := runtime.WalkPath(document, {{PathItems .Path 1}})
+		container := runtime.WalkPath(html, {{PathItems .Path 1}})
 		{{with $varName}}{{.}}.{{end}}{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
 	}
 	{{- else}}
-	{{with $varName}}{{.}}.{{end}}{{.Field}}.Init(runtime.WalkPath(document, {{PathItems .Path 1}}), {{Last .Path}})
+	{{with $varName}}{{.}}.{{end}}{{.Field}}.Init(runtime.WalkPath(html, {{PathItems .Path 1}}), {{Last .Path}})
 	{{- end}}
 	{{- end}}
 }

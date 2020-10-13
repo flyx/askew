@@ -40,6 +40,23 @@ func (t *Component) collect(name, val string) error {
 	return invalidAttribute(name)
 }
 
+// Site lists the attributes of a site
+type Site struct {
+	JSFile, HTMLFile string
+}
+
+func (s *Site) collect(name, val string) error {
+	switch name {
+	case "htmlFile":
+		s.HTMLFile = val
+		return nil
+	case "jsFile":
+		s.JSFile = val
+		return nil
+	}
+	return invalidAttribute(name)
+}
+
 // IncludeChild collects the attributes on any node that is a child of
 // <a:include>.
 type IncludeChild struct {

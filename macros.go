@@ -34,10 +34,11 @@ func (md *macroDiscovery) Process(n *html.Node) (descend bool, replacement *html
 	if err != nil {
 		return false, nil, err
 	}
-	if md.syms.CurFile.Macros == nil {
-		md.syms.CurFile.Macros = make(map[string]data.Macro)
+	curFile := md.syms.CurAskewFile()
+	if curFile.Macros == nil {
+		curFile.Macros = make(map[string]data.Macro)
 	}
-	md.syms.CurFile.Macros[name] = data.Macro{Slots: sd.slots, First: first, Last: last}
+	curFile.Macros[name] = data.Macro{Slots: sd.slots, First: first, Last: last}
 	// removes the macro and stops parent walker from descending
 	return false, &html.Node{Type: html.TextNode, Data: ""}, nil
 }
@@ -177,11 +178,11 @@ func (sl *slotReplacer) Process(n *html.Node) (descend bool, replacement *html.N
 	return false, nil, errors.New("did not find matching slot (should never happen)")
 }
 
-type componentDescender struct {
+type unitDescender struct {
 	syms *data.Symbols
 }
 
-func (cd *componentDescender) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+func (cd *unitDescender) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{}, Include: &includeProcessor{cd.syms},
 		Handlers: walker.Allow{}, Controller: walker.Allow{}, Data: walker.Allow{},
 		Embed: walker.Allow{}, Construct: walker.Allow{}, Text: walker.Allow{}}
@@ -200,8 +201,11 @@ func processMacros(nodes []*html.Node, syms *data.Symbols) (dummyParent *html.No
 	if len(nodes) > 0 {
 		dummyParent.FirstChild = nodes[0]
 		dummyParent.LastChild = nodes[len(nodes)-1]
-		w := walker.Walker{TextNode: walker.WhitespaceOnly{}, Component: &componentDescender{syms: syms},
-			Macro: &macroDiscovery{syms: syms}, Import: importRemover{}}
+		w := walker.Walker{TextNode: walker.WhitespaceOnly{},
+			Component: &unitDescender{syms: syms},
+			Site:      &unitDescender{syms: syms},
+			Macro:     &macroDiscovery{syms: syms},
+			Import:    importRemover{}}
 		_, _, err = w.WalkChildren(dummyParent, &walker.NodeSlice{Items: nodes})
 	}
 	return
