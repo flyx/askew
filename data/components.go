@@ -1,6 +1,6 @@
 package data
 
-import "golang.org/x/net/html"
+import "github.com/flyx/net/html"
 
 // Arguments is a list of arguments of an <a:embed>.
 // The arguments will be mapped to the parameters of the referenced <a:component>.

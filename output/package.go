@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/flyx/askew/data"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
+	"github.com/flyx/net/html"
+	"github.com/flyx/net/html/atom"
 )
 
 // PackageWriter writes the Go code for a package into files.

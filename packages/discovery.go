@@ -13,9 +13,9 @@ import (
 
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/walker"
+	"github.com/flyx/net/html"
+	"github.com/flyx/net/html/atom"
 	"golang.org/x/mod/modfile"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 )
 
 func findBasePath() (string, error) {
@@ -124,7 +124,9 @@ func Discover() (*data.BaseDir, error) {
 		baseName := info.Name()[:len(info.Name())-6]
 		if kind == dotAskew {
 			askewFile := &data.AskewFile{File: data.File{BaseName: baseName, Path: path}}
-			askewFile.Content, err = html.ParseFragment(bytes.NewReader(contents), &data.BodyEnv)
+			askewFile.Content, err = html.ParseFragmentWithOptions(
+				bytes.NewReader(contents), &data.BodyEnv,
+				html.ParseOptionCustomElements(walker.AskewElements))
 			if err != nil {
 				return fmt.Errorf("%s: %s", path, err.Error())
 			}
@@ -144,7 +146,8 @@ func Discover() (*data.BaseDir, error) {
 			}
 
 			asiteFile := &data.ASiteFile{File: data.File{BaseName: baseName, Path: path}}
-			asiteFile.Document, err = html.Parse(bytes.NewReader(contents))
+			asiteFile.Document, err = html.ParseWithOptions(bytes.NewReader(contents),
+				html.ParseOptionCustomElements(walker.AskewElements))
 			if err != nil {
 				return fmt.Errorf("%s: %s", path, err.Error())
 			}
@@ -172,15 +175,22 @@ func Discover() (*data.BaseDir, error) {
 						return fmt.Errorf("%s: %s", path, err.Error())
 					}
 					asiteFile.Descriptor = c
+					repl := &html.Node{
+						Type:        html.CommentNode,
+						Data:        "site",
+						Parent:      c.Parent,
+						NextSibling: c.NextSibling,
+						PrevSibling: c.PrevSibling,
+					}
 					if c.NextSibling != nil {
-						c.NextSibling.PrevSibling = c.PrevSibling
+						c.NextSibling.PrevSibling = repl
 					} else {
-						c.Parent.LastChild = c.PrevSibling
+						c.Parent.LastChild = repl
 					}
 					if c.PrevSibling != nil {
-						c.PrevSibling.NextSibling = c.NextSibling
+						c.PrevSibling.NextSibling = repl
 					} else {
-						c.Parent.FirstChild = c.NextSibling
+						c.Parent.FirstChild = repl
 					}
 				}
 			}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/parsers"
-	"golang.org/x/net/html"
+	"github.com/flyx/net/html"
 )
 
 func canCapture(params []data.Param) bool {

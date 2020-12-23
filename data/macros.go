@@ -1,6 +1,6 @@
 package data
 
-import "golang.org/x/net/html"
+import "github.com/flyx/net/html"
 
 // Slot describes an <a:slot> inside a macro.
 type Slot struct {

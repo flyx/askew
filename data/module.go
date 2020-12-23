@@ -1,7 +1,7 @@
 package data
 
 import (
-	"golang.org/x/net/html"
+	"github.com/flyx/net/html"
 )
 
 // File describes an .askew or .asite file.

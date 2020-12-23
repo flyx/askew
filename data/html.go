@@ -1,8 +1,8 @@
 package data
 
 import (
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
+	"github.com/flyx/net/html"
+	"github.com/flyx/net/html/atom"
 )
 
 // BodyEnv is a dummy body node to be used for fragment parsing

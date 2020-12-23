@@ -7,8 +7,8 @@ import (
 	"github.com/flyx/askew/attributes"
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/walker"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
+	"github.com/flyx/net/html"
+	"github.com/flyx/net/html/atom"
 )
 
 type formValue struct {

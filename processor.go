@@ -9,9 +9,10 @@ import (
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/output"
 	"github.com/flyx/askew/units"
+	"github.com/flyx/askew/walker"
 
+	"github.com/flyx/net/html"
 	"golang.org/x/mod/modfile"
-	"golang.org/x/net/html"
 )
 
 type processor struct {
@@ -45,7 +46,9 @@ func (p *processor) processMacros(pkgName string) error {
 		for cur := dummyParent.FirstChild; cur != nil; cur = cur.NextSibling {
 			html.Render(&b, cur)
 		}
-		file.Content, err = html.ParseFragment(strings.NewReader(b.String()), &data.BodyEnv)
+		file.Content, err = html.ParseFragmentWithOptions(
+			strings.NewReader(b.String()), &data.BodyEnv,
+			html.ParseOptionCustomElements(walker.AskewElements))
 		if err != nil {
 			return errors.New(file.Path + ": " + err.Error())
 		}

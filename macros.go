@@ -6,7 +6,7 @@ import (
 	"github.com/flyx/askew/attributes"
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/walker"
-	"golang.org/x/net/html"
+	"github.com/flyx/net/html"
 )
 
 type macroDiscovery struct {

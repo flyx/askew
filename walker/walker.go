@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"golang.org/x/net/html"
+	"github.com/flyx/net/html"
 )
 
 // NodeHandler is a handler that processes a specific kind of node.

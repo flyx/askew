@@ -28,7 +28,7 @@
 <a:macro name="inputs">
 	<table>
 		<tr>
-			<th><a:slot name="col1"/></th><th><a:slot name="col2">R</a:slot></th>
+			<th><a:slot name="col1"></a:slot></th><th><a:slot name="col2">R</a:slot></th>
 		</tr>
 		<tr>
 			<td><input a:capture="change:SetTitle(v=prop(value))" a:bindings="prop(value):A" /></td>
@@ -69,15 +69,21 @@
   <a:controller>
 	  click(caption string)
   </a:controller>
-	<button a:capture="click:click(caption=prop(textContent))" a:assign="prop(textContent)=caption"></button>
+	<td>
+		<button a:capture="click:click(caption=prop(textContent))" a:assign="prop(textContent)=caption"></button>
+	</td>
 </a:component>
 
 <a:component name="OneTwoThree" params="additional []string, last bool">
-  <a:embed name="Buttons" type="ottButton" list control>
-		<a:construct args="`one`"></a:construct>
-		<a:construct args="`two`"></a:construct>
-		<a:construct args="`three`"></a:construct>
-		<a:construct a:for="_, s := range additional" args="s"></a:construct>
-		<a:construct a:if="last" args="`last`"></a:component>
-	</a:embed>
+  <table>
+	  <tr>
+			<a:embed name="Buttons" type="ottButton" list control>
+				<a:construct args="`one`"></a:construct>
+				<a:construct args="`two`"></a:construct>
+				<a:construct args="`three`"></a:construct>
+				<a:construct a:for="_, s := range additional" args="s"></a:construct>
+				<a:construct a:if="last" args="`last`"></a:component>
+			</a:embed>
+		</tr>
+	</table>
 </a:component>
