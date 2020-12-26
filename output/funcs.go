@@ -26,6 +26,8 @@ func nameForBound(b data.BoundKind) string {
 		return "BoundData"
 	case data.BoundProperty:
 		return "BoundProperty"
+	case data.BoundStyle:
+		return "BoundStlye"
 	case data.BoundClass:
 		return "BoundClass"
 	case data.BoundFormValue:

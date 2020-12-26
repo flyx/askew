@@ -48,5 +48,6 @@
     <a:embed name="OTT" type="ui.OneTwoThree" args="[]string{`four`, `five`}, true"></a:embed>
     <a:embed name="EventTest" type="ui.EventTest"></a:embed>
     <a:embed name="Colors" type="ui.ColorShuffler"></a:embed>
+    <a:embed name="MoreColors" type="ui.ColorChooserByText"></a:embed>
   </body>
 </html>

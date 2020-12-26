@@ -37,6 +37,34 @@ func (bp *BoundProperty) set(value interface{}) {
 	bp.node.Set(bp.pName, value)
 }
 
+// BoundStyle implements BoundValue for a single property of the target node's
+// `style` property.
+type BoundStyle struct {
+	node  *js.Object
+	sName string
+}
+
+// NewBoundStyle creates a BoundStyle for the node found at the
+// given path (relative to root) and the given style name.
+func NewBoundStyle(
+	d *ComponentData, sName string, path ...int) *BoundStyle {
+	return &BoundStyle{
+		node: d.Walk(path...), sName: sName}
+}
+
+// Init initializes the bound style with the given node and style name.
+func (bs *BoundStyle) Init(node *js.Object, sName string) {
+	bs.node, bs.sName = node, sName
+}
+
+func (bs *BoundStyle) get() *js.Object {
+	return bs.node.Get("style").Get(bs.sName)
+}
+
+func (bs *BoundStyle) set(value interface{}) {
+	bs.node.Get("style").Set(bs.sName, value)
+}
+
 // BoundData implements BoundValue for an item in the dataset of an HTML node.
 type BoundData struct {
 	node  *js.Object

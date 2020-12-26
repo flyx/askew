@@ -8,6 +8,8 @@ const (
 	BoundData BoundKind = iota
 	// BoundProperty is a bound property of DOM.Node.
 	BoundProperty
+	// BoundStyle is a property of the DOM.Node's `style` property.
+	BoundStyle
 	// BoundClass is a bound property of a node's classList
 	BoundClass
 	// BoundFormValue is a reference to an element supplying a value to the

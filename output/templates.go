@@ -109,6 +109,8 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 		switch bk {
 		case data.BoundProperty:
 			return "BoundProperty"
+		case data.BoundStyle:
+			return "BoundStyle"
 		case data.BoundData:
 			return "BoundData"
 		case data.BoundClass:

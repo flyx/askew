@@ -99,3 +99,11 @@
 			a:bindings="class(red,green,blue):Color"
 			style="display:block; color: black !important">Color Shuffler</a>
 </a:component>
+
+<a:component name="ColorChooserByText">
+	<a:handlers>click(value string)</a:handlers>
+  <form a:bindings="style(backgroundColor):BgColor" a:capture="submit:click(value=form(color)) {preventDefault}">
+	  <input name="color" type="text" />
+		<button type="submit">Update</button>
+	</form>
+</a:component>

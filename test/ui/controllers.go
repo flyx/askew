@@ -29,3 +29,7 @@ func (o *EventTest) click(e *js.Object) {
 func (o *ColorShuffler) click() {
 	o.Color.Set((o.Color.Get() + 1) % 4)
 }
+
+func (o *ColorChooserByText) click(value string) {
+	o.BgColor.Set(value)
+}
