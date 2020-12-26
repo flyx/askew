@@ -87,3 +87,8 @@
 		</tr>
 	</table>
 </a:component>
+
+<a:component name="EventTest">
+	<a:handlers>click(e *js.Object)</a:handlers>
+	<button a:capture="click:click(e=event())">Grow!</button>
+</a:component>

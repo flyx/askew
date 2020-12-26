@@ -20,3 +20,8 @@ func (o *Herp) click() {
 func (o *OneTwoThree) click(caption string) {
 	js.Global.Call("alert", caption)
 }
+
+func (o *EventTest) click(e *js.Object) {
+	button := e.Get("currentTarget")
+	button.Set("innerText", button.Get("innerText").String()+"!")
+}

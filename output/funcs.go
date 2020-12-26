@@ -30,6 +30,8 @@ func nameForBound(b data.BoundKind) string {
 		return "BoundClass"
 	case data.BoundFormValue:
 		return "BoundFormValue"
+	case data.BoundEventValue:
+		return "BoundEventValue"
 	default:
 		panic("unknown boundKind")
 	}
@@ -53,11 +55,13 @@ func last(path []int) int {
 func wrapperForType(k data.VariableType) string {
 	switch k {
 	case data.StringVar:
-		return "StringValue"
+		return "runtime.StringValue"
 	case data.IntVar:
-		return "IntValue"
+		return "runtime.IntValue"
 	case data.BoolVar:
-		return "BoolValue"
+		return "runtime.BoolValue"
+	case data.ObjectVar:
+		return "runtime.RawValue"
 	default:
 		panic("unsupported type")
 	}

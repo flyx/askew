@@ -120,6 +120,11 @@ func (g *General) collect(name, val string) error {
 		if err != nil {
 			return errors.New(": invalid bindings: " + err.Error())
 		}
+		for _, binding := range g.Bindings {
+			if binding.Value.Kind == data.BoundEventValue {
+				return errors.New(": cannot use event() in bindings")
+			}
+		}
 	case "capture":
 		var err error
 		g.Capture, err = parsers.ParseCapture(val)

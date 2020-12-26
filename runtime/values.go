@@ -1,5 +1,7 @@
 package runtime
 
+import "github.com/gopherjs/gopherjs/js"
+
 // StringValue provides access to a dynamic value of string type.
 type StringValue struct {
 	BoundValue
@@ -43,4 +45,19 @@ func (bv *BoolValue) Get() bool {
 // Set updates the underlying node with the given value.
 func (bv *BoolValue) Set(value bool) {
 	bv.set(value)
+}
+
+// RawValue provides acces to the raw underlying value.
+type RawValue struct {
+	BoundValue
+}
+
+// Get returns the current value of the linked node.
+func (rv *RawValue) Get() *js.Object {
+	return rv.get()
+}
+
+// Set updates the underlying node with the given value.
+func (rv *RawValue) Set(value *js.Object) {
+	rv.set(value)
 }

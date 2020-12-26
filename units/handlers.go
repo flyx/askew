@@ -8,16 +8,20 @@ import (
 	"github.com/flyx/net/html"
 )
 
-func canCapture(params []data.Param) bool {
+func canCapture(params []data.Param) error {
 	for _, p := range params {
 		switch p.Type.Kind {
 		case data.IntType, data.StringType, data.BoolType:
 			break
+		case data.PointerType:
+			if p.Type.ValueType.Kind != data.ObjectType {
+				return errors.New("cannot capture type (must be int, string, bool or *js.Object): " + p.Type.String())
+			}
 		default:
-			return false
+			return errors.New("cannot capture type (must be int, string, bool or *js.Object): " + p.Type.String())
 		}
 	}
-	return true
+	return nil
 }
 
 type handlersProcessor struct {
@@ -51,8 +55,8 @@ func (hp *handlersProcessor) Process(n *html.Node) (descend bool,
 		if ok {
 			return false, nil, errors.New(": duplicate handler name: " + raw.Name)
 		}
-		if !canCapture(raw.Params) {
-			return false, nil, errors.New(": handlers must only use int, string and bool as parameter types")
+		if err := canCapture(raw.Params); err != nil {
+			return false, nil, err
 		}
 		hp.cmp.Handlers[raw.Name] =
 			data.Handler{Params: raw.Params, Returns: raw.Returns}

@@ -32,17 +32,20 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 	"PathItems":    pathItems,
 	"NameForBound": nameForBound,
 	"Last":         last,
-	"TWrapper": func(t *data.ParamType) string {
+	"TWrapper": func(t *data.ParamType, name string) string {
 		switch t.Kind {
 		case data.IntType:
-			return wrapperForType(data.IntVar)
+			return wrapperForType(data.IntVar) + "{BoundValue: " + name + "}"
 		case data.StringType:
-			return wrapperForType(data.StringVar)
+			return wrapperForType(data.StringVar) + "{BoundValue: " + name + "}"
 		case data.BoolType:
-			return wrapperForType(data.BoolVar)
-		default:
-			panic("cannot gen wrapper for this type")
+			return wrapperForType(data.BoolVar) + "{BoundValue: " + name + "}"
+		case data.PointerType:
+			if t.ValueType.Kind == data.ObjectType {
+				return wrapperForType(data.ObjectVar) + "{BoundValue: " + name + "}"
+			}
 		}
+		panic("cannot gen wrapper for this type")
 	},
 	"IsBool": func(t *data.ParamType) bool {
 		return t != nil && t.Kind == data.BoolType
@@ -69,6 +72,17 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 	},
 	"IsFormValue": func(bk data.BoundKind) bool {
 		return bk == data.BoundFormValue
+	},
+	"IsEventValue": func(bk data.BoundKind) bool {
+		return bk == data.BoundEventValue
+	},
+	"NeedsSelf": func(params []data.BoundParam) bool {
+		for _, p := range params {
+			if p.Value.Kind != data.BoundEventValue {
+				return true
+			}
+		}
+		return false
 	},
 	"TypeForKind": func(bk data.BoundKind) string {
 		switch bk {
@@ -206,7 +220,7 @@ type {{.Name}} struct {
 	Controller {{.Name}}Controller
 	{{- end}}
 	{{- range .Variables }}
-	{{.Variable.Name}} runtime.{{Wrapper .Variable.Type}}
+	{{.Variable.Name}} {{Wrapper .Variable.Type}}
 	{{- end}}
 	{{- range $name, $type := .Fields}}
 	{{$name}} {{$type}}
@@ -286,12 +300,17 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		{{- range .Mappings}}
 		{
 			wrapper := js.MakeFunc(func(this *js.Object, arguments []*js.Object) interface{} {
+				{{- if NeedsSelf .ParamMappings}}
+				self := arguments[0].Get("currentTarget")
+				{{- end}}
 				{{- range .ParamMappings}}
 				var p{{.Param}} runtime.{{NameForBound .Value.Kind}}
 				{{- if IsFormValue .Value.Kind}}
-				p{{.Param}}.Init(this.Call("closest", "form"), "{{.Value.ID}}", {{.Value.IsRadio}})
+				p{{.Param}}.Init(self.Call("closest", "form"), "{{.Value.ID}}", {{.Value.IsRadio}})
+				{{- else if IsEventValue .Value.Kind}}
+				p{{.Param}}.Init(arguments[0], "{{.Value.ID}}")
 				{{- else}}
-				p{{.Param}}.Init(this, "{{.Value.ID}}")
+				p{{.Param}}.Init(self, "{{.Value.ID}}")
 				{{- end}}
 				{{- end}}
 				{{- if eq .Handling 0}}
@@ -352,7 +371,7 @@ func (o *{{.Name}}) Extract() {
 {{- range $hName, $h := .Handlers}}
 func (o *{{$cName}}) call{{$hName}}({{GenCallParams $h.Params}}) {{if IsBool $h.Returns}}bool{{end}} {
 	{{- range $h.Params}}
-	_{{.Name}} := runtime.{{TWrapper .Type}}{BoundValue: {{.Name}}}
+	_{{.Name}} := {{TWrapper .Type .Name}}
 	{{- end}}
 	{{if IsBool $h.Returns}}return {{end}}o.{{$hName}}({{GenTypedArgs $h.Params}})
 }
@@ -364,7 +383,7 @@ func (o *{{$cName}}) call{{$hName}}({{GenCallParams $m.Params}}) {{if IsBool $m.
 		return{{if IsBool $m.Returns}} false{{end}}
 	}
 	{{- range $m.Params}}
-	_{{.Name}} := runtime.{{TWrapper .Type}}{BoundValue: {{.Name}}}
+	_{{.Name}} := {{TWrapper .Type .Name}}
 	{{- end}}
 	{{if IsBool $m.Returns}}return {{end}}o.Controller.{{$hName}}({{GenTypedArgs $m.Params}})
 }

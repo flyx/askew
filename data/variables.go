@@ -14,6 +14,8 @@ const (
 	StringVar
 	// BoolVar specifies the variable is a bool.
 	BoolVar
+	// ObjectVar specifies the variable is a raw *js.Object.
+	ObjectVar
 )
 
 // GoValue is a named, typed value that is exposed to a component's Go interface.

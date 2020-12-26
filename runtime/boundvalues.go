@@ -144,6 +144,30 @@ func (bfv *BoundFormValue) set(value interface{}) {
 	elm.Set("value", value)
 }
 
+// BoundEventValue implements BoundValue as a reference to a value of the
+// captured event, or the event itself.
+type BoundEventValue struct {
+	val *js.Object
+}
+
+// Init initializes the BoundEventValue to return the given event's property
+// with the given name, or the event itself if propName == ""
+func (bev *BoundEventValue) Init(e *js.Object, propName string) {
+	if propName == "" {
+		bev.val = e
+	} else {
+		bev.val = e.Get(propName)
+	}
+}
+
+func (bev *BoundEventValue) get() *js.Object {
+	return bev.val
+}
+
+func (bev *BoundEventValue) set(value interface{}) {
+	panic("BoundEvent doesn't support set()")
+}
+
 // BoundSelf implements BoundValue by replacing the referenced node with a text node
 // containing the given value.
 type BoundSelf struct {

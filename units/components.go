@@ -36,7 +36,7 @@ func (p *componentProcessor) Process(n *html.Node) (descend bool,
 	err = p.processUnitContent(n, &cmp.Unit, cmp, replacement, true)
 	(*p.counter)++
 	cmp.ID = fmt.Sprintf("askew-component-%d-%s", *p.counter, strings.ToLower(cmp.Name))
-	replacement.Attr = []html.Attribute{html.Attribute{Key: "id", Val: cmp.ID}}
+	replacement.Attr = []html.Attribute{{Key: "id", Val: cmp.ID}}
 
 	curFile := p.syms.CurAskewFile()
 	if curFile.Components == nil {

@@ -78,7 +78,7 @@ func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string) error {
 		Type:        html.ElementNode,
 		Data:        "script",
 		DataAtom:    atom.Script,
-		Attr:        []html.Attribute{html.Attribute{Key: "src", Val: f.JSFile}},
+		Attr:        []html.Attribute{{Key: "src", Val: f.JSFile}},
 		PrevSibling: node,
 		Parent:      node.Parent,
 		NextSibling: nil,

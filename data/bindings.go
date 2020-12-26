@@ -15,6 +15,9 @@ const (
 	//
 	// The value is equal to the referenced element's `value` property.
 	BoundFormValue
+	// BoundEventValue is a reference to the JavaScript event that has been
+	// received, or one of its fields. It can only be used in a:capture.
+	BoundEventValue
 	// BoundSelf refers to the node itself and is used for substituting <a:text>
 	// elements with text nodes.
 	BoundSelf

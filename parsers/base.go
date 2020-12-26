@@ -6,10 +6,11 @@ import (
 )
 
 var typeSyntax = `
-TYPE     ← TYPENAME / ARRAY / MAP
+TYPE     ← TYPENAME / ARRAY / MAP / POINTER
 TYPENAME ← IDENTIFIER ('.' IDENTIFIER)?
 ARRAY    ← '[]' TYPE
-MAP      ← 'map' '[' IDENTIFIER ']' TYPE`
+MAP      ← 'map' '[' IDENTIFIER ']' TYPE
+POINTER  ← '*' TYPE`
 
 var identifierSyntax = `
 IDENTIFIER  ← < [a-zA-Z_][a-zA-Z_0-9]* >`
@@ -37,6 +38,9 @@ func registerType(p *peg.Parser) {
 		}
 		name += "."
 		name += v.ToStr(1)
+		if name == "js.Object" {
+			return &data.ParamType{Kind: data.ObjectType}, nil
+		}
 		return &data.ParamType{Kind: data.NamedType, Name: name}, nil
 	}
 	p.Grammar["ARRAY"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
@@ -46,5 +50,8 @@ func registerType(p *peg.Parser) {
 		return &data.ParamType{Kind: data.ArrayType,
 			KeyType:   v.Vs[0].(*data.ParamType),
 			ValueType: v.Vs[1].(*data.ParamType)}, nil
+	}
+	p.Grammar["POINTER"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
+		return &data.ParamType{Kind: data.PointerType, ValueType: v.Vs[0].(*data.ParamType)}, nil
 	}
 }
