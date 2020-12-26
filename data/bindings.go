@@ -26,7 +26,9 @@ const (
 // BoundValue specifies the target of a value binding.
 type BoundValue struct {
 	Kind BoundKind
-	ID   string
+	// single value unless Kind == BoundClass. In that case, it's the list of
+	// class names to shuffle through.
+	IDs []string
 	// only used if Kind == BoundFormValue. States how many levels above the
 	// subject item the <form> is located which is to be used for finding the
 	// named element.
@@ -34,4 +36,9 @@ type BoundValue struct {
 	// only used if Kind == BoundFormValue. States whether the target element
 	// is an <input type=radio>.
 	IsRadio bool
+}
+
+// ID returns the first ID, which is the only one for everything except class()
+func (bv BoundValue) ID() string {
+	return bv.IDs[0]
 }

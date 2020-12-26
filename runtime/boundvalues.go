@@ -63,34 +63,66 @@ func (ba *BoundData) set(value interface{}) {
 	ba.node.Get("dataset").Set(ba.dName, value)
 }
 
-// BoundClass implements BoundValue for a node so that assigning boolean
-// values to it switches a class with a given name on or off on the target node.
-// may only be used with boolean values.
-type BoundClass struct {
-	node      *js.Object
-	className string
+// BoundClasses implements BoundValue for a node's classList.
+//
+// Given a list of class names, it can shuffle between them, letting the
+// classList contain at most one of the given names.
+//
+// BoundClasses supports a boolean interface, where containing any given
+// class name equals `true` and not containing it equals `false`. This should
+// not be used if multiple class names are given. Setting the value to true will
+// always set it to the first class name.
+//
+// The interface also support integral values where `0` equals none of the
+// given class names present, and positive numbers enumerate the given names
+// beginning with `1` for the first name.
+//
+// Both the boolean and the integer interface can be used for both reading and
+// writing.
+type BoundClasses struct {
+	node       *js.Object
+	classNames []string
 }
 
-// NewBoundClass creates a BoundClass for the node at the given path,
+// NewBoundClasses creates a BoundClasses for the node at the given path,
 // which switches the class with the given name.
-func NewBoundClass(d *ComponentData, className string, path ...int) *BoundClass {
-	return &BoundClass{node: d.Walk(path...), className: className}
+func NewBoundClasses(d *ComponentData, classNames []string, path ...int) *BoundClasses {
+	return &BoundClasses{node: d.Walk(path...), classNames: classNames}
 }
 
 // Init initializes the BoundClass with the given node and class name.
-func (bc *BoundClass) Init(node *js.Object, className string) {
-	bc.node, bc.className = node, className
+func (bc *BoundClasses) Init(node *js.Object, classNames []string) {
+	bc.node, bc.classNames = node, classNames
 }
 
-func (bc *BoundClass) get() *js.Object {
-	return bc.node.Get("classList").Call("contains", bc.className)
+func (bc *BoundClasses) get() *js.Object {
+	cList := bc.node.Get("classList")
+	for i := range bc.classNames {
+		if cList.Call("contains", bc.classNames[i]).Bool() {
+			return js.Global.Call("Number", i+1)
+		}
+	}
+	return js.Global.Call("Number", 0)
 }
 
-func (bc *BoundClass) set(value interface{}) {
-	if value.(bool) {
-		bc.node.Get("classList").Call("add", bc.className)
+func (bc *BoundClasses) set(value interface{}) {
+	var iVal int
+	if bVal, ok := value.(bool); ok {
+		if bVal {
+			iVal = 0
+		} else {
+			iVal = -1
+		}
 	} else {
-		bc.node.Get("classList").Call("remove", bc.className)
+		iVal = value.(int) - 1
+	}
+	cList := bc.node.Get("classList")
+	for i := range bc.classNames {
+		if i == iVal {
+			cList.Call("add", bc.classNames[i])
+		} else {
+			cList.Call("remove", bc.classNames[i])
+		}
 	}
 }
 
@@ -175,12 +207,12 @@ type BoundSelf struct {
 }
 
 // NewBoundSelf creates a BoundSelf for the node at the given path.
-func NewBoundSelf(d *ComponentData, dummy string, path ...int) *BoundSelf {
+func NewBoundSelf(d *ComponentData, path ...int) *BoundSelf {
 	return &BoundSelf{node: d.Walk(path...)}
 }
 
 // Init initializes the BoundSelf with the given node.
-func (bs *BoundSelf) Init(node *js.Object, dummy string) {
+func (bs *BoundSelf) Init(node *js.Object) {
 	bs.node = node
 }
 

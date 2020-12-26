@@ -25,3 +25,7 @@ func (o *EventTest) click(e *js.Object) {
 	button := e.Get("currentTarget")
 	button.Set("innerText", button.Get("innerText").String()+"!")
 }
+
+func (o *ColorShuffler) click() {
+	o.Color.Set((o.Color.Get() + 1) % 4)
+}

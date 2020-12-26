@@ -128,7 +128,7 @@ func (eh *elementHandler) mapCaptures(n *html.Node, v []data.UnboundEventMapping
 		for _, p := range h.Params {
 			bVal, ok := unmapped.ParamMappings[p.Name]
 			if !ok {
-				mapped = append(mapped, data.BoundParam{Param: p.Name, Value: data.BoundValue{Kind: data.BoundData, ID: p.Name}})
+				mapped = append(mapped, data.BoundParam{Param: p.Name, Value: data.BoundValue{Kind: data.BoundData, IDs: []string{p.Name}}})
 			} else {
 				delete(notMapped, p.Name)
 				if bVal.Kind == data.BoundFormValue {
@@ -136,9 +136,9 @@ func (eh *elementHandler) mapCaptures(n *html.Node, v []data.UnboundEventMapping
 						return errors.New(": illegal form() binding outside of <form> element")
 					}
 					bVal.FormDepth = formDepth
-					_, ok := eh.curForm[bVal.ID]
+					_, ok := eh.curForm[bVal.ID()]
 					if !ok {
-						return errors.New(": unknown form value name: `" + bVal.ID + "`")
+						return errors.New(": unknown form value name: `" + bVal.ID() + "`")
 					}
 				}
 				mapped = append(mapped, data.BoundParam{Param: p.Name, Value: bVal})
@@ -178,9 +178,9 @@ func (eh *elementHandler) processBindings(arr []data.VariableMapping) error {
 				return errors.New(": illegal form() binding outside of <form> element")
 			}
 			vb.Value.FormDepth = formDepth
-			val, ok := eh.curForm[vb.Value.ID]
+			val, ok := eh.curForm[vb.Value.ID()]
 			if !ok {
-				return errors.New(": unknown form value name: `" + vb.Value.ID + "`")
+				return errors.New(": unknown form value name: `" + vb.Value.ID() + "`")
 			}
 			if vb.Variable.Type == data.AutoVar {
 				vb.Variable.Type = val.t
@@ -188,7 +188,11 @@ func (eh *elementHandler) processBindings(arr []data.VariableMapping) error {
 		} else {
 			if vb.Variable.Type == data.AutoVar {
 				if vb.Value.Kind == data.BoundClass {
-					vb.Variable.Type = data.BoolVar
+					if len(vb.Value.IDs) > 1 {
+						vb.Variable.Type = data.IntVar
+					} else {
+						vb.Variable.Type = data.BoolVar
+					}
 				} else {
 					vb.Variable.Type = data.StringVar
 				}
@@ -212,9 +216,9 @@ func (seh *stdElementHandler) processAssignments(arr []data.Assignment, path []i
 				return errors.New(": illegal form() binding outside of <form> element")
 			}
 			a.Target.FormDepth = formDepth
-			_, ok := seh.curForm[a.Target.ID]
+			_, ok := seh.curForm[a.Target.IDs[0]]
 			if !ok {
-				return errors.New(": unknown form value name: `" + a.Target.ID + "`")
+				return errors.New(": unknown form value name: `" + a.Target.ID() + "`")
 			}
 		}
 		a.Path = path

@@ -92,3 +92,10 @@
 	<a:handlers>click(e *js.Object)</a:handlers>
 	<button a:capture="click:click(e=event())">Grow!</button>
 </a:component>
+
+<a:component name="ColorShuffler">
+  <a:handlers>click()</a:handlers>
+	<a href="#" a:capture="click:click() {preventDefault}"
+			a:bindings="class(red,green,blue):Color"
+			style="display:block; color: black !important">Color Shuffler</a>
+</a:component>

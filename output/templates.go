@@ -70,11 +70,32 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 		}
 		return strings.Join(items, ", ")
 	},
+	"ClassNames": func(list []string) string {
+		var b strings.Builder
+		first := true
+		for _, item := range list {
+			if first {
+				first = false
+			} else {
+				b.WriteString(", ")
+			}
+			b.WriteByte('"')
+			b.WriteString(item)
+			b.WriteByte('"')
+		}
+		return b.String()
+	},
 	"IsFormValue": func(bk data.BoundKind) bool {
 		return bk == data.BoundFormValue
 	},
+	"IsClassValue": func(bk data.BoundKind) bool {
+		return bk == data.BoundClass
+	},
 	"IsEventValue": func(bk data.BoundKind) bool {
 		return bk == data.BoundEventValue
+	},
+	"IsSelfValue": func(bk data.BoundKind) bool {
+		return bk == data.BoundSelf
 	},
 	"NeedsSelf": func(params []data.BoundParam) bool {
 		for _, p := range params {
@@ -91,7 +112,7 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 		case data.BoundData:
 			return "BoundData"
 		case data.BoundClass:
-			return "BoundClass"
+			return "BoundClasses"
 		case data.BoundSelf:
 			return "BoundSelf"
 		default:
@@ -164,6 +185,12 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 		{{- if IsFormValue .Target.Kind}}
 		var tmp runtime.BoundFormValue
 		tmp.Init(runtime.WalkPath(block, {{PathItems .Path .Target.FormDepth}}), "{{.Target.ID}}", {{.Target.IsRadio}})
+		{{- else if IsClassValue .Target.Kind}}
+		var tmp runtime.BoundClasses
+		tmp.Init(runtime.WalkPath(block, {{PathItems .Path .Target.FormDepth}}), []string{ {{ClassNames .Target.IDs}} })
+		{{- else if IsSelfValue .Target.Kind}}
+		var tmp runtime.BoundSelf
+		tmp.Init(runtime.WalkPath(block, {{PathItems .Path 0}}))
 		{{- else}}
 		var tmp runtime.{{TypeForKind .Target.Kind}}
 		tmp.Init(runtime.WalkPath(block, {{PathItems .Path 0}}), "{{.Target.ID}}")
@@ -251,6 +278,8 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	{{ range .Variables }}
 	{{- if IsFormValue .Value.Kind}}
 	o.{{.Variable.Name}}.BoundValue = runtime.NewBoundFormValue(&o.cd, "{{.Value.ID}}", {{.Value.IsRadio}}, {{PathItems .Path .Value.FormDepth}})
+	{{- else if IsClassValue .Value.Kind}}
+	o.{{.Variable.Name}}.BoundValue = runtime.NewBoundClasses(&o.cd, []string{ {{ClassNames .Value.IDs}} }, {{PathItems .Path 0}})
 	{{- else}}
 	o.{{.Variable.Name}}.BoundValue = runtime.New{{TypeForKind .Value.Kind}}(&o.cd, "{{.Value.ID}}", {{PathItems .Path 0}})
 	{{- end}}
