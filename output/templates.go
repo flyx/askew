@@ -282,6 +282,8 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	o.{{.Variable.Name}}.BoundValue = runtime.NewBoundFormValue(&o.cd, "{{.Value.ID}}", {{.Value.IsRadio}}, {{PathItems .Path .Value.FormDepth}})
 	{{- else if IsClassValue .Value.Kind}}
 	o.{{.Variable.Name}}.BoundValue = runtime.NewBoundClasses(&o.cd, []string{ {{ClassNames .Value.IDs}} }, {{PathItems .Path 0}})
+	{{- else if IsSelfValue .Value.Kind}}
+	o.{{.Variable.Name}}.BoundValue = runtime.NewBoundSelf(&o.cd, {{PathItems .Path 0}})
 	{{- else}}
 	o.{{.Variable.Name}}.BoundValue = runtime.New{{TypeForKind .Value.Kind}}(&o.cd, "{{.Value.ID}}", {{PathItems .Path 0}})
 	{{- end}}

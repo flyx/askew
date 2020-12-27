@@ -20,8 +20,9 @@ const (
 	// BoundEventValue is a reference to the JavaScript event that has been
 	// received, or one of its fields. It can only be used in a:capture.
 	BoundEventValue
-	// BoundSelf refers to the node itself and is used for substituting <a:text>
-	// elements with text nodes.
+	// BoundSelf refers to the node itself. Setting it is used for substituting
+	// <a:text> elements with text nodes, getting it can be used to access the
+	// raw *js.Object of the node.
 	BoundSelf
 )
 

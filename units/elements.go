@@ -187,13 +187,16 @@ func (eh *elementHandler) processBindings(arr []data.VariableMapping) error {
 			}
 		} else {
 			if vb.Variable.Type == data.AutoVar {
-				if vb.Value.Kind == data.BoundClass {
+				switch vb.Value.Kind {
+				case data.BoundClass:
 					if len(vb.Value.IDs) > 1 {
 						vb.Variable.Type = data.IntVar
 					} else {
 						vb.Variable.Type = data.BoolVar
 					}
-				} else {
+				case data.BoundSelf:
+					vb.Variable.Type = data.ObjectVar
+				default:
 					vb.Variable.Type = data.StringVar
 				}
 			}

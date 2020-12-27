@@ -245,12 +245,18 @@ func (bs *BoundSelf) Init(node *js.Object) {
 }
 
 func (bs *BoundSelf) get() *js.Object {
-	panic("BoundSelf doesn't support get()")
+	return bs.node
 }
 
 func (bs *BoundSelf) set(value interface{}) {
-	node := js.Global.Get("document").Call("createTextNode", value)
-	bs.node.Get("parentNode").Call("replaceChild", node, bs.node)
+	if o, ok := value.(*js.Object); ok {
+		bs.node.Get("parentNode").Call("replaceChild", o, bs.node)
+		bs.node = o
+	} else {
+		node := js.Global.Get("document").Call("createTextNode", value)
+		bs.node.Get("parentNode").Call("replaceChild", node, bs.node)
+		bs.node = node
+	}
 }
 
 // Assign is low-level assignment of a value to a bound value.

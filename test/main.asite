@@ -49,5 +49,6 @@
     <a:embed name="EventTest" type="ui.EventTest"></a:embed>
     <a:embed name="Colors" type="ui.ColorShuffler"></a:embed>
     <a:embed name="MoreColors" type="ui.ColorChooserByText"></a:embed>
+    <a:embed name="SelfTest" type="ui.SelfTest"></a:embed>
   </body>
 </html>

@@ -6,7 +6,8 @@ import (
 )
 
 var boundSyntax = `
-BOUND  ← DATA / PROP / STYLE / CLASS / FORM / EVENT
+BOUND  ← SELF / DATA / PROP / STYLE / CLASS / FORM / EVENT
+SELF   ← 'self' '()'
 DATA   ← 'data' '(' HTMLID ')'
 PROP   ← 'prop' '(' HTMLID ')'
 STYLE  ← 'style' '(' HTMLID ')'
@@ -24,6 +25,9 @@ func strToken(v *peg.Values, d peg.Any) (peg.Any, error) {
 func registerBinders(p *peg.Parser) {
 	p.Grammar["HTMLID"].Action = strToken
 	p.Grammar["JSID"].Action = strToken
+	p.Grammar["SELF"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
+		return data.BoundValue{Kind: data.BoundSelf}, nil
+	}
 	p.Grammar["PROP"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		return data.BoundValue{Kind: data.BoundProperty, IDs: []string{v.ToStr(0)}}, nil
 	}

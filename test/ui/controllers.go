@@ -33,3 +33,7 @@ func (o *ColorShuffler) click() {
 func (o *ColorChooserByText) click(value string) {
 	o.BgColor.Set(value)
 }
+
+func (o *SelfTest) click() {
+	js.Global.Call("alert", o.Button.Get().Get("dataset").Get("foo"))
+}

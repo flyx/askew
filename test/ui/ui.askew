@@ -107,3 +107,9 @@
 		<button type="submit">Update</button>
 	</form>
 </a:component>
+
+<a:component name="SelfTest">
+	<a:handlers>click()</a:handlers>
+	<button data-foo="bar" a:capture="click:click()"
+			a:bindings="self():Button">Click me – selftest</button>
+</a:component>
