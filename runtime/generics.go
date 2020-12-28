@@ -91,7 +91,7 @@ func (o *GenericOptional) Item() Component {
 
 // Set sets the contained item removing the current one.
 // Give nil as value to simply remove the current item.
-func (o GenericOptional) Set(value Component) {
+func (o *GenericOptional) Set(value Component) {
 	if o.cur != nil {
 		o.mgr.Remove(o.cur)
 	}

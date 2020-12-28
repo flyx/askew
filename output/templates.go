@@ -383,6 +383,7 @@ func (o *{{.Name}}) InsertInto(parent *js.Object, before *js.Object) {
 	{{- end}}
 	{{- end}}
 	{{- end}}
+	{{- if .OnInclude}}o.onInclude(){{- end}}
 }
 
 // Extract removes this component from its current parent.
@@ -398,6 +399,7 @@ func (o *{{.Name}}) Extract() {
 	{{- end}}
 	{{- end}}
 	{{- end}}
+	{{- if .OnExclude}}o.onExclude(){{- end}}
 }
 
 {{$cName := .Name}}
