@@ -84,7 +84,8 @@ type Capture struct {
 // ComponentParam is a component parameter whose type is not parsed or checked by
 // Askew, but passed directly through to the Go code generator.
 type ComponentParam struct {
-	Name, Type string
+	Name string
+	Type ParamType
 }
 
 // Assignment assigns an expression to a bound value during component instantiation.

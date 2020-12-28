@@ -33,19 +33,7 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 	"NameForBound": nameForBound,
 	"Last":         last,
 	"TWrapper": func(t *data.ParamType, name string) string {
-		switch t.Kind {
-		case data.IntType:
-			return wrapperForType(data.IntVar) + "{BoundValue: " + name + "}"
-		case data.StringType:
-			return wrapperForType(data.StringVar) + "{BoundValue: " + name + "}"
-		case data.BoolType:
-			return wrapperForType(data.BoolVar) + "{BoundValue: " + name + "}"
-		case data.PointerType:
-			if t.ValueType.Kind == data.ObjectType {
-				return wrapperForType(data.ObjectVar) + "{BoundValue: " + name + "}"
-			}
-		}
-		panic("cannot gen wrapper for this type")
+		return wrapperForType(*t) + "{BoundValue: " + name + "}"
 	},
 	"IsBool": func(t *data.ParamType) bool {
 		return t != nil && t.Kind == data.BoolType

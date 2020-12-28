@@ -7,19 +7,6 @@ import (
 	"github.com/flyx/askew/data"
 )
 
-func nameForType(k data.VariableType) string {
-	switch k {
-	case data.StringVar:
-		return "string"
-	case data.IntVar:
-		return "int"
-	case data.BoolVar:
-		return "bool"
-	default:
-		panic("unsupported type")
-	}
-}
-
 func nameForBound(b data.BoundKind) string {
 	switch b {
 	case data.BoundData:
@@ -54,17 +41,18 @@ func last(path []int) int {
 	return path[len(path)-1]
 }
 
-func wrapperForType(k data.VariableType) string {
-	switch k {
-	case data.StringVar:
+func wrapperForType(t data.ParamType) string {
+	switch t.Kind {
+	case data.StringType:
 		return "runtime.StringValue"
-	case data.IntVar:
+	case data.IntType:
 		return "runtime.IntValue"
-	case data.BoolVar:
+	case data.BoolType:
 		return "runtime.BoolValue"
-	case data.ObjectVar:
-		return "runtime.RawValue"
-	default:
-		panic("unsupported type")
+	case data.PointerType:
+		if t.ValueType.Kind == data.ObjectType {
+			return "runtime.RawValue"
+		}
 	}
+	panic("no wrapper for type: " + t.String())
 }

@@ -12,7 +12,7 @@ import (
 )
 
 type formValue struct {
-	t     data.VariableType
+	t     *data.ParamType
 	radio bool
 }
 
@@ -31,23 +31,23 @@ func (d *formValueDiscovery) Process(n *html.Node) (descend bool, replacement *h
 		switch inputType := attributes.Val(n.Attr, "type"); inputType {
 		case "radio":
 			v.radio = true
-			v.t = data.StringVar
+			v.t = &data.ParamType{Kind: data.StringType}
 		case "number", "range":
 			if strings.ContainsRune(attributes.Val(n.Attr, "min"), '.') ||
 				strings.ContainsRune(attributes.Val(n.Attr, "max"), '.') ||
 				strings.ContainsRune(attributes.Val(n.Attr, "step"), '.') {
 				return false, nil, errors.New(": non-integer " + inputType + " inputs not supported")
 			}
-			v.t = data.IntVar
+			v.t = &data.ParamType{Kind: data.IntType}
 		case "text", "":
-			v.t = data.StringVar
+			v.t = &data.ParamType{Kind: data.StringType}
 		case "submit", "reset", "hidden":
 			return false, nil, nil
 		default:
 			return false, nil, errors.New(": unsupported input type: `" + inputType + "`")
 		}
 	case atom.Select, atom.Textarea:
-		v.t, v.radio = data.StringVar, false
+		v.t, v.radio = &data.ParamType{Kind: data.StringType}, false
 	default:
 		return false, nil, nil
 	}
@@ -182,22 +182,23 @@ func (eh *elementHandler) processBindings(arr []data.VariableMapping) error {
 			if !ok {
 				return errors.New(": unknown form value name: `" + vb.Value.ID() + "`")
 			}
-			if vb.Variable.Type == data.AutoVar {
+			if vb.Variable.Type == nil {
 				vb.Variable.Type = val.t
 			}
 		} else {
-			if vb.Variable.Type == data.AutoVar {
+			if vb.Variable.Type == nil {
 				switch vb.Value.Kind {
 				case data.BoundClass:
 					if len(vb.Value.IDs) > 1 {
-						vb.Variable.Type = data.IntVar
+						vb.Variable.Type = &data.ParamType{Kind: data.IntType}
 					} else {
-						vb.Variable.Type = data.BoolVar
+						vb.Variable.Type = &data.ParamType{Kind: data.BoolType}
 					}
 				case data.BoundSelf:
-					vb.Variable.Type = data.ObjectVar
+					vb.Variable.Type = &data.ParamType{Kind: data.PointerType,
+						ValueType: &data.ParamType{Kind: data.ObjectType}}
 				default:
-					vb.Variable.Type = data.StringVar
+					vb.Variable.Type = &data.ParamType{Kind: data.StringType}
 				}
 			}
 		}

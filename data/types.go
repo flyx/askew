@@ -33,7 +33,7 @@ type ParamType struct {
 	ValueType *ParamType
 }
 
-func (pt *ParamType) String() string {
+func (pt ParamType) String() string {
 	switch pt.Kind {
 	case IntType:
 		return "int"
