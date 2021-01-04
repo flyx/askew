@@ -20,8 +20,8 @@ var fileHeader = template.Must(template.New("fileHeader").Funcs(template.FuncMap
 package {{.PackageName}}
 
 import (
+	"syscall/js"
 	"github.com/flyx/askew/runtime"
-	"github.com/gopherjs/gopherjs/js"
 	{{- range $alias, $path := .Imports }}
 	{{FormatImport $alias $path}}{{ end }}
 )
@@ -199,7 +199,7 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 	} else {
 		_item := runtime.WalkPath(block, {{PathItems .Path 0}})
 		_parent := _item.Get("parentNode")
-		_parent.Call("replaceChild", js.Global.Get("document").Call("createComment", "removed"), _item)
+		_parent.Call("replaceChild", js.Global().Get("document").Call("createComment", "removed"), _item)
 	}
 	{{- else }}
 	{
@@ -320,7 +320,7 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		src := o.cd.Walk({{PathItems .Path 0}})
 		{{- range .Mappings}}
 		{
-			wrapper := js.MakeFunc(func(this *js.Object, arguments []*js.Object) interface{} {
+			wrapper := js.FuncOf(func(this js.Value, arguments []js.Value) interface{} {
 				{{- if NeedsSelf .ParamMappings}}
 				self := arguments[0].Get("currentTarget")
 				{{- end}}
@@ -359,8 +359,8 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 // InsertInto inserts this component into the given object.
 // The component will be in inserted state afterwards.
 //
-// The component will be inserted in front of 'before', or at the end if 'before' is 'nil'.
-func (o *{{.Name}}) InsertInto(parent *js.Object, before *js.Object) {
+// The component will be inserted in front of 'before', or at the end if 'before' is 'js.Undefined()'.
+func (o *{{.Name}}) InsertInto(parent js.Value, before js.Value) {
 	o.cd.DoInsert(parent, before)
 	{{- range .Embeds}}
 	{{- if ne .Kind 0}}
@@ -383,9 +383,9 @@ func (o *{{.Name}}) Extract() {
 	{{- range .Embeds}}
 	{{- if ne .Kind 0}}
 	{{- if .T}}
-	o.{{.Field}}.mgr.UpdateParent(o.cd.First().Get("parentNode"), o.cd.DocumentFragment(), nil)
+	o.{{.Field}}.mgr.UpdateParent(o.cd.First().Get("parentNode"), o.cd.DocumentFragment(), js.Undefined())
 	{{- else}}
-	o.{{.Field}}.DoUpdateParent(o.cd.First().Get("parentNode"), o.cd.DocumentFragment(), nil)
+	o.{{.Field}}.DoUpdateParent(o.cd.First().Get("parentNode"), o.cd.DocumentFragment(), js.Undefined())
 	{{- end}}
 	{{- end}}
 	{{- end}}
@@ -431,7 +431,7 @@ type {{.Name}}List struct {
 // Init initializes the list, discarding previous data.
 // The list's items will be placed in the given container, starting at the
 // given index.
-func (l *{{.Name}}List) Init(container *js.Object, index int) {
+func (l *{{.Name}}List) Init(container js.Value, index int) {
 	l.mgr = runtime.CreateListManager(container, index)
 	l.items = nil
 }
@@ -461,7 +461,7 @@ func (l *{{.Name}}List) Append(item *{{.Name}}) {
 
 // Insert inserts the given item at the given index into the list.
 func (l *{{.Name}}List) Insert(index int, item *{{.Name}}) {
-	var prev *js.Object
+	var prev js.Value
 	if index < len(l.items) {
 		prev = l.items[index].cd.First()
 	}
@@ -501,7 +501,7 @@ type Optional{{.Name}} struct {
 // Init initializes the container to be empty.
 // The contained item, if any, will be placed in the given container at the
 // given index.
-func (o *Optional{{.Name}}) Init(container *js.Object, index int) {
+func (o *Optional{{.Name}}) Init(container js.Value, index int) {
 	o.mgr = runtime.CreateListManager(container, index)
 	o.cur = nil
 }
@@ -597,7 +597,7 @@ var {{.VarName}} = struct {
 
 {{$varName := .VarName}}
 func init() {
-	html := js.Global.Get("document").Get("childNodes").Index(1)
+	html := js.Global().Get("document").Get("childNodes").Index(1)
 	{{- range .Embeds}}
 	{{- if eq .Kind 0}}
 	{

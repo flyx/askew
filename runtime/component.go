@@ -1,6 +1,6 @@
 package runtime
 
-import "github.com/gopherjs/gopherjs/js"
+import "syscall/js"
 
 // ComponentData holds the content of an instance of a <a:component>.
 //
@@ -19,13 +19,13 @@ import "github.com/gopherjs/gopherjs/js"
 // The interface of this type is consumed by <a:embed>; the user does not need to use it directly if
 // the website is defined with a skeleton.
 type ComponentData struct {
-	fragment, first, last *js.Object
+	fragment, first, last js.Value
 }
 
 // Init initializes the ComponentData with the given DocumentFragment node.
 // Previous data is discarded. The Component will be in initial state afterwards.
-func (cd *ComponentData) Init(frag *js.Object) {
-	cd.fragment, cd.first, cd.last = frag, nil, nil
+func (cd *ComponentData) Init(frag js.Value) {
+	cd.fragment, cd.first, cd.last = frag, js.Value{}, js.Value{}
 
 }
 
@@ -33,8 +33,8 @@ func (cd *ComponentData) Init(frag *js.Object) {
 // The ComponentData must be in initial state and transitions into inserted state.
 //
 // This is the backend for a Component's InsertInto, but the component may need to do additional things depending on its embeds.
-func (cd *ComponentData) DoInsert(parent *js.Object, before *js.Object) {
-	if cd.first != nil {
+func (cd *ComponentData) DoInsert(parent js.Value, before js.Value) {
+	if cd.first != js.Undefined() {
 		panic("DoInsert called on ComponentData that is already in inserted state")
 	}
 	cd.first = cd.fragment.Get("firstChild")
@@ -47,7 +47,7 @@ func (cd *ComponentData) DoInsert(parent *js.Object, before *js.Object) {
 //
 // This is the backend for a Component's Extract, but the component may need to do additional things depending on its embeds.
 func (cd *ComponentData) DoExtract() {
-	if cd.first == nil {
+	if cd.first == js.Undefined() {
 		panic("Extract called on ComponentData that is in initial state")
 	}
 	cur := cd.first
@@ -60,21 +60,21 @@ func (cd *ComponentData) DoExtract() {
 		}
 		cur = next
 	}
-	cd.first, cd.last = nil, nil
+	cd.first, cd.last = js.Value{}, js.Value{}
 }
 
 // Walk descends into the DocumentFragment's children using the given list of indexes.
 // This may only be done when the ComponentData is in initial state.
-func (cd *ComponentData) Walk(path ...int) *js.Object {
-	if cd.first != nil {
+func (cd *ComponentData) Walk(path ...int) js.Value {
+	if cd.first != js.Undefined() {
 		panic("Walk called on ComponentData that is already inserted")
 	}
 	return WalkPath(cd.fragment, path...)
 }
 
 // First returns the first DOM node in this component
-func (cd *ComponentData) First() *js.Object {
-	if cd.first == nil {
+func (cd *ComponentData) First() js.Value {
+	if cd.first == js.Undefined() {
 		return cd.fragment.Get("firstChild")
 	}
 	return cd.first
@@ -82,13 +82,13 @@ func (cd *ComponentData) First() *js.Object {
 
 // DocumentFragment returns the DocumentFragment the component uses to store its contents
 // when it is in initial state.
-func (cd *ComponentData) DocumentFragment() *js.Object {
+func (cd *ComponentData) DocumentFragment() js.Value {
 	return cd.fragment
 }
 
 // Component is implemented by every type generated from <a:component>.
 type Component interface {
 	Data() *ComponentData
-	InsertInto(parent *js.Object, before *js.Object)
+	InsertInto(parent js.Value, before js.Value)
 	Extract()
 }

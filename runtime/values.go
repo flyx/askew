@@ -1,6 +1,6 @@
 package runtime
 
-import "github.com/gopherjs/gopherjs/js"
+import "syscall/js"
 
 // StringValue provides access to a dynamic value of string type.
 type StringValue struct {
@@ -24,7 +24,19 @@ type IntValue struct {
 
 // Get returns the current value of the linked node.
 func (iv *IntValue) Get() int {
-	return iv.get().Int()
+	raw := iv.get()
+	switch raw.Type() {
+	case js.TypeNumber:
+		return raw.Int()
+	case js.TypeString:
+		return js.Global().Call("parseInt", raw, 10).Int()
+	case js.TypeBoolean:
+		if raw.Bool() {
+			return 1
+		}
+		return 0
+	}
+	panic("Cannot retrieve int value from " + raw.String())
 }
 
 // Set updates the underlying node with the given value.
@@ -39,7 +51,17 @@ type BoolValue struct {
 
 // Get returns the current value of the linked node.
 func (bv *BoolValue) Get() bool {
-	return bv.get().Bool()
+	raw := bv.get()
+	switch raw.Type() {
+	case js.TypeBoolean:
+		return raw.Bool()
+	case js.TypeString:
+		str := raw.String()
+		return len(str) > 0
+	case js.TypeNumber:
+		return raw.Int() != 0
+	}
+	panic("Cannot retrieve bool value from " + raw.String())
 }
 
 // Set updates the underlying node with the given value.
@@ -53,11 +75,11 @@ type RawValue struct {
 }
 
 // Get returns the current value of the linked node.
-func (rv *RawValue) Get() *js.Object {
+func (rv *RawValue) Get() js.Value {
 	return rv.get()
 }
 
 // Set updates the underlying node with the given value.
-func (rv *RawValue) Set(value *js.Object) {
+func (rv *RawValue) Set(value js.Value) {
 	rv.set(value)
 }

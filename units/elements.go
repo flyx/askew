@@ -195,8 +195,7 @@ func (eh *elementHandler) processBindings(arr []data.VariableMapping) error {
 						vb.Variable.Type = &data.ParamType{Kind: data.BoolType}
 					}
 				case data.BoundSelf:
-					vb.Variable.Type = &data.ParamType{Kind: data.PointerType,
-						ValueType: &data.ParamType{Kind: data.ObjectType}}
+					vb.Variable.Type = &data.ParamType{Kind: data.JSValueType}
 				default:
 					vb.Variable.Type = &data.ParamType{Kind: data.StringType}
 				}

@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"github.com/gopherjs/gopherjs/js"
+	"syscall/js"
 )
 
 // GenericList is a list of Components whose manipulation methods auto-update
@@ -14,7 +14,7 @@ type GenericList struct {
 // Init initializes the list, discarding previous data.
 // The list's items will be placed in the given container, starting at the
 // given index.
-func (l *GenericList) Init(container *js.Object, index int) {
+func (l *GenericList) Init(container js.Value, index int) {
 	l.mgr = CreateListManager(container, index)
 	l.items = nil
 }
@@ -41,7 +41,7 @@ func (l *GenericList) Append(item Component) {
 
 // Insert inserts the given item at the given index into the list.
 func (l *GenericList) Insert(index int, item Component) {
-	var prev *js.Object
+	var prev js.Value
 	if index < len(l.items) {
 		prev = l.items[index].Data().First()
 	}
@@ -66,7 +66,7 @@ func (l *GenericList) Remove(index int) Component {
 
 // DoUpdateParent calls the underlying list manager's UpdateParent.
 // This is an implementation detail and should not be called from user code.
-func (l *GenericList) DoUpdateParent(oldParent, newParent, newEnd *js.Object) {
+func (l *GenericList) DoUpdateParent(oldParent, newParent, newEnd js.Value) {
 	l.mgr.UpdateParent(oldParent, newParent, newEnd)
 }
 
@@ -79,7 +79,7 @@ type GenericOptional struct {
 // Init initializes the container to be empty.
 // The contained item, if any, will be placed in the given container at the
 // given index.
-func (o *GenericOptional) Init(container *js.Object, index int) {
+func (o *GenericOptional) Init(container js.Value, index int) {
 	o.mgr = CreateListManager(container, index)
 	o.cur = nil
 }
@@ -103,6 +103,6 @@ func (o *GenericOptional) Set(value Component) {
 
 // DoUpdateParent calls the underlying list manager's UpdateParent.
 // This is an implementation detail and should not be called from user code.
-func (o *GenericOptional) DoUpdateParent(oldParent, newParent, newEnd *js.Object) {
+func (o *GenericOptional) DoUpdateParent(oldParent, newParent, newEnd js.Value) {
 	o.mgr.UpdateParent(oldParent, newParent, newEnd)
 }

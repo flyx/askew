@@ -3,7 +3,7 @@ package ui
 import (
 	"strconv"
 
-	"github.com/gopherjs/gopherjs/js"
+	"syscall/js"
 )
 
 // SetTitle is called when input A changes.
@@ -14,14 +14,14 @@ func (o *MacroTest) SetTitle(value string) bool {
 
 func (o *Herp) click() {
 	o.count++
-	js.Global.Call("alert", "Derp"+strconv.Itoa(o.count))
+	js.Global().Call("alert", "Derp"+strconv.Itoa(o.count))
 }
 
 func (o *OneTwoThree) click(caption string) {
-	js.Global.Call("alert", caption)
+	js.Global().Call("alert", caption)
 }
 
-func (o *EventTest) click(e *js.Object) {
+func (o *EventTest) click(e js.Value) {
 	button := e.Get("currentTarget")
 	button.Set("innerText", button.Get("innerText").String()+"!")
 }
@@ -35,5 +35,5 @@ func (o *ColorChooserByText) click(value string) {
 }
 
 func (o *SelfTest) click() {
-	js.Global.Call("alert", o.Button.Get().Get("dataset").Get("foo"))
+	js.Global().Call("alert", o.Button.Get().Get("dataset").Get("foo"))
 }

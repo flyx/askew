@@ -11,14 +11,10 @@ import (
 func canCapture(params []data.Param) error {
 	for _, p := range params {
 		switch p.Type.Kind {
-		case data.IntType, data.StringType, data.BoolType:
+		case data.IntType, data.StringType, data.BoolType, data.JSValueType:
 			break
-		case data.PointerType:
-			if p.Type.ValueType.Kind != data.ObjectType {
-				return errors.New("cannot capture type (must be int, string, bool or *js.Object): " + p.Type.String())
-			}
 		default:
-			return errors.New("cannot capture type (must be int, string, bool or *js.Object): " + p.Type.String())
+			return errors.New("cannot capture type (must be int, string, bool or js.Value): " + p.Type.String())
 		}
 	}
 	return nil

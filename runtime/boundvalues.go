@@ -1,18 +1,18 @@
 package runtime
 
-import "github.com/gopherjs/gopherjs/js"
+import "syscall/js"
 
 // BoundValue is the interface for retrieving and setting bound values in
 // the HTML DOM.
 type BoundValue interface {
-	get() *js.Object
+	get() js.Value
 	set(value interface{})
 }
 
 // BoundProperty implements BoundValue for a single property of an
 // HTML node, such as `textContent` or `value`.
 type BoundProperty struct {
-	node  *js.Object
+	node  js.Value
 	pName string
 }
 
@@ -25,11 +25,11 @@ func NewBoundProperty(
 }
 
 // Init initializes the bound property with the given node and property name.
-func (bp *BoundProperty) Init(node *js.Object, pName string) {
+func (bp *BoundProperty) Init(node js.Value, pName string) {
 	bp.node, bp.pName = node, pName
 }
 
-func (bp *BoundProperty) get() *js.Object {
+func (bp *BoundProperty) get() js.Value {
 	return bp.node.Get(bp.pName)
 }
 
@@ -40,7 +40,7 @@ func (bp *BoundProperty) set(value interface{}) {
 // BoundStyle implements BoundValue for a single property of the target node's
 // `style` property.
 type BoundStyle struct {
-	node  *js.Object
+	node  js.Value
 	sName string
 }
 
@@ -53,11 +53,11 @@ func NewBoundStyle(
 }
 
 // Init initializes the bound style with the given node and style name.
-func (bs *BoundStyle) Init(node *js.Object, sName string) {
+func (bs *BoundStyle) Init(node js.Value, sName string) {
 	bs.node, bs.sName = node, sName
 }
 
-func (bs *BoundStyle) get() *js.Object {
+func (bs *BoundStyle) get() js.Value {
 	return bs.node.Get("style").Get(bs.sName)
 }
 
@@ -67,7 +67,7 @@ func (bs *BoundStyle) set(value interface{}) {
 
 // BoundData implements BoundValue for an item in the dataset of an HTML node.
 type BoundData struct {
-	node  *js.Object
+	node  js.Value
 	dName string
 }
 
@@ -79,11 +79,11 @@ func NewBoundData(
 }
 
 // Init initializes the object with the given node and dataset item name.
-func (ba *BoundData) Init(node *js.Object, dName string) {
+func (ba *BoundData) Init(node js.Value, dName string) {
 	ba.node, ba.dName = node, dName
 }
 
-func (ba *BoundData) get() *js.Object {
+func (ba *BoundData) get() js.Value {
 	return ba.node.Get("dataset").Get(ba.dName)
 }
 
@@ -108,7 +108,7 @@ func (ba *BoundData) set(value interface{}) {
 // Both the boolean and the integer interface can be used for both reading and
 // writing.
 type BoundClasses struct {
-	node       *js.Object
+	node       js.Value
 	classNames []string
 }
 
@@ -119,18 +119,18 @@ func NewBoundClasses(d *ComponentData, classNames []string, path ...int) *BoundC
 }
 
 // Init initializes the BoundClass with the given node and class name.
-func (bc *BoundClasses) Init(node *js.Object, classNames []string) {
+func (bc *BoundClasses) Init(node js.Value, classNames []string) {
 	bc.node, bc.classNames = node, classNames
 }
 
-func (bc *BoundClasses) get() *js.Object {
+func (bc *BoundClasses) get() js.Value {
 	cList := bc.node.Get("classList")
 	for i := range bc.classNames {
 		if cList.Call("contains", bc.classNames[i]).Bool() {
-			return js.Global.Call("Number", i+1)
+			return js.Global().Call("Number", i+1)
 		}
 	}
-	return js.Global.Call("Number", 0)
+	return js.Global().Call("Number", 0)
 }
 
 func (bc *BoundClasses) set(value interface{}) {
@@ -157,7 +157,7 @@ func (bc *BoundClasses) set(value interface{}) {
 // BoundFormValue implements BoundValue as a reference to an element supplying
 // a value to the current form.
 type BoundFormValue struct {
-	form  *js.Object
+	form  js.Value
 	name  string
 	radio bool
 }
@@ -171,11 +171,11 @@ func NewBoundFormValue(d *ComponentData, name string, radio bool, path ...int) *
 }
 
 // Init initializes the BoundFormValue with the given form and element name.
-func (bfv *BoundFormValue) Init(form *js.Object, name string, radio bool) {
+func (bfv *BoundFormValue) Init(form js.Value, name string, radio bool) {
 	bfv.form, bfv.name, bfv.radio = form, name, radio
 }
 
-func (bfv *BoundFormValue) get() *js.Object {
+func (bfv *BoundFormValue) get() js.Value {
 	if bfv.radio {
 		list := bfv.form.Get("elements").Get(bfv.name)
 		for i := 0; i < list.Length(); i++ {
@@ -184,7 +184,7 @@ func (bfv *BoundFormValue) get() *js.Object {
 				return item.Get("value")
 			}
 		}
-		return nil
+		return js.Value{}
 	}
 	return bfv.form.Get("elements").Get(bfv.name).Get("value")
 }
@@ -207,12 +207,12 @@ func (bfv *BoundFormValue) set(value interface{}) {
 // BoundEventValue implements BoundValue as a reference to a value of the
 // captured event, or the event itself.
 type BoundEventValue struct {
-	val *js.Object
+	val js.Value
 }
 
 // Init initializes the BoundEventValue to return the given event's property
 // with the given name, or the event itself if propName == ""
-func (bev *BoundEventValue) Init(e *js.Object, propName string) {
+func (bev *BoundEventValue) Init(e js.Value, propName string) {
 	if propName == "" {
 		bev.val = e
 	} else {
@@ -220,7 +220,7 @@ func (bev *BoundEventValue) Init(e *js.Object, propName string) {
 	}
 }
 
-func (bev *BoundEventValue) get() *js.Object {
+func (bev *BoundEventValue) get() js.Value {
 	return bev.val
 }
 
@@ -231,7 +231,7 @@ func (bev *BoundEventValue) set(value interface{}) {
 // BoundSelf implements BoundValue by replacing the referenced node with a text node
 // containing the given value.
 type BoundSelf struct {
-	node *js.Object
+	node js.Value
 }
 
 // NewBoundSelf creates a BoundSelf for the node at the given path.
@@ -240,20 +240,20 @@ func NewBoundSelf(d *ComponentData, path ...int) *BoundSelf {
 }
 
 // Init initializes the BoundSelf with the given node.
-func (bs *BoundSelf) Init(node *js.Object) {
+func (bs *BoundSelf) Init(node js.Value) {
 	bs.node = node
 }
 
-func (bs *BoundSelf) get() *js.Object {
+func (bs *BoundSelf) get() js.Value {
 	return bs.node
 }
 
 func (bs *BoundSelf) set(value interface{}) {
-	if o, ok := value.(*js.Object); ok {
+	if o, ok := value.(js.Value); ok {
 		bs.node.Get("parentNode").Call("replaceChild", o, bs.node)
 		bs.node = o
 	} else {
-		node := js.Global.Get("document").Call("createTextNode", value)
+		node := js.Global().Get("document").Call("createTextNode", value)
 		bs.node.Get("parentNode").Call("replaceChild", node, bs.node)
 		bs.node = node
 	}

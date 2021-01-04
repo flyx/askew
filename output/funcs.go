@@ -49,10 +49,8 @@ func wrapperForType(t data.ParamType) string {
 		return "runtime.IntValue"
 	case data.BoolType:
 		return "runtime.BoolValue"
-	case data.PointerType:
-		if t.ValueType.Kind == data.ObjectType {
-			return "runtime.RawValue"
-		}
+	case data.JSValueType:
+		return "runtime.RawValue"
 	}
 	panic("no wrapper for type: " + t.String())
 }

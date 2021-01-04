@@ -1,16 +1,15 @@
 package runtime
 
-import "github.com/gopherjs/gopherjs/js"
+import "syscall/js"
 
 // ListManager is the backend for component lists.
 type ListManager struct {
-	parent *js.Object
-	end    *js.Object
+	parent, end js.Value
 }
 
 // CreateListManager creates a list manager that inserts list objects at the given
 // index between the children of the given parent.
-func CreateListManager(parent *js.Object, insertAt int) ListManager {
+func CreateListManager(parent js.Value, insertAt int) ListManager {
 	return ListManager{
 		parent: parent, end: parent.Get("childNodes").Index(insertAt)}
 }
@@ -27,14 +26,14 @@ func CreateListManager(parent *js.Object, insertAt int) ListManager {
 // acted on the last item of the DocumentFragment (if not, the node after the
 // list's items stays the same).
 func (lm *ListManager) UpdateParent(
-	oldParent, newParent, newEnd *js.Object) {
+	oldParent, newParent, newEnd js.Value) {
 	if oldParent == lm.parent {
 		lm.parent = newParent
-		if lm.end == nil {
+		if lm.end == js.Undefined() {
 			lm.end = newEnd
-		} else if newEnd == nil {
+		} else if newEnd == js.Undefined() {
 			if !newParent.Call("contains", lm.end).Bool() {
-				lm.end = nil
+				lm.end = js.Undefined()
 			}
 		}
 	}
@@ -51,6 +50,6 @@ func (lm ListManager) Append(c Component) {
 }
 
 // Insert inserts the given object in front of the object `before`.
-func (lm ListManager) Insert(c Component, before *js.Object) {
+func (lm ListManager) Insert(c Component, before js.Value) {
 	c.InsertInto(lm.parent, before)
 }

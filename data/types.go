@@ -10,8 +10,8 @@ const (
 	StringType
 	// BoolType is a bool
 	BoolType
-	// ObjectType is js.Object
-	ObjectType
+	// JSValueType is js.Value
+	JSValueType
 	// NamedType is any named type that is not an int, a string or a bool.
 	NamedType
 	// ArrayType is an array
@@ -41,8 +41,8 @@ func (pt ParamType) String() string {
 		return "string"
 	case BoolType:
 		return "bool"
-	case ObjectType:
-		return "js.Object"
+	case JSValueType:
+		return "js.Value"
 	case NamedType:
 		return pt.Name
 	case ArrayType:

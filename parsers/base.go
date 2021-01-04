@@ -38,8 +38,8 @@ func registerType(p *peg.Parser) {
 		}
 		name += "."
 		name += v.ToStr(1)
-		if name == "js.Object" {
-			return &data.ParamType{Kind: data.ObjectType}, nil
+		if name == "js.Value" {
+			return &data.ParamType{Kind: data.JSValueType}, nil
 		}
 		return &data.ParamType{Kind: data.NamedType, Name: name}, nil
 	}
