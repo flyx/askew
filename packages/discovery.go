@@ -93,7 +93,7 @@ func descend(start *html.Node, path []atom.Atom) (*html.Node, error) {
 // Discover searches for a go.mod in the cwd, then walks through the file system
 // to discover .askew files.
 // For each file, the imports are parsed.
-func Discover() (*data.BaseDir, error) {
+func Discover(excludes []string) (*data.BaseDir, error) {
 	var err error
 	ret := &data.BaseDir{}
 	ret.ImportPath, err = findBasePath()
@@ -103,6 +103,13 @@ func Discover() (*data.BaseDir, error) {
 
 	ret.Packages = make(map[string]*data.Package)
 	err = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			for _, exclude := range excludes {
+				if matched, _ := filepath.Match(exclude, path); matched {
+					return filepath.SkipDir
+				}
+			}
+		}
 		kind := fileKind(info.Name())
 		if info.IsDir() || kind == dotOther {
 			return nil

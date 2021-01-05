@@ -109,8 +109,8 @@ func (eh *elementHandler) mapCaptures(n *html.Node, v []data.UnboundEventMapping
 				var c data.ControllerMethod
 				c, ok = eh.cmp.Controller[unmapped.Handler]
 				if ok {
-					if !c.CanCapture {
-						return errors.New("capture references handler whose parameter types are not only int, string and bool: " + unmapped.Handler)
+					if c.CaptureError != nil {
+						return errors.New("cannot use method " + unmapped.Handler + " for capturing: " + c.CaptureError.Error())
 					}
 					h = c.Handler
 					fromController = true

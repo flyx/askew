@@ -12,6 +12,10 @@ import (
 func main() {
 	output := getopt.StringLong(
 		"outputDir", 'o', ".", "output directory for index.html")
+	excludes := getopt.ListLong("exclude", 'e',
+		"comma-separated list of directories to exclude. "+
+			"allows patterns (which must be quoted in a typical shell). "+
+			"relative to the directory given at command line, or to cwd if no directory is given.")
 	getopt.Parse()
 	var err error
 	outputDirPath, err := filepath.Abs(*output)
@@ -47,7 +51,7 @@ func main() {
 		panic("output path is not a directory: " + *output)
 	}
 
-	base, err := packages.Discover()
+	base, err := packages.Discover(*excludes)
 	if err != nil {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)

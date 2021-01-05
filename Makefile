@@ -7,7 +7,7 @@ askew:
 run-askew: askew test/site
 	./askew -o test/site test
 
-.PHONY: askew test-run-askew test
+.PHONY: askew run-askew test
 
 test/ui/ui.go: run-askew
 test/extra/additionals.go: run-askew

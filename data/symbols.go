@@ -71,7 +71,7 @@ func (s *Symbols) split(id string) (pkg *Package, symName string, aliasName stri
 	}
 	retPkg, ok := s.Packages[pkgPath]
 	if !ok {
-		return nil, "", "", fmt.Errorf("cannot use controls from import path '%s' which is outside current module", pkgPath)
+		return nil, "", "", fmt.Errorf("cannot use controls from import path '%s' which is outside current module or has been excluded", pkgPath)
 	}
 	return retPkg, id[last+1:], aliasName, nil
 }

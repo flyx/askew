@@ -22,7 +22,7 @@ const (
 	BoundEventValue
 	// BoundSelf refers to the node itself. Setting it is used for substituting
 	// <a:text> elements with text nodes, getting it can be used to access the
-	// raw *js.Object of the node.
+	// raw js.Value of the node.
 	BoundSelf
 )
 
