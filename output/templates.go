@@ -486,6 +486,14 @@ func (l *{{.Name}}List) Remove(index int) *{{.Name}} {
 	l.items = l.items[:len(l.items)-1]
 	return item
 }
+
+// RemoveAll removes all items from the list.
+func (l *{{.Name}}List) RemoveAll() {
+	for _, item := range l.items {
+		l.mgr.Remove(item)
+	}
+	l.items = l.items[:0]
+}
 {{end}}
 
 {{- if .NeedsOptional}}
