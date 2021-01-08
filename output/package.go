@@ -84,7 +84,7 @@ func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string) error {
 		NextSibling: nil,
 	}
 
-	htmlFile, err := os.Create(filepath.Join(outputPath, "index.html"))
+	htmlFile, err := os.Create(filepath.Join(outputPath, f.HTMLFile))
 	if err != nil {
 		return err
 	}

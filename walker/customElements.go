@@ -20,5 +20,5 @@ var AskewElements = []html.CustomElement{
 	{Name: "a:text", ProcessLike: atom.Span},
 	{Name: "a:embed", DisableFosterParenting: true, ProcessLike: atom.Template},
 	{Name: "a:construct", ProcessLike: atom.Div},
-	{Name: "a:site", ProcessLike: atom.Div},
+	{Name: "a:site", ProcessLike: atom.Html},
 }

@@ -1,5 +1,11 @@
 <!doctype html>
-<html lang="en">
+<a:site lang="en">
+  <a:package>main</a:package>
+  <a:import>
+    "github.com/flyx/askew/test/ui";
+    "github.com/flyx/askew/test/extra"
+  </a:import>
+
   <head>
     <title>Askew Test</title>
     <style>
@@ -21,14 +27,6 @@
     </style>
   </head>
   <body>
-    <a:site>
-      <a:package>main</a:package>
-      <a:import>
-        "github.com/flyx/askew/test/ui";
-        "github.com/flyx/askew/test/extra"
-      </a:import>
-    </a:site>
-
     <a:embed name="Forms" type="ui.NameForms" args="true, `After the forms`"></a:embed>
     <a:embed name="Test" type="extra.EmbedTest"></a:embed>
     <section>
@@ -52,4 +50,4 @@
     <a:embed name="MoreColors" type="ui.ColorChooserByText"></a:embed>
     <a:embed name="SelfTest" type="ui.SelfTest"></a:embed>
   </body>
-</html>
+</a:site>

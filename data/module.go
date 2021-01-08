@@ -26,9 +26,9 @@ type AskewFile struct {
 type ASiteFile struct {
 	File
 	Unit
-	Document, Descriptor *html.Node
-	JSFile, HTMLFile     string
-	VarName              *string
+	Document         *html.Node
+	JSFile, HTMLFile string
+	VarName          *string
 }
 
 // RootNode returns the root node (<html>) of the file's HTML document

@@ -2,6 +2,8 @@ package attributes
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/parsers"
@@ -53,14 +55,18 @@ type Site struct {
 
 func (s *Site) collect(name, val string) error {
 	switch name {
-	case "htmlFile":
+	case "a:htmlfile":
 		s.HTMLFile = val
-		return nil
-	case "jsFile":
+		return ErrRemoveAttribute
+	case "a:jsfile":
 		s.JSFile = val
-		return nil
+		return ErrRemoveAttribute
+	default:
+		if strings.HasPrefix(name, "a:") {
+			return fmt.Errorf(": unknown askew attribute on <a:site>: %s", name)
+		}
 	}
-	return invalidAttribute(name)
+	return nil
 }
 
 // IncludeChild collects the attributes on any node that is a child of
@@ -187,18 +193,30 @@ func ExtractAskewAttribs(n *html.Node, target Collector) error {
 	return nil
 }
 
-// Collect collects all attributes from the node and hands them to the collector
+// ErrRemoveAttribute is an error that can be returned from a collector to
+// remove the given attribute from the list of attributes.
+var ErrRemoveAttribute = errors.New("remove attribute")
+
+// Collect collects all attributes from the node and hands them to the
+// collector. The collector can return ErrRemoveAttribute if it wants the
+// attribute to be removed from the node.
 func Collect(n *html.Node, target Collector) error {
 	seen := make(map[string]struct{})
 
-	for _, attr := range n.Attr {
-
+	for i := 0; i < len(n.Attr); {
+		attr := &n.Attr[i]
 		if _, ok := seen[attr.Key]; ok {
 			panic("duplicate attribute: " + attr.Key)
 		}
 		seen[attr.Key] = struct{}{}
 		if err := target.collect(attr.Key, attr.Val); err != nil {
-			return err
+			if err == ErrRemoveAttribute {
+				n.Attr = append(n.Attr[:i], n.Attr[i+1:]...)
+			} else {
+				return err
+			}
+		} else {
+			i++
 		}
 	}
 	return nil

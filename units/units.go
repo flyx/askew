@@ -8,6 +8,7 @@ import (
 	"github.com/flyx/askew/attributes"
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/walker"
+	"github.com/flyx/net/html/atom"
 )
 
 // ProcessFile processes a file containing units (*.askew)
@@ -26,7 +27,8 @@ func ProcessFile(file *data.AskewFile, syms *data.Symbols, counter *int) error {
 
 func processSiteDescriptor(site *data.ASiteFile) error {
 	var siteAttrs attributes.Site
-	err := attributes.Collect(site.Descriptor, &siteAttrs)
+	rootNode := site.Document.FirstChild.NextSibling
+	err := attributes.Collect(rootNode, &siteAttrs)
 	if err != nil {
 		return err
 	}
@@ -40,6 +42,8 @@ func processSiteDescriptor(site *data.ASiteFile) error {
 	} else {
 		site.JSFile = siteAttrs.JSFile
 	}
+	rootNode.Data = "html"
+	rootNode.DataAtom = atom.Html
 	return nil
 }
 

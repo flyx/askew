@@ -179,54 +179,24 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 				asiteFile.Document.FirstChild.Type != html.DoctypeNode {
 				return fmt.Errorf("%s: does not contain a complete HTML 5 document (doctype missing?)", path)
 			}
-			if asiteFile.Document.FirstChild.NextSibling.Type != html.ElementNode {
-				return fmt.Errorf("%s: root is not a proper <html> node", path)
+			rootNode := asiteFile.Document.FirstChild.NextSibling
+			if rootNode.Type != html.ElementNode || rootNode.Data != "a:site" {
+				return fmt.Errorf("%s: root is not a <a:site> node", path)
 			}
-			pHandler := &packageHandler{pkg: pkg, seen: false}
-			w := walker.Walker{
-				Package:  pHandler,
-				Import:   &importHandler{file: &asiteFile.File},
-				TextNode: walker.WhitespaceOnly{}}
-			body, err := descend(asiteFile.Document, []atom.Atom{atom.Html, atom.Body})
+			head, err := descend(rootNode, []atom.Atom{atom.Head})
 			if err != nil {
 				return fmt.Errorf("%s: %s", path, err.Error())
 			}
-			for c := body.FirstChild; c != nil; c = c.NextSibling {
-				if c.Data == "a:site" {
-					if asiteFile.Descriptor != nil {
-						return fmt.Errorf("%s: duplicate <a:site> element", path)
-					}
-					_, _, err = w.WalkChildren(nil, &walker.Siblings{Cur: c.FirstChild})
-					if err != nil {
-						return fmt.Errorf("%s: %s", path, err.Error())
-					}
-					asiteFile.Descriptor = c
-					repl := &html.Node{
-						Type:        html.CommentNode,
-						Data:        "site",
-						Parent:      c.Parent,
-						NextSibling: c.NextSibling,
-						PrevSibling: c.PrevSibling,
-					}
-					if c.NextSibling != nil {
-						c.NextSibling.PrevSibling = repl
-					} else {
-						c.Parent.LastChild = repl
-					}
-					if c.PrevSibling != nil {
-						c.PrevSibling.NextSibling = repl
-					} else {
-						c.Parent.FirstChild = repl
-					}
-				}
+			pHandler := &packageHandler{pkg: pkg, seen: false, remove: true}
+			w := walker.Walker{
+				Package:     pHandler,
+				Import:      &importHandler{file: &asiteFile.File, remove: true},
+				TextNode:    walker.WhitespaceOnly{},
+				StdElements: walker.DontDescend{}}
+			_, _, err = w.WalkChildren(head, &walker.Siblings{Cur: head.FirstChild})
+			if err != nil {
+				return fmt.Errorf("%s: %s", path, err.Error())
 			}
-			if asiteFile.Descriptor == nil {
-				return fmt.Errorf("%s: missing <a:site> in /html/body", path)
-			}
-			asiteFile.Descriptor.NextSibling = nil
-			asiteFile.Descriptor.PrevSibling = nil
-			asiteFile.Descriptor.Parent = nil
-			pkg.Site = asiteFile
 			if !pHandler.seen {
 				if pkg.Name == "" {
 					pkg.Name = assumedPkgName
@@ -234,6 +204,7 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 					return fmt.Errorf("%s: <a:package> missing, has been set to %s in another file", path, pkg.Name)
 				}
 			}
+			pkg.Site = asiteFile
 		}
 
 		return nil
@@ -245,7 +216,8 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 }
 
 type importHandler struct {
-	file *data.File
+	file   *data.File
+	remove bool
 }
 
 func (ih *importHandler) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
@@ -264,12 +236,15 @@ func (ih *importHandler) Process(n *html.Node) (descend bool, replacement *html.
 		return false, nil, errors.New(": cannot have more than one <a:import> per file")
 	}
 	ih.file.Imports = imports
+	if ih.remove {
+		return false, &html.Node{Type: html.CommentNode, Data: "imports"}, nil
+	}
 	return false, nil, nil
 }
 
 type packageHandler struct {
-	pkg  *data.Package
-	seen bool
+	pkg          *data.Package
+	seen, remove bool
 }
 
 func (ph *packageHandler) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
@@ -293,5 +268,8 @@ func (ph *packageHandler) Process(n *html.Node) (descend bool, replacement *html
 		return false, nil, errors.New(": conflicting package name, does not equal '" + ph.pkg.Name + "'")
 	}
 	ph.seen = true
+	if ph.remove {
+		return false, &html.Node{Type: html.CommentNode, Data: "package"}, nil
+	}
 	return false, nil, nil
 }
