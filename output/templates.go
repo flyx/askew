@@ -247,8 +247,8 @@ type {{.Name}} struct {
 	{{- end}}
 }
 
-// New{{.Name}} creates a new component and initializes it with Init.
-func New{{.Name}}({{GenComponentParams .Parameters}}) *{{.Name}} {
+// {{.ConstructorName}} creates a new component and initializes it with Init.
+func {{.ConstructorName}}({{GenComponentParams .Parameters}}) *{{.Name}} {
 	ret := new({{.Name}})
 	ret.Init({{ListParamVars .Parameters}})
 	return ret
@@ -286,7 +286,7 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	{
 		container := o.cd.Walk({{PathItems .Path 1}})
 		{{- if eq .Kind 0}}
-		o.{{.Field}} = {{with .Ns}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}})
+		o.{{.Field}} = {{with .Ns}}{{.}}.{{end}}{{.ConstructorName}}({{.Args.Raw}})
 		o.{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
 		{{- if .Control}}
 		o.{{.Field}}.Controller = o
@@ -307,7 +307,7 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		o.{{$e.Field}}.Set(
 		{{- else}}
 		o.{{$e.Field}}.Append(
-		{{- end}}{{with $e.Ns}}{{.}}.{{end}}New{{$e.T}}({{.Args.Raw}}))
+		{{- end}}{{with $e.Ns}}{{.}}.{{end}}{{$e.ConstructorName}}({{.Args.Raw}}))
 		{{- if ne .Kind 0}}
 		}
 		{{- end}}
@@ -558,7 +558,7 @@ var {{.VarName}} = struct {
 }{
 	{{- range .Embeds}}
 		{{- if eq .Kind 0}}
-			{{.Field}}: {{with .Ns}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}}),
+			{{.Field}}: {{with .Ns}}{{.}}.{{end}}New{{.ConstructorName}}({{.Args.Raw}}),
 		{{- else if eq .Kind 1}}
 			{{- if .T}}
 				{{.Field}}: {{with .Ns}}{{.}}.{{end}}{{.T}}List{},
@@ -578,7 +578,7 @@ var {{.VarName}} = struct {
 	{{range .Embeds}}
 		// {{.Field}} is part of the main document.
 		{{- if eq .Kind 0}}
-			var {{.Field}} = {{with .Ns}}{{.}}.{{end}}New{{.T}}({{.Args.Raw}})
+			var {{.Field}} = {{with .Ns}}{{.}}.{{end}}{{.ConstructorName}}({{.Args.Raw}})
 		{{- else if eq .Kind 1}}
 			{{- if .T}}
 				var {{.Field}} {{with .Ns}}{{.}}.{{end}}{{.T}}List

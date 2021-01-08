@@ -37,15 +37,22 @@ func (asf *ASiteFile) RootNode() *html.Node {
 	return asf.Document.FirstChild.NextSibling
 }
 
-// Package describes a Go package.
+// Package describes a Go package with askew content in it.
 type Package struct {
+	// descriptors of all *.askew files inside the package
 	Files []*AskewFile
-	Site  *ASiteFile
-	Path  string
+	// if the directory contains a *.asite file, this is its descriptor.
+	Site *ASiteFile
+	// ImportPath can be used to import this package into other packages
+	ImportPath string
+	// Name is the package's name.
+	Name string
 }
 
 // BaseDir describes the directory on which askew is executed
 type BaseDir struct {
-	Packages   map[string]*Package
+	// Package is a map tha maps relative paths to packages
+	Packages map[string]*Package
+	// ImportPath is the path with which the base directory can be imported.
 	ImportPath string
 }

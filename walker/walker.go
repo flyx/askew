@@ -25,6 +25,7 @@ type NodeHandler interface {
 // NodeHandler must be registered for that element to be valid. for each
 // standard HTML element, a NodeHandler may be registered.
 type Walker struct {
+	Package     NodeHandler
 	Import      NodeHandler
 	Macro       NodeHandler
 	Component   NodeHandler
@@ -76,6 +77,8 @@ func (w *Walker) processElement(n *html.Node) (replacement *html.Node, err error
 	var h NodeHandler
 	if n.DataAtom == 0 {
 		switch n.Data {
+		case "a:package":
+			h = w.Package
 		case "a:import":
 			h = w.Import
 		case "a:macro":

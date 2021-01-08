@@ -116,11 +116,17 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 		}
 		os.Stdout.WriteString("[info] discovered: " + path + "\n")
 		relPath := filepath.Dir(path)
-		pkgPath := filepath.ToSlash(filepath.Join(ret.ImportPath, relPath))
-		pkg, ok := ret.Packages[pkgPath]
+		assumedPkgName := filepath.Base(relPath)
+		if assumedPkgName == "." {
+			assumedPkgName = filepath.Base(ret.ImportPath)
+		}
+		pkg, ok := ret.Packages[relPath]
 		if !ok {
-			pkg = &data.Package{Files: make([]*data.AskewFile, 0, 32), Path: relPath}
-			ret.Packages[pkgPath] = pkg
+			// the .Name of the package is only set when the first file inside that
+			// package is processed.
+			pkg = &data.Package{Files: make([]*data.AskewFile, 0, 32),
+				ImportPath: filepath.ToSlash(filepath.Join(ret.ImportPath, relPath))}
+			ret.Packages[relPath] = pkg
 		}
 
 		contents, err := ioutil.ReadFile(path)
@@ -137,7 +143,9 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 			if err != nil {
 				return fmt.Errorf("%s: %s", path, err.Error())
 			}
+			pHandler := &packageHandler{pkg: pkg, seen: false}
 			w := walker.Walker{
+				Package:   pHandler,
 				Import:    &importHandler{file: &askewFile.File},
 				Component: walker.DontDescend{},
 				Macro:     walker.DontDescend{},
@@ -145,6 +153,15 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 			_, _, err = w.WalkChildren(nil, &walker.NodeSlice{Items: askewFile.Content})
 			if err != nil {
 				return fmt.Errorf("%s: %s", path, err.Error())
+			}
+			if !pHandler.seen {
+				if pkg.Name == "" {
+					pkg.Name = assumedPkgName
+				} else if pkg.Name != assumedPkgName {
+					return fmt.Errorf(
+						"%s: <a:package> missing, another file has already set the package name to '%s'",
+						path, pkg.Name)
+				}
 			}
 			pkg.Files = append(pkg.Files, askewFile)
 		} else {
@@ -165,7 +182,9 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 			if asiteFile.Document.FirstChild.NextSibling.Type != html.ElementNode {
 				return fmt.Errorf("%s: root is not a proper <html> node", path)
 			}
+			pHandler := &packageHandler{pkg: pkg, seen: false}
 			w := walker.Walker{
+				Package:  pHandler,
 				Import:   &importHandler{file: &asiteFile.File},
 				TextNode: walker.WhitespaceOnly{}}
 			body, err := descend(asiteFile.Document, []atom.Atom{atom.Html, atom.Body})
@@ -208,6 +227,13 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 			asiteFile.Descriptor.PrevSibling = nil
 			asiteFile.Descriptor.Parent = nil
 			pkg.Site = asiteFile
+			if !pHandler.seen {
+				if pkg.Name == "" {
+					pkg.Name = assumedPkgName
+				} else if pkg.Name != assumedPkgName {
+					return fmt.Errorf("%s: <a:package> missing, has been set to %s in another file", path, pkg.Name)
+				}
+			}
 		}
 
 		return nil
@@ -238,5 +264,34 @@ func (ih *importHandler) Process(n *html.Node) (descend bool, replacement *html.
 		return false, nil, errors.New(": cannot have more than one <a:import> per file")
 	}
 	ih.file.Imports = imports
+	return false, nil, nil
+}
+
+type packageHandler struct {
+	pkg  *data.Package
+	seen bool
+}
+
+func (ph *packageHandler) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
+	if ph.seen {
+		return false, nil, errors.New(": only one package directive allowed per file")
+	}
+	if n.FirstChild != nil {
+		if n.LastChild != n.FirstChild || n.FirstChild.Type != html.TextNode {
+			return false, nil, errors.New(": may only contain text content")
+		}
+	} else {
+		return false, nil, errors.New(": must contain text content")
+	}
+	name := strings.TrimSpace(n.FirstChild.Data)
+	if name == "" {
+		return false, nil, errors.New(": package name must not be empty")
+	}
+	if ph.pkg.Name == "" {
+		ph.pkg.Name = name
+	} else if ph.pkg.Name != name {
+		return false, nil, errors.New(": conflicting package name, does not equal '" + ph.pkg.Name + "'")
+	}
+	ph.seen = true
 	return false, nil, nil
 }

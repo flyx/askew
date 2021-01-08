@@ -1,6 +1,10 @@
 package data
 
-import "github.com/flyx/net/html"
+import (
+	"unicode"
+
+	"github.com/flyx/net/html"
+)
 
 // Arguments is a list of arguments of an <a:embed>.
 // The arguments will be mapped to the parameters of the referenced <a:component>.
@@ -26,7 +30,8 @@ const (
 
 // ConstructorCall constructs a component as part of an <a:embed>.
 type ConstructorCall struct {
-	Args Arguments
+	ConstructorName string
+	Args            Arguments
 }
 
 // NestedConstructorCallKind describes the kind of a nested constructor call.
@@ -144,4 +149,15 @@ type Component struct {
 	Controller                 map[string]ControllerMethod
 	Captures                   []Capture
 	Init, OnInclude, OnExclude bool
+}
+
+// ConstructorName generates the name of the constructor of the component.
+// The name is `New{name}` for public (uppercase) components, and
+// `New{capitalize(name)}` for private (lowercase) components.
+func (c Component) ConstructorName() string {
+	runes := []rune(c.Name)
+	if unicode.IsLower(runes[0]) {
+		return "new" + string(unicode.ToUpper(runes[0])) + string(runes[1:])
+	}
+	return "New" + c.Name
 }

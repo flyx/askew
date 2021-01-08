@@ -15,7 +15,7 @@ import (
 type PackageWriter struct {
 	Syms        *data.Symbols
 	PackageName string
-	PackagePath string
+	RelPath     string
 }
 
 // WriteFile writes a file of the package.
@@ -32,7 +32,7 @@ func (pw *PackageWriter) WriteFile(f *data.AskewFile) error {
 		return err
 	}
 
-	writeFormatted(b.String(), filepath.Join(pw.PackagePath, f.BaseName+".go"))
+	writeFormatted(b.String(), filepath.Join(pw.RelPath, f.BaseName+".go"))
 	return nil
 }
 
@@ -44,7 +44,7 @@ func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string) error {
 	if err := fileHeader.Execute(&b, struct {
 		PackageName string
 		Imports     map[string]string
-	}{"main", f.Imports}); err != nil {
+	}{pw.PackageName, f.Imports}); err != nil {
 		return err
 	}
 
@@ -52,7 +52,7 @@ func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string) error {
 		return err
 	}
 
-	writeFormatted(b.String(), filepath.Join(pw.PackagePath, "init.go"))
+	writeFormatted(b.String(), filepath.Join(pw.RelPath, "init.go"))
 
 	// HTML file
 	node := f.RootNode()

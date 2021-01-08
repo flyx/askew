@@ -2,6 +2,7 @@ package packages
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
 
 	"github.com/flyx/askew/data"
@@ -12,6 +13,7 @@ type sorter struct {
 	packages   map[string]*data.Package
 	done       map[string]struct{}
 	result     []string
+	importPath string
 }
 
 func (s *sorter) walkImports(imports map[string]string) error {
@@ -19,11 +21,18 @@ func (s *sorter) walkImports(imports map[string]string) error {
 		if _, ok := s.done[item]; ok {
 			continue
 		}
-		if _, ok := s.packages[item]; !ok {
+		if !strings.HasPrefix(item, s.importPath) {
+			continue
+		}
+		relPath, err := filepath.Rel(s.importPath, item)
+		if err != nil {
+			continue
+		}
+		if _, ok := s.packages[relPath]; !ok {
 			continue
 		}
 		for i := range s.curDepPath {
-			if item == s.curDepPath[i] {
+			if relPath == s.curDepPath[i] {
 				var b strings.Builder
 				b.WriteString("circular dependency:")
 				for j := i; j < len(s.curDepPath); j++ {
@@ -33,7 +42,7 @@ func (s *sorter) walkImports(imports map[string]string) error {
 				return errors.New(b.String())
 			}
 		}
-		if err := s.process(item); err != nil {
+		if err := s.process(relPath); err != nil {
 			return err
 		}
 	}
@@ -66,10 +75,11 @@ func (s *sorter) process(name string) error {
 
 // Sort sorts the given list of packages by order of dependencies between them.
 // raises an error in case of cyclic dependencies
-func Sort(packages map[string]*data.Package) ([]string, error) {
+func Sort(importPath string, packages map[string]*data.Package) ([]string, error) {
 	s := sorter{result: make([]string, 0, len(packages)),
 		done: make(map[string]struct{}), packages: packages,
-		curDepPath: make([]string, 0, len(packages))}
+		curDepPath: make([]string, 0, len(packages)),
+		importPath: importPath}
 
 	for name := range packages {
 		if err := s.process(name); err != nil {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -56,10 +57,15 @@ func main() {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)
 	}
-	order, err := packages.Sort(base.Packages)
+	order, err := packages.Sort(base.ImportPath, base.Packages)
 	if err != nil {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)
+	}
+
+	fmt.Printf("importPath = %s\n", base.ImportPath)
+	for pRelPath, pkg := range base.Packages {
+		fmt.Printf("package %s at relpath '%s'\n", pkg.Name, pRelPath)
 	}
 
 	var p processor

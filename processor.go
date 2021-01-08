@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/flyx/askew/data"
@@ -22,7 +21,7 @@ type processor struct {
 }
 
 func (p *processor) init(base *data.BaseDir) {
-	p.syms.Packages = base.Packages
+	p.syms.BaseDir = *base
 }
 
 func (p *processor) processMacros(pkgName string) error {
@@ -71,11 +70,10 @@ func (p *processor) processComponents(pkgName string) error {
 }
 
 func (p *processor) dump(outputPath string) error {
-	for pkgName, pkg := range p.syms.Packages {
-		w := output.PackageWriter{Syms: &p.syms, PackageName: filepath.Base(pkgName),
-			PackagePath: pkg.Path}
-		if err := os.MkdirAll(w.PackagePath, os.ModePerm); err != nil {
-			panic("failed to create package directory '" + w.PackagePath +
+	for relPath, pkg := range p.syms.Packages {
+		w := output.PackageWriter{Syms: &p.syms, PackageName: pkg.Name, RelPath: relPath}
+		if err := os.MkdirAll(relPath, 0755); err != nil {
+			panic("failed to create package directory '" + relPath +
 				"': " + err.Error())
 		}
 		for _, f := range pkg.Files {

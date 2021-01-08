@@ -3,6 +3,7 @@ package data
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -69,9 +70,13 @@ func (s *Symbols) split(id string) (pkg *Package, symName string, aliasName stri
 	if !ok {
 		return nil, "", "", fmt.Errorf("unknown namespace '%s' in id '%s'", aliasName, id)
 	}
-	retPkg, ok := s.Packages[pkgPath]
+	relPath, err := filepath.Rel(s.ImportPath, pkgPath)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("cannot use controls from import path '%s' which is outside current module", pkgPath)
+	}
+	retPkg, ok := s.Packages[relPath]
 	if !ok {
-		return nil, "", "", fmt.Errorf("cannot use controls from import path '%s' which is outside current module or has been excluded", pkgPath)
+		return nil, "", "", fmt.Errorf("cannot use controls from import path '%s' which is unknown (has it been excluded?)", pkgPath)
 	}
 	return retPkg, id[last+1:], aliasName, nil
 }

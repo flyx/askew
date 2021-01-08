@@ -22,6 +22,7 @@
   </head>
   <body>
     <a:site>
+      <a:package>main</a:package>
       <a:import>
         "github.com/flyx/askew/test/ui";
         "github.com/flyx/askew/test/extra"
