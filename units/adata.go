@@ -30,5 +30,6 @@ func (dp *aDataProcessor) Process(n *html.Node) (descend bool,
 	if err != nil {
 		return false, nil, errors.New(": unable to parse fields: " + err.Error())
 	}
-	return false, nil, nil
+	replacement = &html.Node{Type: html.CommentNode, Data: "data"}
+	return
 }

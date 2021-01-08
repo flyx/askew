@@ -45,6 +45,6 @@ func (cp *controllerProcessor) Process(n *html.Node) (descend bool,
 				CaptureError: canCapture(raw.Params)}
 	}
 
-	replacement = &html.Node{Type: html.CommentNode, Data: "handlers"}
+	replacement = &html.Node{Type: html.CommentNode, Data: "controller"}
 	return
 }
