@@ -49,5 +49,6 @@
     <a:embed name="Colors" type="ui.ColorShuffler"></a:embed>
     <a:embed name="MoreColors" type="ui.ColorChooserByText"></a:embed>
     <a:embed name="SelfTest" type="ui.SelfTest"></a:embed>
+    <a:embed name="AutoFieldTest" type="ui.AutoFieldTest" args="`Nobody expects the Spanish Inquisition`"></a:embed>
   </body>
 </a:site>

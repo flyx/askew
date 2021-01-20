@@ -239,8 +239,8 @@ type {{.Name}} struct {
 	{{- range .Variables }}
 	{{.Variable.Name}} {{Wrapper .Variable.Type}}
 	{{- end}}
-	{{- range $name, $type := .Fields}}
-	{{$name}} {{$type}}
+	{{- range .Fields}}
+	{{.Name}} {{.Type}}
 	{{- end}}
 	{{- range .Embeds }}
 	{{.Field}} {{FieldType .}}
@@ -265,7 +265,11 @@ func (o *{{.Name}}) Data() *runtime.ComponentData {
 // the main document. It can be manipulated both before and after insertion.
 func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	o.cd.Init(runtime.InstantiateTemplateByID("{{.ID}}"))
-	{{ range .Variables }}
+	{{ range .Fields }}
+	{{- if .DefaultValue }}o.{{.Name}} = {{.DefaultValue}}
+	{{end}}
+	{{- end}}
+	{{- range .Variables }}
 	{{- if IsFormValue .Value.Kind}}
 	o.{{.Variable.Name}}.BoundValue = runtime.NewBoundFormValue(&o.cd, "{{.Value.ID}}", {{.Value.IsRadio}}, {{PathItems .Path .Value.FormDepth}})
 	{{- else if IsClassValue .Value.Kind}}

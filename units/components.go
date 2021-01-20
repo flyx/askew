@@ -33,6 +33,11 @@ func (p *componentProcessor) Process(n *html.Node) (descend bool,
 	cmp := &data.Component{Unit: data.Unit{}, Template: replacement,
 		Name: cmpAttrs.Name, Parameters: cmpAttrs.Params, Init: cmpAttrs.Init,
 		OnInclude: cmpAttrs.OnInclude, OnExclude: cmpAttrs.OnExclude}
+	for _, param := range cmp.Parameters {
+		if param.IsVar {
+			cmp.Fields = append(cmp.Fields, &data.Field{Name: param.Name, Type: &param.Type, DefaultValue: &param.Name})
+		}
+	}
 
 	err = p.processUnitContent(n, &cmp.Unit, cmp, replacement, true)
 	(*p.counter)++

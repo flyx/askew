@@ -13,8 +13,9 @@ func init() {
 	var err error
 	fieldsParser, err = peg.NewParser(`
 	ROOT        ← < [\n;]* > FIELD (< [\n;]+ > FIELD)* < [\n;]* >
-	FIELD     ← IDENTIFIER (',' IDENTIFIER)* TYPE` +
-		typeSyntax + identifierSyntax + whitespace)
+	FIELD       ← FIELDNAMES TYPE ('=' EXPR)?
+	FIELDNAMES  ← IDENTIFIER (',' IDENTIFIER)*` +
+		typeSyntax + exprSyntax)
 	if err != nil {
 		panic(err)
 	}
@@ -22,26 +23,38 @@ func init() {
 	fieldsParser.Grammar["IDENTIFIER"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		return v.Token(), nil
 	}
+	fieldsParser.Grammar["FIELDNAMES"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
+		ret := make([]string, len(v.Vs))
+		for i := 0; i < len(v.Vs); i++ {
+			ret[i] = v.ToStr(i)
+		}
+		return ret, nil
+	}
 	fieldsParser.Grammar["FIELD"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		ret := make(map[string]*data.ParamType)
-		t := v.Vs[len(v.Vs)-1].(*data.ParamType)
-		for i := 0; i < len(v.Vs)-1; i++ {
-			name := v.ToStr(i)
-			if _, ok := ret[name]; ok {
-				return nil, errors.New("duplicate field name: " + name)
-			}
-			ret[name] = t
+		names := v.Vs[0].([]string)
+		ret := make([]*data.Field, len(names))
+		t := v.Vs[1].(*data.ParamType)
+		var defaultValue *string
+		if len(v.Vs) == 3 {
+			str := v.ToStr(2)
+			defaultValue = &str
+		}
+		for index, name := range names {
+			ret[index] = &data.Field{Name: name, Type: t, DefaultValue: defaultValue}
 		}
 		return ret, nil
 	}
 	fieldsParser.Grammar["ROOT"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
-		ret := make(map[string]*data.ParamType)
+		ret := make([]*data.Field, 0, len(v.Vs)*3)
+		names := make(map[string]struct{})
 		for _, c := range v.Vs {
-			for name, t := range c.(map[string]*data.ParamType) {
-				if _, ok := ret[name]; ok {
-					return nil, errors.New("duplicate field anem: " + name)
+			fields := c.([]*data.Field)
+			for _, field := range fields {
+				if _, ok := names[field.Name]; ok {
+					return nil, errors.New("duplicate field name: " + field.Name)
 				}
-				ret[name] = t
+				names[field.Name] = struct{}{}
+				ret = append(ret, field)
 			}
 		}
 		return ret, nil
@@ -49,10 +62,10 @@ func init() {
 }
 
 // ParseFields parses the content of a <a:data> element.
-func ParseFields(s string) (map[string]*data.ParamType, error) {
+func ParseFields(s string) ([]*data.Field, error) {
 	ret, err := fieldsParser.ParseAndGetValue(s, nil)
 	if err != nil {
 		return nil, err
 	}
-	return ret.(map[string]*data.ParamType), nil
+	return ret.([]*data.Field), nil
 }

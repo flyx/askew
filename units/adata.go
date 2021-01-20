@@ -16,9 +16,6 @@ type aDataProcessor struct {
 func (dp *aDataProcessor) Process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
 
-	if dp.cmp.Fields != nil {
-		return false, nil, errors.New(": duplicate a:data for component")
-	}
 	if len(*dp.indexList) != 1 {
 		return false, nil, errors.New(": must be defined as direct child of <a:component>")
 	}
@@ -26,10 +23,23 @@ func (dp *aDataProcessor) Process(n *html.Node) (descend bool,
 	if def.Type != html.TextNode || def.NextSibling != nil {
 		return false, nil, errors.New(": must have plain text as content and nothing else")
 	}
-	dp.cmp.Fields, err = parsers.ParseFields(def.Data)
+	fields, err := parsers.ParseFields(def.Data)
 	if err != nil {
 		return false, nil, errors.New(": unable to parse fields: " + err.Error())
 	}
+	if dp.cmp.Fields != nil {
+		names := make(map[string]struct{})
+		for _, f := range dp.cmp.Fields {
+			names[f.Name] = struct{}{}
+		}
+		for _, f := range fields {
+			if _, ok := names[f.Name]; ok {
+				return false, nil, errors.New(": duplicate field name: " + f.Name)
+			}
+		}
+	}
+	dp.cmp.Fields = append(dp.cmp.Fields, fields...)
+
 	replacement = &html.Node{Type: html.CommentNode, Data: "data"}
 	return
 }

@@ -37,3 +37,7 @@ func (o *ColorChooserByText) click(value string) {
 func (o *SelfTest) click() {
 	js.Global().Call("alert", o.Button.Get().Get("dataset").Get("foo"))
 }
+
+func (o *AutoFieldTest) click() {
+	js.Global().Call("alert", o.content)
+}

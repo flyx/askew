@@ -113,3 +113,8 @@
 	<button data-foo="bar" a:capture="click:click()"
 			a:bindings="self():Button">Click me – selftest</button>
 </a:component>
+
+<a:component name="AutoFieldTest" params="var content string">
+	<a:handlers>click()</a:handlers>
+	<button a:capture="click:click()">Display Content</button>
+</a:component>

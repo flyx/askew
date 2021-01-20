@@ -93,8 +93,9 @@ type Capture struct {
 // ComponentParam is a component parameter whose type is not parsed or checked by
 // Askew, but passed directly through to the Go code generator.
 type ComponentParam struct {
-	Name string
-	Type ParamType
+	Name  string
+	Type  ParamType
+	IsVar bool
 }
 
 // Assignment assigns an expression to a bound value during component instantiation.
@@ -144,7 +145,7 @@ type Component struct {
 	Template                   *html.Node
 	NeedsList                  bool
 	NeedsOptional              bool
-	Fields                     map[string]*ParamType
+	Fields                     []*Field
 	Handlers                   map[string]Handler
 	Controller                 map[string]ControllerMethod
 	Captures                   []Capture

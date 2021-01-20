@@ -65,3 +65,10 @@ type Param struct {
 func (p *Param) String() string {
 	return p.Name + " " + p.Type.String()
 }
+
+// Field is a declared field of a component.
+type Field struct {
+	Name         string
+	Type         *ParamType
+	DefaultValue *string
+}
