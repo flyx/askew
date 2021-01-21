@@ -24,7 +24,7 @@ func (d *formValueDiscovery) Process(n *html.Node) (descend bool, replacement *h
 	var v formValue
 	name := attributes.Val(n.Attr, "name")
 	if name == "" {
-		return false, nil, nil
+		return true, nil, nil
 	}
 	switch n.DataAtom {
 	case atom.Input:
@@ -49,7 +49,7 @@ func (d *formValueDiscovery) Process(n *html.Node) (descend bool, replacement *h
 	case atom.Select, atom.Textarea:
 		v.t, v.radio = &data.ParamType{Kind: data.StringType}, false
 	default:
-		return false, nil, nil
+		return true, nil, nil
 	}
 	existing, ok := d.values[name]
 	if ok {

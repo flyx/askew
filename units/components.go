@@ -35,7 +35,10 @@ func (p *componentProcessor) Process(n *html.Node) (descend bool,
 		OnInclude: cmpAttrs.OnInclude, OnExclude: cmpAttrs.OnExclude}
 	for _, param := range cmp.Parameters {
 		if param.IsVar {
-			cmp.Fields = append(cmp.Fields, &data.Field{Name: param.Name, Type: &param.Type, DefaultValue: &param.Name})
+			t := param.Type
+			v := param.Name
+			cmp.Fields = append(cmp.Fields, &data.Field{Name: param.Name, Type: &t,
+				DefaultValue: &v})
 		}
 	}
 
