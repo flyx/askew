@@ -12,6 +12,11 @@ func (o *MacroTest) SetTitle(value string) bool {
 	return true
 }
 
+// RandomizeText is called when the Randomize button is clicked.
+func (o *MacroTest) RandomizeText() {
+	o.TextContent.Set(js.Global().Get("Math").Call("random").String())
+}
+
 func (o *Herp) click() {
 	o.count++
 	js.Global().Call("alert", "Derp"+strconv.Itoa(o.count))

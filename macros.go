@@ -101,7 +101,13 @@ type valueMapper struct {
 
 func (vm *valueMapper) Process(n *html.Node) (descend bool, replacement *html.Node, err error) {
 	var iAttrs attributes.IncludeChild
-	attributes.ExtractAskewAttribs(n, &iAttrs)
+	if err = attributes.ExtractAskewAttribs(n, &iAttrs); err != nil {
+		return
+	}
+	// re-add other askew attributes to node as they will be processed later.
+	for name, val := range iAttrs.Others {
+		n.Attr = append(n.Attr, html.Attribute{Key: "a:" + name, Val: val})
+	}
 
 	if iAttrs.Slot == "" {
 		return false, nil, errors.New(": child of a:include has no attribute `a:slot`")
@@ -126,8 +132,8 @@ func (vm *valueMapper) Process(n *html.Node) (descend bool, replacement *html.No
 	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{},
 		Text: walker.Allow{}, Embed: walker.Allow{}, Construct: walker.Allow{},
 		Include: &includeProcessor{vm.syms}}
-	replacement, _, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
-	return
+	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
+	return false, &html.Node{Type: html.CommentNode}, nil
 }
 
 type macroInstantiator struct {

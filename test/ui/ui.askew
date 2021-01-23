@@ -34,17 +34,25 @@
 			<td><input a:capture="change:SetTitle(v=prop(value))" a:bindings="prop(value):A" /></td>
 			<td><input a:bindings="prop(value):B" /></td>
 		</tr>
+		<tr>
+			<td><a:slot name="button"></a:slot></td><td><a:slot name="text"></a:slot></td>
+		</tr>
 	</table>
 </a:macro>
 
 <a:component name="MacroTest" params="title string">
-	<a:handlers>SetTitle(v string)</a:handlers>
+	<a:handlers>
+		SetTitle(v string)
+		RandomizeText()
+	</a:handlers>
 	<section>
 		<h2 a:bindings="class(teletype):MonospaceTitle"><a:text expr="title"></a:text></h2>
 		<h3 a:bindings="prop(textContent):Title">Changeable Title</h3>
 		<a:include name="inputs">
 			<span a:slot="col1">A</span>
 			<span a:slot="col2">B</span>
+			<button a:slot="button" a:capture="click:RandomizeText()">Randomize Text</button>
+			<input a:slot="text" type="text" a:bindings="prop(value):TextContent">
 		</a:include>
 	</section>
 </a:component>

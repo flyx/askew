@@ -11,7 +11,7 @@ import (
 )
 
 func invalidAttribute(name string) error {
-	return errors.New(": element does not allow attribute `" + name + "`")
+	return errors.New(": element does not allow attribute `a:" + name + "`")
 }
 
 // Collector collects askew attributes (attributes with `a:` prefix).
@@ -72,15 +72,20 @@ func (s *Site) collect(name, val string) error {
 // IncludeChild collects the attributes on any node that is a child of
 // <a:include>.
 type IncludeChild struct {
-	Slot string
+	Slot   string
+	Others map[string]string
 }
 
 func (i *IncludeChild) collect(name, val string) error {
 	if name == "slot" {
 		i.Slot = val
-		return nil
+	} else {
+		if i.Others == nil {
+			i.Others = make(map[string]string)
+		}
+		i.Others[name] = val
 	}
-	return invalidAttribute(name)
+	return nil
 }
 
 // Embed collects the attributes of <a:embed>.
