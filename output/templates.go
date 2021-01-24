@@ -286,39 +286,6 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		{{- template "Block" .Block}}
 	}
 	{{- end}}
-	{{- range .Embeds }}
-	{
-		container := o.αcd.Walk({{PathItems .Path 1}})
-		{{- if eq .Kind 0}}
-		o.{{.Field}} = {{with .Ns}}{{.}}.{{end}}{{.ConstructorName}}({{.Args.Raw}})
-		o.{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
-		{{- if .Control}}
-		o.{{.Field}}.Controller = o
-		{{- end}}
-		{{- else}}
-		o.{{.Field}}.Init(container, {{Last .Path}})
-		{{- if .Control}}
-		o.{{.Field}}.DefaultController = o
-		{{- end}}
-		{{$e := .}}
-		{{- range .ConstructorCalls}}
-		{{- if eq .Kind 1}}
-		if {{.Expression}} {
-		{{- else if eq .Kind 2}}
-		for {{.Index}}, {{.Variable}} := range {{.Expression}} {
-		{{- end}}
-		{{- if eq $e.Kind 2}}
-		o.{{$e.Field}}.Set(
-		{{- else}}
-		o.{{$e.Field}}.Append(
-		{{- end}}{{with $e.Ns}}{{.}}.{{end}}{{$e.ConstructorName}}({{.Args.Raw}}))
-		{{- if ne .Kind 0}}
-		}
-		{{- end}}
-		{{- end}}
-		{{- end}}
-	}
-	{{- end}}
 	{{- range .Captures}}
 	{
 		src := o.αcd.Walk({{PathItems .Path 0}})
@@ -352,6 +319,39 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 			})
 			src.Call("addEventListener", "{{.Event}}", wrapper)
 		}
+		{{- end}}
+	}
+	{{- end}}
+	{{- range .Embeds }}
+	{
+		container := o.αcd.Walk({{PathItems .Path 1}})
+		{{- if eq .Kind 0}}
+		o.{{.Field}} = {{with .Ns}}{{.}}.{{end}}{{.ConstructorName}}({{.Args.Raw}})
+		o.{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
+		{{- if .Control}}
+		o.{{.Field}}.Controller = o
+		{{- end}}
+		{{- else}}
+		o.{{.Field}}.Init(container, {{Last .Path}})
+		{{- if .Control}}
+		o.{{.Field}}.DefaultController = o
+		{{- end}}
+		{{$e := .}}
+		{{- range .ConstructorCalls}}
+		{{- if eq .Kind 1}}
+		if {{.Expression}} {
+		{{- else if eq .Kind 2}}
+		for {{.Index}}, {{.Variable}} := range {{.Expression}} {
+		{{- end}}
+		{{- if eq $e.Kind 2}}
+		o.{{$e.Field}}.Set(
+		{{- else}}
+		o.{{$e.Field}}.Append(
+		{{- end}}{{with $e.Ns}}{{.}}.{{end}}{{$e.ConstructorName}}({{.Args.Raw}}))
+		{{- if ne .Kind 0}}
+		}
+		{{- end}}
+		{{- end}}
 		{{- end}}
 	}
 	{{- end}}

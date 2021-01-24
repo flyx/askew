@@ -56,7 +56,8 @@ func (sd *slotDiscovery) Process(n *html.Node) (descend bool, replacement *html.
 	sd.slots = append(sd.slots, data.Slot{Name: name, Node: n})
 
 	w := walker.Walker{TextNode: walker.Allow{}, StdElements: walker.Allow{},
-		Text: walker.Allow{}, Include: &includeProcessor{sd.syms}}
+		Text: walker.Allow{}, Embed: walker.Allow{}, Construct: walker.Allow{},
+		Include: &includeProcessor{sd.syms}}
 	n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
 	return false, nil, err
 }
@@ -88,7 +89,7 @@ func (ip *includeProcessor) Process(n *html.Node) (descend bool, replacement *ht
 	ec := elmCopier{&instantiator}
 	instantiator.w =
 		walker.Walker{TextNode: textCopier{}, StdElements: &ec, Text: &ec,
-			Slot: &slotReplacer{&instantiator}}
+			Slot: &slotReplacer{&instantiator}, Embed: &ec, Construct: &ec}
 	replacement, _, err = instantiator.w.WalkChildren(nil, &walker.Siblings{Cur: m.First})
 	return
 }
