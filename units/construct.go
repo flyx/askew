@@ -6,7 +6,7 @@ import (
 
 	"github.com/flyx/askew/attributes"
 	"github.com/flyx/askew/data"
-	"github.com/flyx/askew/parsers"
+	"github.com/flyx/askew/parsers/arguments"
 	"github.com/flyx/askew/walker"
 	"github.com/flyx/net/html"
 )
@@ -41,7 +41,7 @@ func (cp *constructProcessor) Process(n *html.Node) (descend bool,
 	if attrs.For != nil && attrs.If != nil {
 		return false, nil, errors.New(": cannot have both a:if and a:for here")
 	}
-	args, err := parsers.AnalyseArguments(attributes.Val(n.Attr, "args"))
+	args, err := arguments.Analyse(attributes.Val(n.Attr, "args"))
 	if err != nil {
 		return false, nil, errors.New(": in args: " + err.Error())
 	}

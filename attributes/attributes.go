@@ -7,6 +7,8 @@ import (
 
 	"github.com/flyx/askew/data"
 	"github.com/flyx/askew/parsers"
+	"github.com/flyx/askew/parsers/arguments"
+	"github.com/flyx/askew/parsers/binding"
 	"github.com/flyx/net/html"
 )
 
@@ -112,7 +114,7 @@ func (e *Embed) collect(name, val string) error {
 		return nil
 	case "args":
 		var err error
-		e.Args, err = parsers.AnalyseArguments(val)
+		e.Args, err = arguments.Analyse(val)
 		return err
 	case "control":
 		e.Control = true
@@ -133,7 +135,7 @@ func (g *General) collect(name, val string) error {
 	switch name {
 	case "bindings":
 		var err error
-		g.Bindings, err = parsers.ParseBindings(val)
+		g.Bindings, err = binding.ParseBindings(val)
 		if err != nil {
 			return errors.New(": invalid bindings: " + err.Error())
 		}
@@ -144,7 +146,7 @@ func (g *General) collect(name, val string) error {
 		}
 	case "capture":
 		var err error
-		g.Capture, err = parsers.ParseCapture(val)
+		g.Capture, err = binding.ParseCapture(val)
 		if err != nil {
 			return errors.New(": invalid capture: " + err.Error())
 		}
@@ -158,7 +160,7 @@ func (g *General) collect(name, val string) error {
 		}
 	case "assign":
 		var err error
-		g.Assign, err = parsers.ParseAssignments(val)
+		g.Assign, err = binding.ParseAssignments(val)
 		if err != nil {
 			return errors.New(": invalid assign: " + err.Error())
 		}

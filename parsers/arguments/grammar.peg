@@ -1,0 +1,21 @@
+package arguments
+
+type ArgumentParser Peg {
+  count int
+}
+
+e <- (arg ("," arg)*)? !.
+
+arg <- content {
+  p.count++
+}
+
+content <- (text / quoted / enclosed)+
+
+text <- [^,(){}"']+
+
+quoted <- '"' ([^"\n] / '\"')* '"' / "'" . "'" / "`" [^`]* "`"
+
+enclosed <- "{" inner "}" / "(" inner ")"
+
+inner <- (content / ",")*

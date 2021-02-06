@@ -25,8 +25,12 @@ func init() {
 		panic(err)
 	}
 	g := importsParser.Grammar
-	g["IDENTIFIER"].Action = strToken
-	g["IMPORTPATH"].Action = strToken
+	g["IDENTIFIER"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
+		return v.Token(), nil
+	}
+	g["IMPORTPATH"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
+		return v.Token(), nil
+	}
 	g["IMPORT"].Action = func(v *peg.Values, d peg.Any) (peg.Any, error) {
 		if len(v.Vs) == 2 {
 			return importItem{alias: v.ToStr(0), path: v.ToStr(1)}, nil
