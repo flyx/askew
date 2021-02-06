@@ -9,9 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/flyx/askew/parsers"
-
 	"github.com/flyx/askew/data"
+	"github.com/flyx/askew/parsers"
 	"github.com/flyx/askew/walker"
 	"github.com/flyx/net/html"
 	"github.com/flyx/net/html/atom"

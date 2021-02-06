@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/flyx/askew/data"
-	"github.com/flyx/askew/parsers/binding"
+	"github.com/flyx/askew/parsers"
 	"github.com/flyx/net/html"
 )
 
@@ -23,7 +23,7 @@ func (dp *aDataProcessor) Process(n *html.Node) (descend bool,
 	if def.Type != html.TextNode || def.NextSibling != nil {
 		return false, nil, errors.New(": must have plain text as content and nothing else")
 	}
-	fields, err := binding.ParseFields(def.Data)
+	fields, err := parsers.ParseFields(def.Data)
 	if err != nil {
 		return false, nil, errors.New(": unable to parse fields: " + err.Error())
 	}

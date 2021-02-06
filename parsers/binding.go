@@ -1,4 +1,4 @@
-package binding
+package parsers
 
 import "github.com/flyx/askew/data"
 
@@ -6,7 +6,7 @@ import "github.com/flyx/askew/data"
 
 // ParseAssignments parses a list of assignments of expressions to attribute names
 func ParseAssignments(s string) ([]data.Assignment, error) {
-	p := BindingParser{Buffer: s}
+	p := GeneralParser{Buffer: s}
 	p.Init()
 	if err := p.Parse(int(ruleassignments)); err != nil {
 		return nil, err
@@ -17,7 +17,7 @@ func ParseAssignments(s string) ([]data.Assignment, error) {
 
 // ParseBindings parses a list of bindings in an a:bindings attribute
 func ParseBindings(s string) ([]data.VariableMapping, error) {
-	p := BindingParser{Buffer: s}
+	p := GeneralParser{Buffer: s}
 	p.Init()
 	if err := p.Parse(int(rulebindings)); err != nil {
 		return nil, err

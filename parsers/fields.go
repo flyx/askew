@@ -1,4 +1,4 @@
-package binding
+package parsers
 
 import "github.com/flyx/askew/data"
 
@@ -6,7 +6,7 @@ import "github.com/flyx/askew/data"
 
 // ParseFields parses the content of a <a:data> element.
 func ParseFields(s string) ([]*data.Field, error) {
-	p := BindingParser{Buffer: s}
+	p := GeneralParser{Buffer: s}
 	p.Init()
 	if err := p.Parse(int(rulefields)); err != nil {
 		return nil, err
