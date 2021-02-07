@@ -39,11 +39,6 @@ func (lm *ListManager) UpdateParent(
 	}
 }
 
-// Remove removes the given object from the container.
-func (lm ListManager) Remove(c Component) {
-	c.Extract()
-}
-
 // Append appends the given object to the container.
 func (lm ListManager) Append(c Component) {
 	c.InsertInto(lm.parent, lm.end)

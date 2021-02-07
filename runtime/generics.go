@@ -58,10 +58,25 @@ func (l *GenericList) Insert(index int, item Component) {
 // Remove removes the item at the given index from the list and returns it.
 func (l *GenericList) Remove(index int) Component {
 	item := l.items[index]
-	l.mgr.Remove(item)
+	item.Extract()
 	copy(l.items[index:], l.items[index+1:])
 	l.items = l.items[:len(l.items)-1]
 	return item
+}
+
+// Destroy destroys the item at the given index in the list.
+func (l *GenericList) Destroy(index int) {
+	l.items[index].Destroy()
+	copy(l.items[index:], l.items[index+1:])
+	l.items = l.items[:len(l.items)-1]
+}
+
+// DestroyAll destroys all items in the list and empties it.
+func (l *GenericList) DestroyAll() {
+	for _, item := range l.items {
+		item.Destroy()
+	}
+	l.items = l.items[:0]
 }
 
 // DoUpdateParent calls the underlying list manager's UpdateParent.
@@ -89,16 +104,28 @@ func (o *GenericOptional) Item() Component {
 	return o.cur
 }
 
-// Set sets the contained item removing the current one.
-// Give nil as value to simply remove the current item.
+// Set sets the contained item destroying the current one.
+// Give nil as value to simply destroy the current item.
 func (o *GenericOptional) Set(value Component) {
 	if o.cur != nil {
-		o.mgr.Remove(o.cur)
+		o.cur.Destroy()
 	}
 	o.cur = value
 	if value != nil {
 		o.mgr.Append(value)
 	}
+}
+
+// Remove removes the contained item and returns it.
+// Returns nil if no item is currently contained.
+func (o *GenericOptional) Remove() Component {
+	if o.cur != nil {
+		o.cur.Extract()
+		ret := o.cur
+		o.cur = nil
+		return ret
+	}
+	return nil
 }
 
 // DoUpdateParent calls the underlying list manager's UpdateParent.
