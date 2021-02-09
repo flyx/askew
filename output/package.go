@@ -32,7 +32,7 @@ func (pw *PackageWriter) WriteFile(f *data.AskewFile) error {
 		return err
 	}
 
-	writeFormatted(b.String(), filepath.Join(pw.RelPath, f.BaseName+".go"))
+	writeFormatted(b.String(), filepath.Join(pw.RelPath, f.BaseName+".askew.go"))
 	return nil
 }
 
@@ -52,7 +52,7 @@ func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string) error {
 		return err
 	}
 
-	writeFormatted(b.String(), filepath.Join(pw.RelPath, "init.go"))
+	writeFormatted(b.String(), filepath.Join(pw.RelPath, f.BaseName+".asite.go"))
 
 	// HTML file
 	node := f.RootNode()
