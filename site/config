@@ -1,0 +1,13 @@
+TEMPLATES = site.tmpl
+SOURCE = src
+OUTPUT = site
+TITLE = Askew
+URL = https://flyx.github.io/askew/
+AUTHOR = Felix Krause
+
+*.md:
+	config
+	ext .html
+	directorify
+	markdown
+	template page
