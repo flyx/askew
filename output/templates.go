@@ -398,6 +398,21 @@ func (o *{{.Name}}) Extract() {
 	{{- end}}
 }
 
+// Destroy destroys this element (and all contained components). If it is
+// currently inserted anywhere, it gets removed before.
+func (o *{{.Name}}) Destroy() {
+	{{- range .Embeds}}
+	{{- if eq .Kind 0}}
+	o.{{.Field}}.Destroy()
+	{{- else if eq .Kind 1}}
+	o.{{.Field}}.DestroyAll()
+	{{- else}}
+	o.{{.Field}}.Set(nil)
+	{{- end}}
+	{{- end}}
+	o.αcd.DoDestroy()
+}
+
 {{$cName := .Name}}
 {{- range $hName, $h := .Handlers}}
 func (o *{{$cName}}) αcall{{$hName}}({{GenCallParams $h.Params}}) {{if IsBool $h.Returns}}bool{{end}} {
@@ -485,16 +500,24 @@ func (l *{{.Name}}List) Insert(index int, item *{{.Name}}) {
 // Remove removes the item at the given index from the list and returns it.
 func (l *{{.Name}}List) Remove(index int) *{{.Name}} {
 	item := l.αitems[index]
-	l.αmgr.Remove(item)
+	item.Extract()
 	copy(l.αitems[index:], l.αitems[index+1:])
 	l.αitems = l.αitems[:len(l.αitems)-1]
 	return item
 }
 
-// RemoveAll removes all items from the list.
-func (l *{{.Name}}List) RemoveAll() {
+// Destroy destroys the item at the given index and removes it from the list.
+func (l *{{.Name}}List) Destroy(index int) {
+	item := l.αitems[index]
+	item.Destroy()
+	copy(l.αitems[index:], l.αitems[index+1:])
+	l.αitems = l.αitems[:len(l.αitems)-1]
+}
+
+// DestroyAll destroys all items in the list and empties it.
+func (l *{{.Name}}List) DestroyAll() {
 	for _, item := range l.αitems {
-		l.αmgr.Remove(item)
+		item.Destroy()
 	}
 	l.αitems = l.αitems[:0]
 }
@@ -523,11 +546,11 @@ func (o *Optional{{.Name}}) Item() *{{.Name}} {
 	return o.αcur
 }
 
-// Set sets the contained item removing the current one.
-// Give nil as value to simply remove the current item.
+// Set sets the contained item destroying the current one.
+// Give nil as value to simply destroy the current item.
 func (o *Optional{{.Name}}) Set(value *{{.Name}}) {
 	if o.αcur != nil {
-		o.αmgr.Remove(o.αcur)
+		o.αcur.Destroy()
 	}
 	o.αcur = value
 	if value != nil {
@@ -536,6 +559,18 @@ func (o *Optional{{.Name}}) Set(value *{{.Name}}) {
 		value.Controller = o.DefaultController
 		{{- end}}
 	}
+}
+
+// Remove removes the current item and returns it.
+// Returns nil if there is no current item.
+func (o *Optional{{.Name}}) Remove() runtime.Component {
+	if o.αcur != nil {
+		ret := o.αcur
+		ret.Extract()
+		o.αcur = nil
+		return ret
+	}
+	return nil
 }
 
 {{- end}}

@@ -1,0 +1,326 @@
+package parsers
+
+import "errors"
+import "strings"
+import "github.com/flyx/askew/data"
+
+type GeneralParser Peg {
+	eventHandling data.EventHandling
+	expr, tagname, handlername string
+	names []string
+	keytype, valuetype *data.ParamType
+	fields   []*data.Field
+	bv data.BoundValue
+	goVal data.GoValue
+	paramMappings map[string]data.BoundValue
+	params []data.Param
+	isVar bool
+	err error
+
+	assignments []data.Assignment
+	varMappings []data.VariableMapping
+	eventMappings []data.UnboundEventMapping
+	handlers []HandlerSpec
+	cParams []data.ComponentParam
+	imports map[string]string
+}
+
+e <- assignments / bindings / captures / fields / for / handlers / cparams / args / imports
+
+assignments <- isp* assignment isp* ([,;] isp* assignment isp*)* !.
+
+bindings <- isp* binding isp* ([,;] isp* binding isp*)* !.
+
+binding <- bound isp* ":" isp* (autovar / typedvar) {
+	p.varMappings = append(p.varMappings,
+		data.VariableMapping{Value: p.bv, Variable: p.goVal})
+	p.goVal.Type = nil
+	p.bv.IDs = nil
+}
+
+autovar <- < identifier > {
+	p.goVal.Name = buffer[begin:end]
+}
+
+typedvar <- "(" isp* autovar isp+ type isp* ")" {
+	p.goVal.Type = p.valuetype
+	p.valuetype = nil
+}
+
+isp <- [ \t]
+
+assignment <- isp* bound isp* "=" isp* expr {
+	p.assignments = append(p.assignments, data.Assignment{Expression: p.expr,
+		Target: p.bv})
+	p.bv.IDs = nil
+}
+
+bound <- (self / data / prop / style / class / form / event)
+
+self <- "self" isp* "(" isp* ")" {
+	p.bv.Kind = data.BoundSelf
+}
+
+data <- "data" isp* "(" isp* htmlid isp* ")" {
+	p.bv.Kind = data.BoundData
+}
+
+prop <- "prop" isp* "(" isp* htmlid isp* ")" {
+	p.bv.Kind = data.BoundProperty
+}
+
+style <- "style" isp* "(" isp* htmlid isp* ")" {
+	p.bv.Kind = data.BoundStyle
+}
+
+class <- "class" isp* "(" isp* htmlid isp* ("," isp* htmlid isp*)* ")" {
+	p.bv.Kind = data.BoundClass
+}
+
+form <- "form" isp* "(" isp* htmlid isp* ")" {
+	p.bv.Kind = data.BoundFormValue
+}
+
+event <- "event" isp* "(" isp* jsid? isp* ")" {
+	p.bv.Kind = data.BoundEventValue
+	if len(p.bv.IDs) == 0 {
+		p.bv.IDs = append(p.bv.IDs, "")
+	}
+}
+
+htmlid <- < [0-9a-zA-Z_\-]+ > {
+	p.bv.IDs = append(p.bv.IDs, buffer[begin:end])
+}
+
+jsid <- < [a-zA-Z_] [0-9a-zA-Z_]* > {
+	p.bv.IDs = append(p.bv.IDs, buffer[begin:end])
+}
+
+expr <- < (commaless / enclosed	/ isp+)+ > {
+	p.expr = buffer[begin:end]
+}
+
+commaless <- [[A-Z_]]+ "." [[A-Z_]]+ / identifier / number / operators / string
+
+number <- [0-9]+
+
+operators <- [+\-*/|&^:=.!<>]+
+
+string <- "`" [^`]* "`" / "\"" ([^"] / "\\\"")* "\""
+
+enclosed <- parens / braces / brackets
+
+parens <- "(" inner ")"
+
+braces <- "{" inner "}"
+
+brackets <- "[" inner "]"
+
+inner <- (commaless / enclosed / "," / isp+)*
+
+identifier <- [[A-Z_]] [[A-Z_0-9]]*
+
+fields <- [; \t\n]* field isp* (fsep isp* (fsep isp*)* field)* [; \t\n]* !.
+
+fsep <- [;\n]
+
+field <- name (isp* "," isp* name)* isp+ type isp* ("=" isp* expr)? {
+	var expr *string
+	if p.expr != "" {
+		expr = new(string)
+		*expr = p.expr
+	}
+	for _, name := range p.names {
+		p.fields = append(p.fields, &data.Field{Name: name, Type: p.valuetype, DefaultValue: expr})
+	}
+	p.expr = ""
+	p.valuetype = nil
+	p.names = nil
+}
+
+name <- < [[A-Z_]]+ > {
+	p.names = append(p.names, buffer[begin:end])
+}
+
+type <- qname / sname / array / map / pointer
+
+sname <- < [[A-Z_]]+ > {
+	switch name := buffer[begin:end]; name {
+	case "int":
+		p.valuetype = &data.ParamType{Kind: data.IntType}
+	case "bool":
+		p.valuetype = &data.ParamType{Kind: data.BoolType}
+	case "string":
+		p.valuetype = &data.ParamType{Kind: data.StringType}
+	default:
+		p.valuetype = &data.ParamType{Kind: data.NamedType, Name: name}
+	}
+}
+
+qname <- < [[A-Z_]]+ "." [[A-Z_]]+ > {
+	name := buffer[begin:end]
+	if name == "js.Value" {
+		p.valuetype = &data.ParamType{Kind: data.JSValueType}
+	} else {
+		p.valuetype = &data.ParamType{Kind: data.NamedType, Name: name}
+	}
+}
+
+array <- "[]" type {
+	p.valuetype = &data.ParamType{Kind: data.ArrayType, ValueType: p.valuetype}
+}
+
+map <- "map[" isp* keytype isp* "]" type {
+	p.valuetype = &data.ParamType{Kind: data.MapType, KeyType: p.keytype, ValueType: p.valuetype}
+}
+
+keytype <- type {
+	p.keytype = p.valuetype
+}
+
+pointer <- "*" type {
+	p.valuetype = &data.ParamType{Kind: data.PointerType, ValueType: p.valuetype}
+}
+
+captures <- isp* capture isp* ("," isp* capture isp*)* !.
+
+capture <- eventid isp* ":" handlername isp* mappings isp* tags {
+	p.eventMappings = append(p.eventMappings, data.UnboundEventMapping{
+		Event: p.expr, Handler: p.handlername, ParamMappings: p.paramMappings,
+		Handling: p.eventHandling})
+	p.eventHandling = data.AutoPreventDefault
+	p.expr = ""
+	p.paramMappings = make(map[string]data.BoundValue)
+}
+
+handlername <- < identifier > {
+	p.handlername = buffer[begin:end]
+}
+
+eventid <- < [a-z]+ > {
+	p.expr = buffer[begin:end]
+}
+
+mappings <- ( "(" (isp* mapping isp* ("," isp* mapping isp*)*)? ")")?
+
+mapping <- mappingname isp* "=" isp* bound {
+	if _, ok := p.paramMappings[p.tagname]; ok {
+		p.err = errors.New("duplicate param: " + p.tagname)
+		return
+	}
+	p.paramMappings[p.tagname] = p.bv
+	p.bv.IDs = nil
+}
+
+mappingname <- < identifier > {
+	p.tagname = buffer[begin:end]
+}
+
+tags <- ( "{" isp* tag isp* ("," isp* tag isp*)* "}" )?
+
+tag <- tagname ( "(" (isp* tagarg isp* ("," isp* tagarg isp*)*)? ")" )? {
+	switch p.tagname {
+	case "preventDefault":
+		if p.eventHandling != data.AutoPreventDefault {
+			p.err = errors.New("duplicate preventDefault")
+			return
+		}
+		switch len(p.names) {
+		case 0:
+			p.eventHandling = data.PreventDefault
+		case 1:
+			switch p.names[0] {
+			case "true":
+				p.eventHandling = data.PreventDefault
+			case "false":
+				p.eventHandling = data.DontPreventDefault
+			case "ask":
+				p.eventHandling = data.AskPreventDefault
+			default:
+				p.err = fmt.Errorf("unsupported value for preventDefault: %s", p.names[0])
+				return
+			}
+		default:
+			p.err = errors.New("too many parameters for preventDefault")
+			return
+		}
+	default:
+		p.err = errors.New("unknown tag: " + p.tagname)
+		return
+	}
+	p.names = nil
+}
+
+tagname <- < identifier > {
+	p.tagname = buffer[begin:end]
+}
+
+tagarg <- < identifier > {
+	p.names = append(p.names, buffer[begin:end])
+}
+
+for <- isp* forVar isp* ("," isp* forVar isp*)? ":=" isp* "range" isp+ expr isp* !.
+
+forVar <- < identifier > {
+	p.names = append(p.names, buffer[begin:end])
+}
+
+handlers <- isp* (fsep isp*)* handler isp* ((fsep isp*)+ handler isp*)* (fsep isp*)* !.
+
+handler <- handlername "(" isp* (param isp* ("," isp* param isp*)* )? ")" (isp* type)? {
+	p.handlers = append(p.handlers, HandlerSpec{
+		Name: p.handlername, Params: p.params, Returns: p.valuetype})
+	p.valuetype = nil
+	p.params = nil
+}
+
+param <- tagname isp+ type {
+	for _, para := range p.params {
+		if para.Name == p.tagname {
+			p.err = errors.New("duplicate param name: " + para.Name)
+			return
+		}
+	}
+
+	p.params = append(p.params, data.Param{Name: p.tagname, Type: p.valuetype})
+	p.valuetype = nil
+}
+
+cparams <- isp* (cparam isp* ("," isp* cparam isp*)*)? !.
+
+cparam <- (var isp+)? tagname isp+ type {
+	p.cParams = append(p.cParams, data.ComponentParam{
+		Name: p.tagname, Type: *p.valuetype, IsVar: p.isVar})
+	p.valuetype = nil
+	p.isVar = false
+}
+
+var <- "var" {
+	p.isVar = true
+}
+
+args <- isp* arg isp* ("," isp* arg isp*)* !.
+
+arg <- expr {
+  p.names = append(p.names, p.expr)
+}
+
+imports <- isp* (fsep isp*)* import isp* (fsep isp* (fsep isp*)* import isp*)* (fsep isp*)* !.
+
+import <- (tagname isp+)? "\"" < [^"]* > "\"" {
+	path := buffer[begin:end]
+	if p.tagname == "" {
+		lastDot := strings.LastIndexByte(path, '/')
+		if lastDot == -1 {
+			p.tagname = path
+		} else {
+			p.tagname = path[lastDot+1:]
+		}
+	}
+	if _, ok := p.imports[p.tagname]; ok {
+		p.err = errors.New("duplicate import name: " + p.tagname)
+		return
+	}
+	p.imports[p.tagname] = path
+	p.tagname = ""
+}
