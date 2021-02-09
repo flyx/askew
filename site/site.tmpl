@@ -34,7 +34,7 @@
       </li>
       {{ range .Site.Pages.GlobSource "doc/*.md" }}
         <li>
-          <a href="{{.Rel .Url}}"
+          <a href="{{.Url}}"
             class="doc{{if eq .Url $myurl}} active{{end}}">{{.Title}}</a>
         </li>
       {{ end }}

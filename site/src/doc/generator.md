@@ -1,4 +1,5 @@
 title: The Code Generator
+date: 2021-01-20
 ----
 
 The `askew` command line tool takes the following parameters:
@@ -8,6 +9,9 @@ The `askew` command line tool takes the following parameters:
 Possible options are
 
  * `-o path`, `--outputDir=path`: Specify the directory where the `index.html` file should be placed. Defaults to the current directory.
+ * `-e excludes`, `--exclude=excludes`: Specify a comma-separated list of directories that should be excluded.
+   Allows glob patterns but they must be quoted so that they are not processed by your shell.
+   Parameter may be given multiple times.
 
 The `dir` parameter must be a path to a directory containing a Go module or a subdirectory thereof.
 If left out, the current directory is used.

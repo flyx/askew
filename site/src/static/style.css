@@ -9,11 +9,11 @@ html {
 body {
   display: flex;
   flex-direction: column;
-  max-width: 1024px;
+  max-width: 920px;
   min-height: 100vh;
   margin: 0 auto;
-  background-color: #181920;
-  color: #cccccc;
+  background-color: #1a1a1d;
+  color: #d7d7d7;
   font-family: sans-serif;
 }
 
@@ -33,7 +33,7 @@ main {
 }
 
 nav {
-  background-color: #202122;
+  background-color: #354350;
 }
 
 nav > ul {
@@ -59,7 +59,7 @@ nav > ul > li > a.main {
 }
 
 nav > ul > li > a.active {
-  background-color: #181920;
+  background-color: #1a1a1d;
 }
 
 nav > ul > li > a.doc {
@@ -67,7 +67,7 @@ nav > ul > li > a.doc {
 }
 
 nav > ul > li > a:hover {
-  background-color: #353638;
+  background-color: #6f4222;
 }
 
 main {
@@ -100,4 +100,12 @@ h3 {
 
 hr {
   margin: 0 25%;
+}
+
+pre > code {
+  margin: 1em;
+  background-color: #354350;
+  border-radius: .5em;
+  padding: .5em;
+  display: block;
 }
