@@ -125,3 +125,12 @@ Open `index.html` in your browser to test your site!
 
 This is a child project of [QuestScreen](https://questscreen.flyx.org) and does not have a standalone roadmap.
 Features are added as needed.
+
+Currently, the best use of this project is probably to serve as inspiration.
+Many things done here could be done better with decent effort.
+For example, basing the syntax on HTML was done because it was easy and delivered quick results.
+There are surely nicer ways to annotate your component's HTML.
+
+## License
+
+This project is licensed under the terms of the MIT license.
