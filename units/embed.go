@@ -3,7 +3,6 @@ package units
 import (
 	"errors"
 	"fmt"
-	"unicode"
 
 	"github.com/flyx/askew/attributes"
 	"github.com/flyx/askew/data"
@@ -68,12 +67,6 @@ func resolveEmbed(n *html.Node, syms *data.Symbols,
 			return data.Embed{}, nil, fmt.Errorf(
 				": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)
 		}
-	}
-	runes := []rune(typeName)
-	if unicode.IsUpper(runes[0]) {
-		e.ConstructorName = "New" + typeName
-	} else {
-		e.ConstructorName = "new" + string(unicode.ToUpper(runes[0])) + string(runes[1:])
 	}
 	return e, target, nil
 }

@@ -111,7 +111,9 @@ func (cd *ComponentData) DocumentFragment() js.Value {
 
 // Component is implemented by every type generated from <a:component>.
 type Component interface {
-	Data() *ComponentData
+	// FirstNode returns the first DOM node of this component.
+	// This is used when prepending another component to this one in a list.
+	FirstNode() js.Value
 	InsertInto(parent js.Value, before js.Value)
 	Extract()
 	Destroy()

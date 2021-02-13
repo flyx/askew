@@ -48,7 +48,7 @@ func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string) error {
 		return err
 	}
 
-	if err := skeleton.Execute(&b, f); err != nil {
+	if err := site.Execute(&b, f); err != nil {
 		return err
 	}
 

@@ -51,20 +51,20 @@ func (cp *constructProcessor) Process(n *html.Node) (descend bool,
 	}
 	if attrs.If != nil {
 		cp.e.ConstructorCalls = append(cp.e.ConstructorCalls,
-			data.NestedConstructorCall{ConstructorCall: data.ConstructorCall{Args: args},
-				Kind: data.NestedIf, Expression: attrs.If.Expression})
+			data.ConstructorCall{ConstructorName: cp.target.NewName(), Args: args,
+				Kind: data.ConstructIf, Expression: attrs.If.Expression})
 	} else if attrs.For != nil {
 		if cp.e.Kind == data.OptionalEmbed {
 			return false, nil, errors.New(": a:for not allowed inside optional embed")
 		}
 		cp.e.ConstructorCalls = append(cp.e.ConstructorCalls,
-			data.NestedConstructorCall{ConstructorCall: data.ConstructorCall{Args: args},
-				Kind: data.NestedFor, Index: attrs.For.Index,
+			data.ConstructorCall{ConstructorName: cp.target.NewName(), Args: args,
+				Kind: data.ConstructFor, Index: attrs.For.Index,
 				Variable: attrs.For.Variable, Expression: attrs.For.Expression})
 	} else {
 		cp.e.ConstructorCalls = append(cp.e.ConstructorCalls,
-			data.NestedConstructorCall{ConstructorCall: data.ConstructorCall{Args: args},
-				Kind: data.NestedDirect})
+			data.ConstructorCall{ConstructorName: cp.target.NewName(), Args: args,
+				Kind: data.ConstructDirect})
 	}
 	w := walker.Walker{TextNode: walker.WhitespaceOnly{}}
 	_, _, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})

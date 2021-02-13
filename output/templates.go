@@ -139,34 +139,7 @@ var file = template.Must(template.New("file").Funcs(template.FuncMap{
 		}
 		return strings.Join(items, ", ")
 	},
-	"FieldType": func(e data.Embed) string {
-		if e.T == "" {
-			switch e.Kind {
-			case data.OptionalEmbed:
-				return "runtime.GenericOptional"
-			case data.ListEmbed:
-				return "runtime.GenericList"
-			default:
-				panic("unexpected field type")
-			}
-		}
-		var b strings.Builder
-		if e.Kind == data.DirectEmbed {
-			b.WriteRune('*')
-		}
-		if e.Ns != "" {
-			b.WriteString(e.Ns)
-			b.WriteRune('.')
-		}
-		if e.Kind == data.OptionalEmbed {
-			b.WriteString("Optional")
-		}
-		b.WriteString(e.T)
-		if e.Kind == data.ListEmbed {
-			b.WriteString("List")
-		}
-		return b.String()
-	},
+	"FieldType": fieldType,
 	"BlockNotEmpty": func(b data.Block) bool {
 		return len(b.Assignments) > 0 || len(b.Controlled) > 0
 	},
@@ -249,23 +222,31 @@ type {{.Name}} struct {
 	{{- end}}
 }
 
-// {{.ConstructorName}} creates a new component and initializes it with Init.
-func {{.ConstructorName}}({{GenComponentParams .Parameters}}) *{{.Name}} {
+
+{{if .GenNewInit}}
+// {{.NewName}} creates a new component and initializes it with the given parameters.
+func {{.NewName}}({{GenComponentParams .Parameters}}) *{{.Name}} {
 	ret := new({{.Name}})
-	ret.Init({{ListParamVars .Parameters}})
+	ret.askewInit({{ListParamVars .Parameters}})
 	return ret
 }
 
-// Data returns the object containing the component's DOM nodes.
+// Init initializes the component with the given arguments.
+func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
+	o.askewInit({{ListParamVars .Parameters}})
+}
+{{end}}
+
+// FirstNode returns the first DOM node of this component.
 // It implements the runtime.Component interface.
-func (o *{{.Name}}) Data() *runtime.ComponentData {
-	return &o.αcd
+func (o *{{.Name}}) FirstNode() js.Value {
+	return o.αcd.First()
 }
 
-// Init initializes the component, discarding all previous information.
+// askewInit initializes the component, discarding all previous information.
 // The component is initially a DocumentFragment until it gets inserted into
 // the main document. It can be manipulated both before and after insertion.
-func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
+func (o *{{.Name}}) askewInit({{GenComponentParams .Parameters}}) {
 	o.αcd.Init(runtime.InstantiateTemplateByID("{{.ID}}"))
 	{{ range .Fields }}
 	{{- if .DefaultValue }}o.{{.Name}} = {{.DefaultValue}}
@@ -328,7 +309,7 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 	{
 		container := o.αcd.Walk({{PathItems .Path 1}})
 		{{- if eq .Kind 0}}
-		o.{{.Field}} = {{with .Ns}}{{.}}.{{end}}{{.ConstructorName}}({{.Args.Raw}})
+		o.{{.Field}}.Init({{.Args.Raw}})
 		o.{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
 		{{- if .Control}}
 		o.{{.Field}}.Controller = o
@@ -340,6 +321,7 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		{{- end}}
 		{{$e := .}}
 		{{- range .ConstructorCalls}}
+		{{$cname := .ConstructorName}}
 		{{- if eq .Kind 1}}
 		if {{.Expression}} {
 		{{- else if eq .Kind 2}}
@@ -349,16 +331,13 @@ func (o *{{.Name}}) Init({{GenComponentParams .Parameters}}) {
 		o.{{$e.Field}}.Set(
 		{{- else}}
 		o.{{$e.Field}}.Append(
-		{{- end}}{{with $e.Ns}}{{.}}.{{end}}{{$e.ConstructorName}}({{.Args.Raw}}))
+		{{- end}}{{with $e.Ns}}{{.}}.{{end}}{{$cname}}({{.Args.Raw}}))
 		{{- if ne .Kind 0}}
 		}
 		{{- end}}
 		{{- end}}
 		{{- end}}
 	}
-	{{- end}}
-	{{- if .Init}}
-	o.init({{ListParamVars .Parameters}})
 	{{- end}}
 }
 
@@ -377,9 +356,6 @@ func (o *{{.Name}}) InsertInto(parent js.Value, before js.Value) {
 	{{- end}}
 	{{- end}}
 	{{- end}}
-	{{- if .OnInclude}}
-	o.onInclude()
-	{{- end}}
 }
 
 // Extract removes this component from its current parent.
@@ -394,9 +370,6 @@ func (o *{{.Name}}) Extract() {
 	o.{{.Field}}.DoUpdateParent(o.αcd.First().Get("parentNode"), o.αcd.DocumentFragment(), js.Undefined())
 	{{- end}}
 	{{- end}}
-	{{- end}}
-	{{- if .OnExclude}}
-	o.onExclude()
 	{{- end}}
 }
 
@@ -579,68 +552,23 @@ func (o *Optional{{.Name}}) Remove() runtime.Component {
 {{- end}}
 `))
 
-var skeleton = template.Must(template.New("skeleton").Funcs(template.FuncMap{
+var site = template.Must(template.New("site").Funcs(template.FuncMap{
 	"PathItems": pathItems,
 	"Last":      last,
+	"FieldType": fieldType,
 }).Parse(`
 {{if .VarName}}
 // {{.VarName}} holds the embedded components of the document's skeleton
 var {{.VarName}} = struct {
 	{{- range .Embeds}}
 		// {{.Field}} is part of the main document.
-		{{- if eq .Kind 0}}
-			{{.Field}} *{{with .Ns}}{{.}}.{{end}}{{.T}}
-		{{- else if eq .Kind 1}}
-			{{- if .T}}
-				{{.Field}} {{with .Ns}}{{.}}.{{end}}{{.T}}List
-			{{- else}}
-				{{.Field}} runtime.GenericList
-			{{- end}}
-		{{- else}}
-			{{- if .T}}
-				{{.Field}} {{with .Ns}}{{.}}.{{end}}Optional{{.T}}
-			{{- else}}
-				{{.Field}} runtime.GenericOptional
-			{{- end}}
-		{{- end}}
+		{{.Field}} {{FieldType .}}
 	{{- end -}}
-}{
-	{{- range .Embeds}}
-		{{- if eq .Kind 0}}
-			{{.Field}}: {{with .Ns}}{{.}}.{{end}}New{{.ConstructorName}}({{.Args.Raw}}),
-		{{- else if eq .Kind 1}}
-			{{- if .T}}
-				{{.Field}}: {{with .Ns}}{{.}}.{{end}}{{.T}}List{},
-			{{- else}}
-				{{.Field}}: runtime.GenericList{},
-			{{- end}}
-		{{- else}}
-			{{- if .T}}
-				{{.Field}}: {{with .Ns}}{{.}}.{{end}}Optional{{.T}}{},
-			{{- else}}
-				{{.Field}}: runtime.GenericOptional{},
-			{{- end}}
-		{{- end}}
-	{{- end}}
 }
 {{- else}}
 	{{range .Embeds}}
 		// {{.Field}} is part of the main document.
-		{{- if eq .Kind 0}}
-			var {{.Field}} = {{with .Ns}}{{.}}.{{end}}{{.ConstructorName}}({{.Args.Raw}})
-		{{- else if eq .Kind 1}}
-			{{- if .T}}
-				var {{.Field}} {{with .Ns}}{{.}}.{{end}}{{.T}}List
-			{{- else}}
-				var {{.Field}} runtime.GenericList
-			{{- end}}
-		{{- else}}
-			{{- if .T}}
-				var {{.Field}} {{with .Ns}}{{.}}.{{end}}Optional{{.T}}
-			{{- else}}
-				var {{.Field}} runtime.GenericOptional
-			{{- end}}
-		{{- end}}
+		var {{.Field}} {{FieldType .}}
 	{{- end}}
 {{- end}}
 
@@ -649,6 +577,7 @@ func init() {
 	html := js.Global().Get("document").Get("childNodes").Index(1)
 	{{- range .Embeds}}
 	{{- if eq .Kind 0}}
+	{{with $varName}}{{.}}.{{end}}{{.Field}}.Init({{.Args.Raw}})
 	{
 		container := runtime.WalkPath(html, {{PathItems .Path 1}})
 		{{with $varName}}{{.}}.{{end}}{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))

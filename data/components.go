@@ -28,28 +28,23 @@ const (
 	OptionalEmbed
 )
 
-// ConstructorCall constructs a component as part of an <a:embed>.
+// ConstructorCallKind describes the kind of a nested constructor call.
+type ConstructorCallKind int
+
+const (
+	// ConstructDirect creates exactly one instance.
+	ConstructDirect ConstructorCallKind = iota
+	// ConstructIf creates one instance if the expression evaluates to true
+	ConstructIf
+	// ConstructFor creates instances with a loop.
+	ConstructFor
+)
+
+// ConstructorCall describes a <a:construct> node inside <a:embed>.
 type ConstructorCall struct {
 	ConstructorName string
 	Args            Arguments
-}
-
-// NestedConstructorCallKind describes the kind of a nested constructor call.
-type NestedConstructorCallKind int
-
-const (
-	// NestedDirect creates exactly one instance.
-	NestedDirect NestedConstructorCallKind = iota
-	// NestedIf creates one instance if the expression evaluates to true
-	NestedIf
-	// NestedFor creates instances with a loop.
-	NestedFor
-)
-
-// NestedConstructorCall describes a <a:construct> node inside <a:embed>.
-type NestedConstructorCall struct {
-	ConstructorCall
-	Kind            NestedConstructorCallKind
+	Kind            ConstructorCallKind
 	Index, Variable string // only for NestedFor
 	Expression      string // only for NestedIf and NestedFor
 }
@@ -57,12 +52,12 @@ type NestedConstructorCall struct {
 // Embed describes a <a:embed> node.
 type Embed struct {
 	// is a constructor call if Kind == DirectEmbed.
-	ConstructorCall
+	Args             Arguments
 	Kind             EmbedKind
 	Path             []int
 	Field, Ns, T     string
 	Control          bool
-	ConstructorCalls []NestedConstructorCall
+	ConstructorCalls []ConstructorCall
 }
 
 // Handler describes a <a:handler> node.
@@ -139,23 +134,21 @@ type ControlBlock struct {
 type Component struct {
 	Unit
 	// HTML id. internally generated.
-	ID                         string
-	Name                       string
-	Parameters                 []ComponentParam
-	Template                   *html.Node
-	NeedsList                  bool
-	NeedsOptional              bool
-	Fields                     []*Field
-	Handlers                   map[string]Handler
-	Controller                 map[string]ControllerMethod
-	Captures                   []Capture
-	Init, OnInclude, OnExclude bool
+	ID            string
+	Name          string
+	Parameters    []ComponentParam
+	Template      *html.Node
+	NeedsList     bool
+	NeedsOptional bool
+	Fields        []*Field
+	Handlers      map[string]Handler
+	Controller    map[string]ControllerMethod
+	Captures      []Capture
+	GenNewInit    bool
 }
 
-// ConstructorName generates the name of the constructor of the component.
-// The name is `New{name}` for public (uppercase) components, and
-// `New{capitalize(name)}` for private (lowercase) components.
-func (c Component) ConstructorName() string {
+// NewName returns the name of the component's new func.
+func (c Component) NewName() string {
 	runes := []rune(c.Name)
 	if unicode.IsLower(runes[0]) {
 		return "new" + string(unicode.ToUpper(runes[0])) + string(runes[1:])

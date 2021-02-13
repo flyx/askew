@@ -54,3 +54,29 @@ func wrapperForType(t data.ParamType) string {
 	}
 	panic("no wrapper for type: " + t.String())
 }
+
+func fieldType(e data.Embed) string {
+	if e.T == "" {
+		switch e.Kind {
+		case data.OptionalEmbed:
+			return "runtime.GenericOptional"
+		case data.ListEmbed:
+			return "runtime.GenericList"
+		default:
+			panic("unexpected field type")
+		}
+	}
+	var b strings.Builder
+	if e.Ns != "" {
+		b.WriteString(e.Ns)
+		b.WriteRune('.')
+	}
+	if e.Kind == data.OptionalEmbed {
+		b.WriteString("Optional")
+	}
+	b.WriteString(e.T)
+	if e.Kind == data.ListEmbed {
+		b.WriteString("List")
+	}
+	return b.String()
+}

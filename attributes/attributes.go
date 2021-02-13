@@ -21,9 +21,9 @@ type Collector interface {
 
 // Component lists the attributes of a component
 type Component struct {
-	Name                       string
-	Params                     []data.ComponentParam
-	Init, OnInclude, OnExclude bool
+	Name       string
+	Params     []data.ComponentParam
+	GenNewInit bool
 }
 
 func (t *Component) collect(name, val string) error {
@@ -35,14 +35,8 @@ func (t *Component) collect(name, val string) error {
 		var err error
 		t.Params, err = parsers.ParseParameters(val)
 		return err
-	case "init":
-		t.Init = true
-		return nil
-	case "oninclude":
-		t.OnInclude = true
-		return nil
-	case "onexclude":
-		t.OnExclude = true
+	case "gen-new-init":
+		t.GenNewInit = true
 		return nil
 	}
 	return invalidAttribute(name)

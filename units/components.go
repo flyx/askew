@@ -31,8 +31,8 @@ func (p *componentProcessor) Process(n *html.Node) (descend bool,
 	replacement = &html.Node{Type: html.ElementNode, DataAtom: atom.Template,
 		Data: "template"}
 	cmp := &data.Component{Unit: data.Unit{}, Template: replacement,
-		Name: cmpAttrs.Name, Parameters: cmpAttrs.Params, Init: cmpAttrs.Init,
-		OnInclude: cmpAttrs.OnInclude, OnExclude: cmpAttrs.OnExclude}
+		Name: cmpAttrs.Name, Parameters: cmpAttrs.Params,
+		GenNewInit: cmpAttrs.GenNewInit}
 	for _, param := range cmp.Parameters {
 		if param.IsVar {
 			t := param.Type

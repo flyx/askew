@@ -43,7 +43,7 @@ func (l *GenericList) Append(item Component) {
 func (l *GenericList) Insert(index int, item Component) {
 	var prev js.Value
 	if index < len(l.items) {
-		prev = l.items[index].Data().First()
+		prev = l.items[index].FirstNode()
 	}
 	if item == nil {
 		panic("cannot insert nil into list")
