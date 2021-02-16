@@ -115,5 +115,155 @@ func (o *greeter) Init(isDr bool, name string) {
 Mind that in generated code, the subject of methods is always named *o*.
 While Go does not forbid you to name it differently in your methods, GopherJS seems to be confused when you use a different name, so you should always name the subject *o*.
 
+Sometimes, you need to keep the value of parameters around for the lifetime of the object.
+There is a shorthand notation to do this: Simply put **`var`** in front of the parameter name.
+The semantic of this is that a field with that name will be generated in the component's **`struct`** type and the value of the parameter will be assigned to it in `askewInit`.
+
+The following example stores the parameter `id` inside the generated `MyButton` struct:
+
+```html
+<a:component name="MyButton" params="var id string" gen-new-init>
+  <button>Click me!</button>
+</a:component>
+```
+
 ## Assignments
 
+When instantiating a component, you'd usually want to do something with the values of the parameters.
+We have already seen `<a:text>`, which is a special case for creating text nodes.
+`<a:text>` takes a single attribute, `expr`, and is replaced by the value of the given Go expression on instantiation.
+
+For setting property values in the DOM, you use `a:assign`, which is an Askew-specific attribute.
+You can put it on any HTML element inside a component.
+It takes a value with the following syntax:
+
+    <assignments> ::= <bval> "=" <expr> ("," <bval> "=" <expr>)*
+
+`<bval>` is a *bound value*.
+Bound values are Askew's primary interface between DOM values and Go code.
+The are described in detail in the next chapter.
+
+`<expr>` is a Go expression that can reference the component's parameters.
+You can give multiple assignments by separating them with commas.
+
+Let's look at how to use `a:assign` to assign the default value of a text input:
+
+```html
+<a:component name="MyInput" params="defaultValue string">
+  <input type="text" a:assign="prop(value) = defaultValue">
+</a:component>
+```
+
+Here, we bind the DOM property *value* of the current element, and then we assign the parameter value of *defaultValue* to it.
+
+## Bindings
+
+While assignments allow you to set bound values at instantiation, *bindings* allow you access to a bound value for the whole lifetime of a component instance.
+You define bindings with Askew's `a:bindings` attribute.
+They have the following syntax:
+
+    <target>   ::= <name> | "(" <name> <type> ")"
+    <binding>  ::= <bval> ":" <target> [ "=" <expr> ]
+    <bindings> ::= <binding> ( "," <binding> )*
+
+You specify a `<bval>` to define the DOM value you want to bind.
+Then you specify either a simple name or a name/type tuple.
+The name will become a field of the generated **`struct`**.
+With the type, you specify the Go type of the value you want to set/retrieve from this binding.
+If you don't specify the type, Askew will guess it, but it is pretty dumb and mostly ends up with `string`.
+Optionally, you can define an initial value with `<expr>` that will be assigned at instantiation just like with `a:assign`.
+
+We will now take the previous example with the input value but instead of using `a:assign`, we will use `a:bindings` as we later might want to query what the user has actually entered:
+
+```html
+<a:component name="MyInput">
+  <input type="text" a:bindings="prop(value):value">
+</a:component>
+```
+
+To see how accessing the binding works, we'll write a constructor that sets the initial value:
+
+```go
+func NewMyInput(defaultValue string) *MyInput {
+  ret := new(MyInput)
+  ret.Init(defaultValue)
+  return ret
+}
+
+func (o *MyInput) Init(defaultValue string) {
+  o.askewInit()
+  o.value.Set(defaultValue)
+}
+```
+
+A binding will always have a `Get` and a `Set` method.
+`Get` will return the value with the given or guessed type, `Set` will take the new value of that type as argument.
+Since JavaScript is dynamically typed, there is no single true type for some bindings.
+For example, a `prop(zIndex)` may be bound as **`int`** which will work as long as the DOM property is actually an integer. However, the DOM allows you to set it to `auto`, which cannot be mapped to an **`int`**.
+It is your responsibility to select the appropriate type so that every value that can ever occur in your app can be handled.
+Askew will panic if the current bound value cannot be mapped to the target Go type.
+
+The names you give to your bindings must be unique in the component.
+You can give multiple bindings in `a:bindings` by separating them with a comma.
+In your code, you can only use the bindings after you called `askewInit`.
+
+## Captures
+
+Askew allows you to define *handlers* that will be called when certain DOM events occur.
+A component can declare its handlers with an element `<a:handlers>`.
+Its text content has the same syntax as the content of a Go **`interface`**.
+You must define the handlers you declare on the component in your Go code as Askew does not know what the handlers should do and therefore will not generate code for them.
+You declare the handlers in the component so that Askew knows how many parameters they have an what the type of each parameter is.
+
+Besides `<a:handlers>`, a component may also define handlers with `<a:controller>`, which uses the same syntax.
+Such handlers are not part of the component.
+Instead, if `<a:controller>` exists, a *controller* interface for the component will be generated that contains the function declarations in `<a:controller>`.
+The generated **`struct`** will have a field named `Controller` of that interface type.
+Whenever a handler of the controller should be called, the generated code will check whether the `Controller` field is currently **`nil`** and if not, call the method on it.
+This way, a component can emit events to someone else.
+
+After you defined your handlers, you need to define which events are to be handled by those handlers.
+For this, you specify that certain events ought to be *captured*.
+You do that with `a:capture` on the element that issues the event.
+The syntax is as follows:
+
+    <mapping>  ::= <name> "=" <bval>
+    <mappings> ::= "(" [ <mapping> ( "," mapping )* ] ")"
+    <tags>     ::= "{" [ <tag> ( "," tag )* ] "}"
+    <capture>  ::= <eventid> ":" <handler> [ <mappings> ] [ <tags> ]
+    <captures> ::= <capture> ( "," <capture> )*
+
+A capture begins with the `<eventid>`, i.e. the DOM name of the event you want to capture.
+Then after the colon, you need to specify a `<handler>` that should be called when the event is captured.
+This must be the name of a handler you declared with `<a:handlers>` or `<a:controller>`.
+With `<mappings>`, you can bind values to the parameters of the handler.
+The `<name>` must be a parameter of the handler.
+If you do not supply a binding for a parameter, Askew will try to fetch it from the item's `dataset`.
+
+`<tags>` specify the behavior of the capture.
+There is currently only one tag available, `preventDefault`.
+It takes an optional parameter, which can be:
+
+ * `preventDefault(true)` (the default if given without parameter)
+ * `preventDefault(false)`
+ * `preventDefault(ask)`
+
+`true` means that the event's default action should be prevented.
+`false` means it shouldn't.
+`ask` means that the event's default action should be prevented if and only if the handler returns `false`.
+This requires the handler to return a `bool` (otherwise it shouldn't return anything).
+If the `preventDefault` tag is not given but the handler returns `bool`, the capture behaves like `preventDefault(ask)`.
+
+The following example defines a handler that will be called when a form is submitted:
+
+```html
+<a:component name="MyForm">
+  <a:handlers>
+    submit(name string)
+  </a:handlers>
+  <form a:capture="submit:submit(name=form(name)) {preventDefault}">
+    <input type="text" name="name">
+    <button type="submit">Submit</button>
+  </form>
+</a:component>
+```
