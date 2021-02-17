@@ -65,29 +65,29 @@ func (bs *BoundStyle) set(value interface{}) {
 	bs.node.Get("style").Set(bs.sName, value)
 }
 
-// BoundData implements BoundValue for an item in the dataset of an HTML node.
-type BoundData struct {
+// BoundDataset implements BoundValue for an item in the dataset of an HTML node.
+type BoundDataset struct {
 	node  js.Value
 	dName string
 }
 
-// NewBoundData creates a BoundData for the node found at the given
+// NewBoundDataset creates a BoundData for the node found at the given
 // path (relative to root) and the given dataset item.
-func NewBoundData(
-	d *ComponentData, dName string, path ...int) *BoundData {
-	return &BoundData{node: d.Walk(path...), dName: dName}
+func NewBoundDataset(
+	d *ComponentData, dName string, path ...int) *BoundDataset {
+	return &BoundDataset{node: d.Walk(path...), dName: dName}
 }
 
 // Init initializes the object with the given node and dataset item name.
-func (ba *BoundData) Init(node js.Value, dName string) {
+func (ba *BoundDataset) Init(node js.Value, dName string) {
 	ba.node, ba.dName = node, dName
 }
 
-func (ba *BoundData) get() js.Value {
+func (ba *BoundDataset) get() js.Value {
 	return ba.node.Get("dataset").Get(ba.dName)
 }
 
-func (ba *BoundData) set(value interface{}) {
+func (ba *BoundDataset) set(value interface{}) {
 	ba.node.Get("dataset").Set(ba.dName, value)
 }
 
@@ -228,8 +228,9 @@ func (bev *BoundEventValue) set(value interface{}) {
 	panic("BoundEvent doesn't support set()")
 }
 
-// BoundSelf implements BoundValue by replacing the referenced node with a text node
-// containing the given value.
+// BoundSelf implements BoundValue as a reference to a DOM node.
+// It retrieves the linked node when getting its value, and replaces it with the
+// given node when setting a value.
 type BoundSelf struct {
 	node js.Value
 }

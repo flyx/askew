@@ -267,3 +267,29 @@ The following example defines a handler that will be called when a form is submi
   </form>
 </a:component>
 ```
+
+## Data
+
+You may need your component to contain additional data.
+This can be done with the `<a:data>` element, which uses the following syntax:
+
+    <field>  ::= <name> ( "," <name> )* <type> [ "=" <expr> ]
+    <fields> ::= <field> ( "\n" <field>)*
+
+Each name given will become a field of the component's generated **`struct`** type.
+The fields will have the given Go type.
+If `<expr>` is given, each field will be initialized with the given expression in `askewInit`.
+You can reference the component's parameters in those expressions.
+
+The following example declares a field `s` of type **`string`** and a field `i` of type **`int`**:
+
+```html
+<a:component name="MyComponent">
+  <a:data>
+    s string
+    i int = 42
+  </a:data>
+</a:component>
+```
+
+`i` will be initialized with `42` in `askewInit`.

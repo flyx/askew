@@ -55,13 +55,13 @@ assignment <- isp* bound isp* "=" isp* expr {
 	p.bv.IDs = nil
 }
 
-bound <- (self / data / prop / style / class / form / event)
+bound <- (self / dataset / prop / style / class / form / event)
 
 self <- "self" isp* "(" isp* ")" {
 	p.bv.Kind = data.BoundSelf
 }
 
-data <- "data" isp* "(" isp* htmlid isp* ")" {
+dataset <- "dataset" isp* "(" isp* htmlid isp* ")" {
 	p.bv.Kind = data.BoundData
 }
 
