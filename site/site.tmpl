@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
   <meta name="author" content="{{ html .Site.Other.Author }}">
   <title>{{ .Site.Other.Title }}{{ if .Title }} – {{ .Title }}{{ end }}</title>
   <link rel="stylesheet" type="text/css" href="{{ .Rel "static/style.css" }}">
@@ -21,7 +22,7 @@
 {{end}}
 
 {{ define "page" }}{{ template "header" . }}
-  {{$myurl := .Url }}
+  {{$p := .}}
   <nav>
     <ul>
       <li>
@@ -34,10 +35,13 @@
       </li>
       {{ range .Site.Pages.GlobSource "doc/*.md" }}
         <li>
-          <a href="{{.Url}}"
-            class="doc{{if eq .Url $myurl}} active{{end}}">{{.Title}}</a>
+          <a href="{{$p.UrlTo .}}"
+            class="doc{{if eq .Url $p.Url}} active{{end}}">{{.Title}}</a>
         </li>
       {{ end }}
+      <li>
+        <a href="https://github.com/flyx/askew">GitHub Repo</a>
+      </li>
     </ul>
   </nav>
   <main>

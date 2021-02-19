@@ -15,20 +15,24 @@ body {
   background-color: #1a1a1d;
   color: #d7d7d7;
   font-family: sans-serif;
-}
-
-nav {
-  flex-basis: content;
-  flex-grow: 0;
-}
-
-main {
-  flex-grow: 1;
+  tab-size: 2;
 }
 
 @media only screen and (min-width: 600px) {
   body {
     flex-direction: row;
+  }
+
+  nav {
+    flex-basis: 170px;
+    flex-grow: 0;
+    flex-shrink: 1;
+  }
+
+  main {
+    flex-basis: 750px;
+    flex-grow: 1;
+    flex-shrink: 2;
   }
 }
 
@@ -40,7 +44,7 @@ nav > ul {
   list-style-type: none;
   padding: 0;
   margin: 0;
-  min-width: 100px;
+  min-width: 120px;
 }
 
 nav > ul > li > a {
@@ -98,11 +102,20 @@ h3 {
   font-weight: bold;
 }
 
+p {
+  overflow-x: scroll;
+}
+
 hr {
   margin: 0 25%;
 }
 
+pre {
+  max-width: 100%;
+}
+
 pre > code {
+  overflow-x: scroll;
   margin: 1em;
   background-color: #354350;
   border-radius: .5em;

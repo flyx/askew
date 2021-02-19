@@ -18,7 +18,7 @@ A site is a single HTML document and is also written in Askew.
 
 The build process of an Askew-based web application is as follows:
 
-![Pipeline for using askew to create a website](/static/pipeline.svg)
+![Pipeline for using askew to create a website]({{.Rel "/static/pipeline.svg"}})
 
 You process all component definitions (`*.askew`) and the site definition (`*.asite`) with the askew command line utility, which gives you generated Go source files.
 Then you write your application code in Go; this includes adding handlers you declared in your Askew files, for example for handling certain DOM events.

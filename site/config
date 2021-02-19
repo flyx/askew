@@ -8,6 +8,7 @@ AUTHOR = Felix Krause
 *.md:
 	config
 	ext .html
+	inner-template
 	directorify
 	markdown
 	template page
