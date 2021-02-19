@@ -12,11 +12,11 @@ import (
 )
 
 // ProcessFile processes a file containing units (*.askew)
-func ProcessFile(file *data.AskewFile, syms *data.Symbols, counter *int) error {
+func ProcessFile(file *data.AskewFile, syms *data.Symbols) error {
 	syms.SetAskewFile(file)
 	os.Stdout.WriteString("[info] processing units: " + file.Path + "\n")
 	w := walker.Walker{TextNode: walker.WhitespaceOnly{},
-		Component: &componentProcessor{unitProcessor{syms}, counter},
+		Component: &componentProcessor{unitProcessor{syms}},
 	}
 	_, _, err := w.WalkChildren(nil, &walker.NodeSlice{Items: file.Content})
 	if err != nil {

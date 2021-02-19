@@ -64,16 +64,7 @@ func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string) error {
 	if node == nil {
 		return errors.New("site misses <body> node")
 	}
-	for _, pkg := range pw.Syms.Packages {
-		for _, file := range pkg.Files {
-			for _, cmp := range file.Components {
-				node.NextSibling = cmp.Template
-				cmp.Template.PrevSibling = node
-				cmp.Template.Parent = node.Parent
-				node = cmp.Template
-			}
-		}
-	}
+
 	node.NextSibling = &html.Node{
 		Type:        html.ElementNode,
 		Data:        "script",

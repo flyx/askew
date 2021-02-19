@@ -4,8 +4,8 @@ package data
 type BoundKind int
 
 const (
-	// BoundData is a bound HTML dataset item.
-	BoundData BoundKind = iota
+	// BoundDataset is a bound HTML dataset item.
+	BoundDataset BoundKind = iota
 	// BoundProperty is a bound property of DOM.Node.
 	BoundProperty
 	// BoundStyle is a property of the DOM.Node's `style` property.

@@ -5,12 +5,13 @@ import (
 	"strings"
 
 	"github.com/flyx/askew/data"
+	"github.com/flyx/net/html"
 )
 
 func nameForBound(b data.BoundKind) string {
 	switch b {
-	case data.BoundData:
-		return "BoundData"
+	case data.BoundDataset:
+		return "BoundDataset"
 	case data.BoundProperty:
 		return "BoundProperty"
 	case data.BoundStyle:
@@ -79,4 +80,18 @@ func fieldType(e data.Embed) string {
 		b.WriteString("List")
 	}
 	return b.String()
+}
+
+func renderTemplateHTML(n *html.Node) string {
+	var w strings.Builder
+	html.Render(&w, n)
+	var ret strings.Builder
+	for _, r := range w.String() {
+		if r == '`' {
+			ret.WriteString("` + \"`\" + `")
+		} else {
+			ret.WriteRune(r)
+		}
+	}
+	return ret.String()
 }

@@ -62,7 +62,7 @@ self <- "self" isp* "(" isp* ")" {
 }
 
 dataset <- "dataset" isp* "(" isp* htmlid isp* ")" {
-	p.bv.Kind = data.BoundData
+	p.bv.Kind = data.BoundDataset
 }
 
 prop <- "prop" isp* "(" isp* htmlid isp* ")" {

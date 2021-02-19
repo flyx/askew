@@ -15,9 +15,8 @@ import (
 )
 
 type processor struct {
-	syms    data.Symbols
-	counter int
-	mod     *modfile.File
+	syms data.Symbols
+	mod  *modfile.File
 }
 
 func (p *processor) init(base *data.BaseDir) {
@@ -59,7 +58,7 @@ func (p *processor) processComponents(pkgName string) error {
 	p.syms.CurPkg = pkgName
 	pkg := p.syms.Packages[pkgName]
 	for _, file := range pkg.Files {
-		if err := units.ProcessFile(file, &p.syms, &p.counter); err != nil {
+		if err := units.ProcessFile(file, &p.syms); err != nil {
 			return err
 		}
 	}

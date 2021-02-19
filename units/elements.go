@@ -128,7 +128,9 @@ func (eh *elementHandler) mapCaptures(n *html.Node, v []data.UnboundEventMapping
 		for _, p := range h.Params {
 			bVal, ok := unmapped.ParamMappings[p.Name]
 			if !ok {
-				mapped = append(mapped, data.BoundParam{Param: p.Name, Value: data.BoundValue{Kind: data.BoundData, IDs: []string{p.Name}}})
+				mapped = append(mapped, data.BoundParam{
+					Param: p.Name, Value: data.BoundValue{
+						Kind: data.BoundDataset, IDs: []string{p.Name}}})
 			} else {
 				delete(notMapped, p.Name)
 				if bVal.Kind == data.BoundFormValue {
