@@ -27,12 +27,12 @@ You need at least Go 1.12 since Askew uses Go modules.
 
 Askew will locate the Go module you are currently in, search its content for Askew source files, and process them.
 Source files are identified by their extensions `.askew` and `.asite`, the latter acting as the entry point that defines the basic HTML structure of the site.
-[The documentation](/doc/concepts/) covers writing such files.
+[The documentation]({{.Rel "/doc/concepts/"}}) covers writing such files.
 
 For each `<name>.askew` file, A file `<name>.askew.go` will be generated; a `<name>.asite` file will generate `<name>.asite.go` and also `index.html`.
 You can then write your Go code that interacts with the generated code and compile it to a JavaScript file (if you're using GopherJS) that will be loaded by `index.html`.
 
-For more information about usage, see [the generator's documentation](doc/generator/).
+For more information about usage, see [the generator's documentation]({{.Rel "/doc/generator/"}}).
 
 ## Example
 
