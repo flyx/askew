@@ -28,7 +28,13 @@ func (pw *PackageWriter) WriteFile(f *data.AskewFile) error {
 		return err
 	}
 
-	if err := file.Execute(&b, f); err != nil {
+	if err := component.Execute(&b, f); err != nil {
+		return err
+	}
+	if err := list.Execute(&b, f); err != nil {
+		return err
+	}
+	if err := optional.Execute(&b, f); err != nil {
 		return err
 	}
 

@@ -11,11 +11,15 @@ import (
 	"github.com/flyx/net/html"
 )
 
+type constructParent struct {
+	newName   string
+	numParams int
+}
+
 type constructProcessor struct {
+	syms       *data.Symbols
 	e          *data.Embed
-	parentType struct {
-		pkgAlias, newName string
-	}
+	parentType constructParent
 }
 
 func (cp *constructProcessor) Process(n *html.Node) (descend bool,
@@ -24,10 +28,24 @@ func (cp *constructProcessor) Process(n *html.Node) (descend bool,
 		return false, nil, errors.New(": element requires list or optional embed as parent")
 	}
 	typeAttr := attributes.Val(n.Attr, "type")
+	var newName string
 	if typeAttr == "" {
-		if cp.target == nil {
+		if cp.parentType.newName == "" {
 			return false, nil, errors.New(": must supply type ")
 		}
+		newName = cp.parentType.newName
+	} else {
+		c, symName, aliasName, err := cp.syms.ResolveComponent(typeAttr)
+		if err != nil {
+			if _, ok := err.(data.OutsideModuleErr); !ok {
+				return false, nil, err
+			}
+			newName = aliasName + ".New" + symName
+		}
+		if aliasName != "" {
+			newName = aliasName + "."
+		}
+		newName += c.NewName()
 	}
 
 	var attrs attributes.General
@@ -50,25 +68,25 @@ func (cp *constructProcessor) Process(n *html.Node) (descend bool,
 	if err != nil {
 		return false, nil, errors.New(": in args: " + err.Error())
 	}
-	if args.Count != len(cp.target.Parameters) {
+	if cp.parentType.numParams >= 0 && args.Count != cp.parentType.numParams {
 		return false, nil, fmt.Errorf(
-			": target component requires %d arguments, but %d were given", len(cp.target.Parameters), args.Count)
+			": target component requires %d arguments, but %d were given", cp.parentType.numParams, args.Count)
 	}
 	if attrs.If != nil {
 		cp.e.ConstructorCalls = append(cp.e.ConstructorCalls,
-			data.ConstructorCall{ConstructorName: cp.target.NewName(), Args: args,
+			data.ConstructorCall{ConstructorName: newName, Args: args,
 				Kind: data.ConstructIf, Expression: attrs.If.Expression})
 	} else if attrs.For != nil {
 		if cp.e.Kind == data.OptionalEmbed {
 			return false, nil, errors.New(": a:for not allowed inside optional embed")
 		}
 		cp.e.ConstructorCalls = append(cp.e.ConstructorCalls,
-			data.ConstructorCall{ConstructorName: cp.target.NewName(), Args: args,
+			data.ConstructorCall{ConstructorName: newName, Args: args,
 				Kind: data.ConstructFor, Index: attrs.For.Index,
 				Variable: attrs.For.Variable, Expression: attrs.For.Expression})
 	} else {
 		cp.e.ConstructorCalls = append(cp.e.ConstructorCalls,
-			data.ConstructorCall{ConstructorName: cp.target.NewName(), Args: args,
+			data.ConstructorCall{ConstructorName: newName, Args: args,
 				Kind: data.ConstructDirect})
 	}
 	w := walker.Walker{TextNode: walker.WhitespaceOnly{}}

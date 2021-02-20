@@ -21,10 +21,14 @@ func writeFormatted(goCode string, file string) {
 	if err != nil {
 		panic("unable to create stdin pipe: " + err.Error())
 	}
+	err = fmtcmd.Start()
+	if err != nil {
+		panic("unable to start goimports process for formatting the code: " + err.Error())
+	}
 	io.WriteString(stdin, goCode)
 	stdin.Close()
 
-	if err := fmtcmd.Run(); err != nil {
+	if err := fmtcmd.Wait(); err != nil {
 		log.Println("error while formatting: " + err.Error())
 		log.Println("stderr output:")
 		log.Println(stderr.String())

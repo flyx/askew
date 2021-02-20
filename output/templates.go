@@ -29,7 +29,7 @@ import (
 )
 `))
 
-var file = template.Must(template.New("file").Funcs(template.FuncMap{
+var component = template.Must(template.New("component").Funcs(template.FuncMap{
 	"Wrapper":      wrapperForType,
 	"PathItems":    pathItems,
 	"NameForBound": nameForBound,
@@ -418,7 +418,6 @@ func (o *{{$cName}}) αcall{{$hName}}({{GenCallParams $m.Params}}) {{if IsBool $
 {{- end}}
 {{- end}}
 
-{{if .NeedsList}}
 // {{.Name}}List is a list of {{.Name}} whose manipulation methods auto-update
 // the corresponding nodes in the document.
 type {{.Name}}List struct {
@@ -428,6 +427,11 @@ type {{.Name}}List struct {
 	DefaultController {{.Name}}Controller
 	{{- end}}
 }
+
+{{- end}}`))
+
+var list = template.Must(template.New("list").Parse(`
+{{- range .Components}}
 
 // Init initializes the list, discarding previous data.
 // The list's items will be placed in the given container, starting at the
@@ -503,9 +507,7 @@ func (l *{{.Name}}List) DestroyAll() {
 	}
 	l.αitems = l.αitems[:0]
 }
-{{end}}
 
-{{- if .NeedsOptional}}
 // Optional{{.Name}} is a nillable embeddable container for {{.Name}}.
 type Optional{{.Name}} struct {
 	αcur *{{.Name}}
@@ -527,6 +529,12 @@ func (o *Optional{{.Name}}) Init(container js.Value, index int) {
 func (o *Optional{{.Name}}) Item() *{{.Name}} {
 	return o.αcur
 }
+
+{{- end}}
+`))
+
+var optional = template.Must(template.New("optional").Parse(`
+{{- range .Components}}
 
 // Set sets the contained item destroying the current one.
 // Give nil as value to simply destroy the current item.
@@ -555,7 +563,6 @@ func (o *Optional{{.Name}}) Remove() runtime.Component {
 	return nil
 }
 
-{{- end}}
 {{- end}}
 `))
 
