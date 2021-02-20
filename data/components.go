@@ -134,17 +134,15 @@ type ControlBlock struct {
 type Component struct {
 	Unit
 	// HTML id. internally generated.
-	ID            string
-	Name          string
-	Parameters    []ComponentParam
-	Template      *html.Node
-	NeedsList     bool
-	NeedsOptional bool
-	Fields        []*Field
-	Handlers      map[string]Handler
-	Controller    map[string]ControllerMethod
-	Captures      []Capture
-	GenNewInit    bool
+	ID         string
+	Name       string
+	Parameters []ComponentParam
+	Template   *html.Node
+	Fields     []*Field
+	Handlers   map[string]Handler
+	Controller map[string]ControllerMethod
+	Captures   []Capture
+	GenNewInit bool
 }
 
 // NewName returns the name of the component's new func.

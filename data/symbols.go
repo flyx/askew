@@ -16,6 +16,16 @@ type Unit struct {
 	Embeds    []Embed
 }
 
+// OutsideModuleErr is an error that is returned when trying to resolve a
+// package path that is outside of the current module.
+type OutsideModuleErr struct {
+	Path string
+}
+
+func (e OutsideModuleErr) Error() string {
+	return "cannot use controls from import path " + e.Path + " which is outside current module"
+}
+
 // Symbols is the context of the procesor. It stores all seen symbols along
 // with the packages they are declared in.
 type Symbols struct {
@@ -58,25 +68,29 @@ func (s *Symbols) split(id string) (pkg *Package, symName string, aliasName stri
 	last := strings.LastIndexByte(id, '.')
 	if last == -1 {
 		if s.CurPkg == "" {
-			return nil, "", "", errors.New("identifier in skeleton requires package prefix")
+			panic("unexpected empty CurPkg")
 		}
 		return s.Packages[s.CurPkg], id, "", nil
 	}
 	aliasName = id[0:last]
+	symName = id[last+1:]
 	if strings.LastIndexByte(aliasName, '.') != -1 {
 		return nil, "", "", errors.New("symbol id cannot include multiple '.': " + id)
 	}
 	pkgPath, ok := s.CurFile().Imports[aliasName]
 	if !ok {
-		return nil, "", "", fmt.Errorf("unknown namespace '%s' in id '%s'", aliasName, id)
+		err = fmt.Errorf("unknown namespace '%s' in id '%s'", aliasName, id)
+		return
 	}
 	relPath, err := filepath.Rel(s.ImportPath, pkgPath)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("cannot use controls from import path '%s' which is outside current module", pkgPath)
+		err = OutsideModuleErr{pkgPath}
+		return
 	}
 	retPkg, ok := s.Packages[relPath]
 	if !ok {
-		return nil, "", "", fmt.Errorf("cannot use controls from import path '%s' which is unknown (has it been excluded?)", pkgPath)
+		err = fmt.Errorf("cannot use controls from import path '%s' which is unknown (has it been excluded?)", pkgPath)
+		return
 	}
 	return retPkg, id[last+1:], aliasName, nil
 }
@@ -98,17 +112,18 @@ func (s *Symbols) ResolveMacro(id string) (Macro, error) {
 }
 
 // ResolveComponent resolves the given identifier to a Component.
-func (s *Symbols) ResolveComponent(id string) (*Component, string, string, error) {
-	pkg, name, aliasName, err := s.split(id)
+func (s *Symbols) ResolveComponent(id string) (
+	c *Component, symName string, aliasName string, err error) {
+	pkg, symName, aliasName, err := s.split(id)
 	if err != nil {
-		return nil, "", "", err
+		return nil, symName, aliasName, err
 	}
 	for _, file := range pkg.Files {
-		ret, ok := file.Components[name]
+		ret, ok := file.Components[symName]
 		if ok {
-			return ret, name, aliasName, nil
+			return ret, symName, aliasName, nil
 		}
 	}
 
-	return nil, "", "", fmt.Errorf("unknown component: '%s'", id)
+	return nil, symName, aliasName, fmt.Errorf("unknown component: '%s'", id)
 }

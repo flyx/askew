@@ -15,14 +15,16 @@ type embedProcessor struct {
 	indexList *[]int
 }
 
+// resolves the type of an embedded component.
+// the target is only set when a component in the same module is referenced.
 func resolveEmbed(n *html.Node, syms *data.Symbols,
-	indexList []int) (data.Embed, *data.Component, error) {
+	indexList []int) (e data.Embed, target *data.Component, err error) {
 	var attrs attributes.Embed
 	if err := attributes.Collect(n, &attrs); err != nil {
 		return data.Embed{}, nil, err
 	}
 
-	e := data.Embed{Kind: data.DirectEmbed, Path: append([]int(nil), indexList...),
+	e = data.Embed{Kind: data.DirectEmbed, Path: append([]int(nil), indexList...),
 		Field: attrs.Name, Control: attrs.Control}
 	if e.Field == "" {
 		return data.Embed{}, nil, errors.New(": attribute `name` missing")
@@ -45,27 +47,33 @@ func resolveEmbed(n *html.Node, syms *data.Symbols,
 		}
 		return e, nil, nil
 	}
-	target, typeName, aliasName, err := syms.ResolveComponent(attrs.T)
+	target, e.T, e.Ns, err = syms.ResolveComponent(attrs.T)
+	canCheckArgNumber := false
 	if err != nil {
-		return data.Embed{}, nil, errors.New(": attribute `type` invalid: " + err.Error())
+		if _, ok := err.(data.OutsideModuleErr); ok {
+			// components outside modules are fine, we can't check for correct number
+			// of parameters though
+			err = nil
+		} else {
+			return data.Embed{}, nil, errors.New(": attribute `type` invalid: " + err.Error())
+		}
+	} else {
+		// only when askew generates the new and init funcs for the component can
+		// we check whether the correct number of arguments have been provided.
+		canCheckArgNumber = target.GenNewInit
 	}
-	switch e.Kind {
-	case data.ListEmbed:
-		target.NeedsList = true
-	case data.OptionalEmbed:
-		target.NeedsOptional = true
-	}
-	e.T = typeName
-	e.Ns = aliasName
+
 	if e.Kind != data.DirectEmbed {
 		if attrs.Args.Count != 0 {
 			return data.Embed{}, nil, errors.New(": embed with `list` or `optional` cannot have `args`")
 		}
 	} else {
 		e.Args = attrs.Args
-		if len(target.Parameters) != e.Args.Count {
-			return data.Embed{}, nil, fmt.Errorf(
-				": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)
+		if canCheckArgNumber {
+			if len(target.Parameters) != e.Args.Count {
+				return data.Embed{}, nil, fmt.Errorf(
+					": target component requires %d arguments, but %d were given", len(target.Parameters), e.Args.Count)
+			}
 		}
 	}
 	return e, target, nil

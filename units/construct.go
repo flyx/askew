@@ -12,8 +12,10 @@ import (
 )
 
 type constructProcessor struct {
-	e      *data.Embed
-	target *data.Component
+	e          *data.Embed
+	parentType struct {
+		pkgAlias, newName string
+	}
 }
 
 func (cp *constructProcessor) Process(n *html.Node) (descend bool,
@@ -21,8 +23,11 @@ func (cp *constructProcessor) Process(n *html.Node) (descend bool,
 	if cp.e.Kind == data.DirectEmbed {
 		return false, nil, errors.New(": element requires list or optional embed as parent")
 	}
-	if cp.target == nil {
-		return false, nil, errors.New(": element requires embed with explicit type as parent")
+	typeAttr := attributes.Val(n.Attr, "type")
+	if typeAttr == "" {
+		if cp.target == nil {
+			return false, nil, errors.New(": must supply type ")
+		}
 	}
 
 	var attrs attributes.General
