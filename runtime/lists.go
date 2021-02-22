@@ -27,11 +27,11 @@ func CreateListManager(parent js.Value, insertAt int) ListManager {
 // list's items stays the same).
 func (lm *ListManager) UpdateParent(
 	oldParent, newParent, newEnd js.Value) {
-	if oldParent == lm.parent {
+	if equals(oldParent, lm.parent) {
 		lm.parent = newParent
-		if lm.end == js.Undefined() {
+		if equals(lm.end, js.Undefined()) {
 			lm.end = newEnd
-		} else if newEnd == js.Undefined() {
+		} else if equals(newEnd, js.Undefined()) {
 			if !newParent.Call("contains", lm.end).Bool() {
 				lm.end = js.Undefined()
 			}

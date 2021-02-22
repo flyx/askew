@@ -3,22 +3,26 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/flyx/askew/output"
 	"github.com/flyx/askew/packages"
 
 	"github.com/pborman/getopt/v2"
 )
 
 func main() {
-	output := getopt.StringLong(
+	outputOpt := getopt.StringLong(
 		"outputDir", 'o', ".", "output directory for index.html")
 	excludes := getopt.ListLong("exclude", 'e',
 		"comma-separated list of directories to exclude. "+
 			"allows patterns (which must be quoted in a typical shell). "+
 			"relative to the directory given at command line, or to cwd if no directory is given.")
+	backendOpt := getopt.StringLong(
+		"backend", 'b', "gopherjs", "backend to use; either `gopherjs` (default) or `wasm`")
 	getopt.Parse()
 	var err error
-	outputDirPath, err := filepath.Abs(*output)
+	outputDirPath, err := filepath.Abs(*outputOpt)
 	if err != nil {
 		panic(err)
 	}
@@ -37,18 +41,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	info, err := os.Stat(*output)
+	info, err := os.Stat(*outputOpt)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = os.MkdirAll(*output, os.ModePerm)
+			err = os.MkdirAll(*outputOpt, os.ModePerm)
 			if err != nil {
-				panic("unable to create output directory " + *output)
+				panic("unable to create output directory " + *outputOpt)
 			}
 		} else {
-			panic("unable to access output directory " + *output)
+			panic("unable to access output directory " + *outputOpt)
 		}
 	} else if !info.IsDir() {
-		panic("output path is not a directory: " + *output)
+		panic("output path is not a directory: " + *outputOpt)
+	}
+
+	var backend output.Backend
+	switch strings.ToLower(*backendOpt) {
+	case "gopherjs":
+		backend = output.GopherJSBackend
+	case "wasm":
+		backend = output.WasmBackend
+	default:
+		panic("unknown backend: `" + *backendOpt + "`")
 	}
 
 	base, err := packages.Discover(*excludes)
@@ -78,7 +92,7 @@ func main() {
 	}
 
 	os.Stdout.WriteString("[info] generating code\n")
-	if err := p.dump(outputDirPath); err != nil {
+	if err := p.dump(outputDirPath, backend); err != nil {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)
 	}

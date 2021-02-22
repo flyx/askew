@@ -48,7 +48,7 @@ func (t *Component) collect(name, val string) error {
 
 // Site lists the attributes of a site
 type Site struct {
-	JSFile, HTMLFile string
+	JSPath, WASMExecPath, WASMPath, HTMLFile string
 }
 
 func (s *Site) collect(name, val string) error {
@@ -56,8 +56,14 @@ func (s *Site) collect(name, val string) error {
 	case "a:htmlfile":
 		s.HTMLFile = val
 		return ErrRemoveAttribute
-	case "a:jsfile":
-		s.JSFile = val
+	case "a:jspath":
+		s.JSPath = val
+		return ErrRemoveAttribute
+	case "a:wasmpath":
+		s.WASMPath = val
+		return ErrRemoveAttribute
+	case "a:wasmexecpath":
+		s.WASMExecPath = val
 		return ErrRemoveAttribute
 	default:
 		if strings.HasPrefix(name, "a:") {

@@ -11,6 +11,16 @@ import (
 	"github.com/flyx/net/html/atom"
 )
 
+// Backend defines for which kind of backend the HTML should be set up.
+type Backend int
+
+const (
+	// GopherJSBackend assumes the Go code will be compiled with GopherJS
+	GopherJSBackend Backend = iota
+	// WasmBackend assumes the Go code will be compiled with Go's WASM backend.
+	WasmBackend
+)
+
 // PackageWriter writes the Go code for a package into files.
 type PackageWriter struct {
 	Syms        *data.Symbols
@@ -44,7 +54,8 @@ func (pw *PackageWriter) WriteFile(f *data.AskewFile) error {
 
 // WriteSite writes a file init.go in the site's package, and the HTML file
 // of the site.
-func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string) error {
+func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string,
+	backend Backend) error {
 	// init.go file
 	b := strings.Builder{}
 	if err := fileHeader.Execute(&b, struct {
@@ -71,14 +82,45 @@ func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string) error {
 		return errors.New("site misses <body> node")
 	}
 
-	node.NextSibling = &html.Node{
-		Type:        html.ElementNode,
-		Data:        "script",
-		DataAtom:    atom.Script,
-		Attr:        []html.Attribute{{Key: "src", Val: f.JSFile}, {Key: "charset", Val: "UTF-8"}},
-		PrevSibling: node,
-		Parent:      node.Parent,
-		NextSibling: nil,
+	switch backend {
+	case GopherJSBackend:
+		node.NextSibling = &html.Node{
+			Type:        html.ElementNode,
+			Data:        "script",
+			DataAtom:    atom.Script,
+			Attr:        []html.Attribute{{Key: "src", Val: f.JSPath}, {Key: "charset", Val: "UTF-8"}},
+			PrevSibling: node,
+			Parent:      node.Parent,
+			NextSibling: nil,
+		}
+	case WasmBackend:
+		node.NextSibling = &html.Node{
+			Type:        html.ElementNode,
+			Data:        "script",
+			DataAtom:    atom.Script,
+			Attr:        []html.Attribute{{Key: "src", Val: f.WASMExecPath}, {Key: "charset", Val: "UTF-8"}},
+			PrevSibling: node,
+			Parent:      node.Parent,
+		}
+
+		var b strings.Builder
+		wasmInit.Execute(&b, f.WASMPath)
+
+		wasmExec := node.NextSibling
+		wasmExec.NextSibling = &html.Node{
+			Type:        html.ElementNode,
+			Data:        "script",
+			DataAtom:    atom.Script,
+			PrevSibling: wasmExec,
+			Parent:      node.Parent,
+		}
+		wasm := wasmExec.NextSibling
+		wasm.FirstChild = &html.Node{
+			Type:   html.TextNode,
+			Data:   b.String(),
+			Parent: wasm,
+		}
+		wasm.LastChild = wasm.FirstChild
 	}
 
 	htmlFile, err := os.Create(filepath.Join(outputPath, f.HTMLFile))

@@ -49,15 +49,20 @@ This would be a minimal valid `*.asite` file:
 ```
 
 As you can see, you can use `<html>`'s attributes with `<a:site>`.
-Besides those, there are two Askew-specific attributes you can set:
+Besides those, there are some Askew-specific attributes you can set:
 
  * `a:htmlfile`: The name of the output HTML file. Defaults to `index.html`.
- * `a:jsfile`: The name of the JavaScript file you will create via GopherJS.
+ * `a:jspath`: The path to the JavaScript file created via GopherJS.
    Defaults to `main.js`.
+ * `a:wasmexecpath`: The path to Go's `wasm_exec.js`.
+   This is required runtime support when compiling Go to WASM.
+   you need to make it available at the specified path when using the WASM backend.
+ * `a:wasmpath`: The path to the WASM file created when compiling Go to WASM.
 
 The HTML file will be created in the output directory specified as option of the `askew` command.
-The JavaScript file will be written as-is into a `<script>` tag's `src` attribute.
-Since Askew does not call GopherJS for you, it is your responsibility to provide the `.js` file at the given path.
+The JavaScript path will be written as-is into a `<script>` tag's `src` attribute, as will the path to `wasm_exec.js`.
+The path to the WASM file will be loaded via `fetch`.
+Since Askew does call neither GopherJS nor Go's WASM compiler for you, it is your responsibility to provide the `.js` and `.wasm` files at the given path.
 The generated `<script>` element will be appended to the end of the `<body>` element's content.
 
 ## Packages and Imports
@@ -170,3 +175,9 @@ You do this with the element `<a:construct>`, which must be put inside the `<a:e
  * `a:if`, `a:for`: May be used for conditional or looped constructing, see the chapter on control structures.
 
 An optional `<a:embed>` may contain at most one `<a:construct>` which may not have a `a:for`, a list may contain any number of `<a:construct>`s, a direct embed may not contain any.
+
+## The main function
+
+Just like with regular Go code, you must write a `main` function as entry point.
+When compiling to WASM, this main file must not exit if you want event handlers to work.
+You can call `runtime.KeepAlive()` (`runtime` being Askew's `runtime` package, not the stdlib `runtime`) to do this, it is a nop when compiling with GopherJS.

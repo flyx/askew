@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strconv"
 
 	"syscall/js"
@@ -14,16 +15,20 @@ func (o *MacroTest) SetTitle(value string) bool {
 
 // RandomizeText is called when the Randomize button is clicked.
 func (o *MacroTest) RandomizeText() {
-	o.TextContent.Set(js.Global().Get("Math").Call("random").String())
+	o.TextContent.Set(fmt.Sprintf("%f", js.Global().Get("Math").Call("random").Float()))
 }
 
 func (o *Herp) click() {
 	o.count++
-	js.Global().Call("alert", "Derp"+strconv.Itoa(o.count))
+	go func() {
+		js.Global().Call("alert", "Derp"+strconv.Itoa(o.count))
+	}()
 }
 
 func (o *OneTwoThree) click(caption string) {
-	js.Global().Call("alert", caption)
+	go func() {
+		js.Global().Call("alert", caption)
+	}()
 }
 
 func (o *EventTest) click(e js.Value) {
@@ -40,9 +45,13 @@ func (o *ColorChooserByText) click(value string) {
 }
 
 func (o *SelfTest) click() {
-	js.Global().Call("alert", o.Button.Get().Get("dataset").Get("foo"))
+	go func() {
+		js.Global().Call("alert", o.Button.Get().Get("dataset").Get("foo"))
+	}()
 }
 
 func (o *AutoFieldTest) click() {
-	js.Global().Call("alert", o.content)
+	go func() {
+		js.Global().Call("alert", o.content)
+	}()
 }

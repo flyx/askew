@@ -37,10 +37,20 @@ func processSiteDescriptor(site *data.ASiteFile) error {
 	} else {
 		site.HTMLFile = siteAttrs.HTMLFile
 	}
-	if siteAttrs.JSFile == "" {
-		site.JSFile = filepath.Base(site.BaseName) + ".js"
+	if siteAttrs.JSPath == "" {
+		site.JSPath = filepath.Base(site.BaseName) + ".js"
 	} else {
-		site.JSFile = siteAttrs.JSFile
+		site.JSPath = siteAttrs.JSPath
+	}
+	if siteAttrs.WASMExecPath == "" {
+		site.WASMExecPath = "wasm_exec.js"
+	} else {
+		site.WASMExecPath = siteAttrs.WASMExecPath
+	}
+	if siteAttrs.WASMPath == "" {
+		site.WASMPath = filepath.Base(site.BaseName) + ".wasm"
+	} else {
+		site.WASMPath = siteAttrs.WASMPath
 	}
 	rootNode.Data = "html"
 	rootNode.DataAtom = atom.Html

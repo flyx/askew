@@ -37,7 +37,7 @@ func (cd *ComponentData) Init(frag js.Value) {
 //
 // This is the backend for a Component's InsertInto, but the component may need to do additional things depending on its embeds.
 func (cd *ComponentData) DoInsert(parent js.Value, before js.Value) {
-	if cd.first != js.Undefined() {
+	if !equals(cd.first, js.Undefined()) {
 		panic("DoInsert called on ComponentData that is already in inserted state")
 	}
 	cd.first = cd.fragment.Get("firstChild")
@@ -51,7 +51,7 @@ func (cd *ComponentData) DoInsert(parent js.Value, before js.Value) {
 // This is the backend for a Component's Extract, but the component may need to
 // do additional things depending on its embeds.
 func (cd *ComponentData) DoExtract() {
-	if cd.first == js.Undefined() {
+	if equals(cd.first, js.Undefined()) {
 		panic("Extract called on ComponentData that is in initial state")
 	}
 	cur := cd.first
@@ -59,7 +59,7 @@ func (cd *ComponentData) DoExtract() {
 	for {
 		next := cur.Get("nextSibling")
 		cd.fragment.Call("appendChild", parent.Call("removeChild", cur))
-		if cur == cd.last {
+		if equals(cur, cd.last) {
 			break
 		}
 		cur = next
@@ -72,12 +72,12 @@ func (cd *ComponentData) DoExtract() {
 // collected. Afterwards, the component is is destroyed state and must not be
 // used anymore.
 func (cd *ComponentData) DoDestroy() {
-	if cd.first != js.Undefined() {
+	if !equals(cd.first, js.Undefined()) {
 		cur := cd.first
 		for {
 			next := cur.Get("nextSibling")
 			cur.Call("remove")
-			if cur == cd.last {
+			if equals(cur, cd.last) {
 				break
 			}
 			cur = next
@@ -89,7 +89,7 @@ func (cd *ComponentData) DoDestroy() {
 // Walk descends into the DocumentFragment's children using the given list of indexes.
 // This may only be done when the ComponentData is in initial state.
 func (cd *ComponentData) Walk(path ...int) js.Value {
-	if cd.first != js.Undefined() {
+	if !equals(cd.first, js.Undefined()) {
 		panic("Walk called on ComponentData that is already inserted")
 	}
 	return WalkPath(cd.fragment, path...)
@@ -97,7 +97,7 @@ func (cd *ComponentData) Walk(path ...int) js.Value {
 
 // First returns the first DOM node in this component
 func (cd *ComponentData) First() js.Value {
-	if cd.first == js.Undefined() {
+	if equals(cd.first, js.Undefined()) {
 		return cd.fragment.Get("firstChild")
 	}
 	return cd.first

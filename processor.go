@@ -68,7 +68,7 @@ func (p *processor) processComponents(pkgName string) error {
 	return nil
 }
 
-func (p *processor) dump(outputPath string) error {
+func (p *processor) dump(outputPath string, backend output.Backend) error {
 	for relPath, pkg := range p.syms.Packages {
 		w := output.PackageWriter{Syms: &p.syms, PackageName: pkg.Name, RelPath: relPath}
 		if err := os.MkdirAll(relPath, 0755); err != nil {
@@ -81,7 +81,7 @@ func (p *processor) dump(outputPath string) error {
 			}
 		}
 		if pkg.Site != nil {
-			if err := w.WriteSite(pkg.Site, outputPath); err != nil {
+			if err := w.WriteSite(pkg.Site, outputPath, backend); err != nil {
 				return err
 			}
 		}

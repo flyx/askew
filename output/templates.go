@@ -602,3 +602,10 @@ func init() {
 	{{- end}}
 }
 `))
+
+var wasmInit = template.Must(template.New("wasmInit").Parse(`
+const go = new Go();
+WebAssembly.instantiateStreaming(fetch("{{.}}"), go.importObject).then((result) => {
+	go.run(result.instance);
+});
+`))

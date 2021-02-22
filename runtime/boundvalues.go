@@ -192,12 +192,24 @@ func (bfv *BoundFormValue) get() js.Value {
 func (bfv *BoundFormValue) set(value interface{}) {
 	elm := bfv.form.Get("elements").Get(bfv.name)
 	if bfv.radio {
-		for i := 0; i < elm.Length(); i++ {
-			item := elm.Index(i)
-			if item.Get("value") == value {
-				item.Set("checked", true)
-				return
+		if str, ok := value.(string); ok {
+			for i := 0; i < elm.Length(); i++ {
+				item := elm.Index(i)
+				if item.Get("value").String() == str {
+					item.Set("checked", true)
+					return
+				}
 			}
+		} else if iv, ok := value.(int); ok {
+			for i := 0; i < elm.Length(); i++ {
+				item := elm.Index(i)
+				if item.Get("value").Int() == iv {
+					item.Set("checked", true)
+					return
+				}
+			}
+		} else {
+			panic("unsupported value type for BoundFormValue on radio button!")
 		}
 		panic("unknown radio value!")
 	}

@@ -3,20 +3,26 @@ package main
 import (
 	"strconv"
 
+	"github.com/flyx/askew/runtime"
+
 	"github.com/flyx/askew/test/ui"
 
-	"github.com/gopherjs/gopherjs/js"
+	"syscall/js"
 )
 
 type handler struct{}
 
 func (*handler) Reset(foo string) bool {
-	js.Global.Call("alert", "reset: "+foo)
+	go func() {
+		js.Global().Call("alert", "reset: "+foo)
+	}()
 	return true
 }
 
 func (*handler) Submit(name string, age int) {
-	js.Global.Call("alert", "name="+name+", age="+strconv.FormatInt(int64(age), 10))
+	go func() {
+		js.Global().Call("alert", "name="+name+", age="+strconv.FormatInt(int64(age), 10))
+	}()
 }
 
 func main() {
@@ -39,4 +45,6 @@ func main() {
 
 	Derp.Set(ui.NewHerp())
 	Anything.Set(ui.NewHerp())
+
+	runtime.KeepAlive()
 }
