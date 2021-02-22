@@ -24,6 +24,7 @@ type Component struct {
 	Name       string
 	Params     []data.ComponentParam
 	GenNewInit bool
+	Usage      []string
 }
 
 func (t *Component) collect(name, val string) error {
@@ -37,6 +38,9 @@ func (t *Component) collect(name, val string) error {
 		return err
 	case "gen-new-init":
 		t.GenNewInit = true
+		return nil
+	case "usage":
+		t.Usage = strings.Fields(val)
 		return nil
 	}
 	return invalidAttribute(name)

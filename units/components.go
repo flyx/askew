@@ -2,6 +2,7 @@ package units
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/flyx/askew/attributes"
 	"github.com/flyx/askew/data"
@@ -28,6 +29,20 @@ func (p *componentProcessor) Process(n *html.Node) (descend bool,
 	cmp := &data.Component{Unit: data.Unit{}, Template: replacement,
 		Name: cmpAttrs.Name, Parameters: cmpAttrs.Params,
 		GenNewInit: cmpAttrs.GenNewInit}
+	if cmpAttrs.Usage == nil {
+		cmp.GenList, cmp.GenOpt = true, true
+	} else {
+		for _, item := range cmpAttrs.Usage {
+			switch strings.ToLower(item) {
+			case "list":
+				cmp.GenList = true
+			case "optional":
+				cmp.GenOpt = true
+			default:
+				return false, nil, errors.New(": attribute `usage` contains unknown name: " + item)
+			}
+		}
+	}
 	for _, param := range cmp.Parameters {
 		if param.IsVar {
 			t := param.Type

@@ -22,6 +22,26 @@ This value will be the name of the generated `struct` type.
 Lowercase names will make the component only be usable within the current package.
 The name must not collide with any other names, regardless of whether they are defined via Askew or in your Go code.
 
+By default, Askew will generate two additional types for a component with name `<name>`:
+`<name>List` and `Optional<name>`.
+These are used when embedding the component with the `list` or `optional` attributes, they are not standalone components.
+Their names also must not collide with any other names.
+
+You can disable the generation of these additional types by supplying a parameter `usage`:
+
+```html
+<a:component name="MyComponent" usage="list">
+  <p>Hello, World!</p>
+</a:component>
+```
+
+In this case, the types `MyComponent` and `MyComponentList` will be created, but not `OptionalMyComponent`.
+You can leave `usage` empty to only generate the main type.
+In the value, you can either give `list` or `optional` or both, separated by a space character.
+
+Be aware that if you restrict usage, you cannot embed this component elsewhere with a *list* or *optional* embed (depending on what you allow).
+This option should generally be avoided unless you absolutely need to disable the additional types due to name clashes.
+
 ## Parameters and Construction
 
 A component can have *parameters*.
