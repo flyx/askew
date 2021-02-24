@@ -5,7 +5,7 @@ date: 2021-01-30
 # Components
 
 Components are Askew's most important structure.
-They are defined in `.askew` files, and each component defined there will generate a `struct` type in the generated Go code which implements `runtime.Component`.
+They are defined in `.askew` files, and each component defined there will generate a `struct` type in the generated Go code which implements `askew.Component`.
 
 ## Name and Visibility
 

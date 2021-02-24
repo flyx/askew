@@ -45,13 +45,13 @@ func last(path []int) int {
 func wrapperForType(t data.ParamType) string {
 	switch t.Kind {
 	case data.StringType:
-		return "runtime.StringValue"
+		return "askew.StringValue"
 	case data.IntType:
-		return "runtime.IntValue"
+		return "askew.IntValue"
 	case data.BoolType:
-		return "runtime.BoolValue"
+		return "askew.BoolValue"
 	case data.JSValueType:
-		return "runtime.RawValue"
+		return "askew.RawValue"
 	}
 	panic("no wrapper for type: " + t.String())
 }
@@ -60,9 +60,9 @@ func fieldType(e data.Embed) string {
 	if e.T == "" {
 		switch e.Kind {
 		case data.OptionalEmbed:
-			return "runtime.GenericOptional"
+			return "askew.GenericOptional"
 		case data.ListEmbed:
-			return "runtime.GenericList"
+			return "askew.GenericList"
 		default:
 			panic("unexpected field type")
 		}

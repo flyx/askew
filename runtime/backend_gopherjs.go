@@ -1,6 +1,6 @@
-// +build gopherjs
+// +build js,!wasm
 
-package runtime
+package askew
 
 import "syscall/js"
 

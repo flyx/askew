@@ -1,6 +1,6 @@
 // +build wasm
 
-package runtime
+package askew
 
 import "syscall/js"
 

@@ -3,7 +3,7 @@ package main
 import (
 	"strconv"
 
-	"github.com/flyx/askew/runtime"
+	askew "github.com/flyx/askew/runtime"
 
 	"github.com/flyx/askew/test/ui"
 
@@ -46,5 +46,5 @@ func main() {
 	Derp.Set(ui.NewHerp())
 	Anything.Set(ui.NewHerp())
 
-	runtime.KeepAlive()
+	askew.KeepAlive()
 }
