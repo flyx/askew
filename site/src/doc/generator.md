@@ -14,6 +14,9 @@ Possible options are
  * `-e excludes`, `--exclude=excludes`: Specify a comma-separated list of directories that should be excluded.
    Allows glob patterns but they must be quoted so that they are not processed by your shell.
    Parameter may be given multiple times.
+ * `-b backend`, `--backend=backend`: Specify the backend to use.
+   Must be either `gopherjs` (default) or `wasm`.
+   While you need to compile the generated Go code yourself, Askew needs to know how to call the compiled code.
 
 The `dir` parameter must be a path to a directory containing a Go module or a subdirectory thereof.
 If left out, the current directory is used.
