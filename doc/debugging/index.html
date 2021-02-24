@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <meta name="author" content="Felix Krause">
+  <title>Askew – Debugging</title>
+  <link rel="stylesheet" type="text/css" href="../../static/style.css">
+</head>
+<body>
+
+  
+  <nav>
+    <ul>
+      <li>
+        <a href="../../"
+          class="main"
+          >Askew</a>
+      </li>
+      <li>
+        <a href="../../doc/concepts/">Documentation</a>
+      </li>
+      
+        <li>
+          <a href="../../doc/concepts/"
+            class="doc">Concepts</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/components/"
+            class="doc">Components</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/boundvalues/"
+            class="doc">Bound Values</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/generator/"
+            class="doc">The Code Generator</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/debugging/"
+            class="doc active">Debugging</a>
+        </li>
+      
+      <li>
+        <a href="https://github.com/flyx/askew" style="display:flex;">
+          <img src="../../static/gh-logo.png" style="width: 1em; height: 1em; filter: invert(1); margin-right: .5em;"> Repo
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <main>
+    <h1 id="debugging">Debugging</h1>
+<p>Compiling with GopherJS will give you a source map together with the generated JavaScript file.
+However, this source map is only useful if your web server serves the referenced Go source files.</p>
+<p>Of course, the source code may span several modules, so it is not as simple as putting the sources of your current module onto the web server.
+However, Go offers a simple solution:</p>
+<pre><code>go mod vendor
+</code></pre>
+<p>This will create a directory <code>vendor</code> with all sources of all modules used by your module, except for the standard library.
+If you want to debug into the standard library, you will need to copy over <code>$GOROOT/libexec/src</code>.</p>
+<p>All the <code>*.go</code> files in the <code>vendor</code> directory will then need to be served by your web server according to their directory hierarchy, rooting at <code>vendor</code>.
+How you set this up depends on your web server and is out of scope for this documentation.</p>
+<p>Be aware that the presence of the <code>vendor</code> directory indicates to the <code>go</code> compiler that you want to use Vendoring, which will make it use the local sources within that directory instead of the original modules.
+You&rsquo;ll want to rename or move the directory somewhere else.</p>
+<p>If everything works correctly, you should be able to access your Go sources via your browser&rsquo;s development tools.
+You can set breakpoints there and step through your Go statements, though the debugger will throw you back to the generated JavaScript for lines that do not correspond to a Go source line.</p>
+
+  </main>
+
+</body>
+</html>

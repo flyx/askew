@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg version="1.1"
+     baseProfile="full"
+     width="475" height="200"
+     viewBox="0 0 475 200"
+     xmlns="http://www.w3.org/2000/svg">
+  <defs>
+      <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="2" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,4 L5,2 z" fill="#d7d7d7" />
+    </marker>
+  </defs>
+  <style type="text/css">
+    text {
+      text-anchor: middle;
+      dominant-baseline: middle;
+      font-size: 10pt;
+      fill: #d7d7d7;
+    }
+    text.glob {
+      font-family: monospace;
+    }
+    text.descr {
+      font-style: italic;
+    }
+    ellipse, rect {
+      stroke: #d7d7d7;
+      stroke-width: 1.5pt;
+      fill: none;
+    }
+    .generated rect {
+      stroke-dasharray: 5,3;
+    }
+    line {
+      stroke: #d7d7d7;
+      stroke-width: 1.5pt;
+    }
+    line.arr {
+      marker-end: url(#arrow);
+    }
+  </style>
+  <!-- to ensure people using dark theme can see it. -->
+  <rect x="0" y="0" width="475" height="200" style="stroke: none; fill: #354350;" />
+
+  <g transform="translate(10,10)">
+    <rect width="70" height="54" />
+    <text class="glob" x="35" y="13">*.askew</text>
+    <line x1="0" y1="22" x2="70" y2="22" />
+    <text class="descr" x="35" y="31">component</text>
+    <text class="descr" x="35" y="46">definitions</text>
+  </g>
+
+  <g transform="translate(10, 72)">
+    <rect width="70" height="54" />
+    <text class="glob" x="35" y="13">*.asite</text>
+    <line x1="0" y1="22" x2="70" y2="22" />
+    <text class="descr" x="35" y="31">base site</text>
+    <text class="descr" x="35" y="46">structure</text>
+  </g>
+
+  <g transform="translate(10, 134)">
+    <rect width="70" height="54" />
+    <text class="glob" x="35" y="13">*.go</text>
+    <line x1="0" y1="22" x2="70" y2="22" />
+    <text class="descr" x="35" y="31">application</text>
+    <text class="descr" x="35" y="46">code</text>
+  </g>
+
+  <line class="arr" x1="80" y1="40" x2="106" y2="55" />
+  <line class="arr" x1="80" y1="100" x2="107" y2="80" />
+
+  <g transform="translate(100,47)">
+    <ellipse cx="25" cy="20" rx="25" ry="20" />
+    <text x="25" y="21">askew</text>
+  </g>
+
+  <line class="arr" x1="148" y1="75" x2="170" y2="93" />
+
+  <g transform="translate(170,82)" class="generated">
+    <rect width="90" height="69" />
+    <text class="glob" x="45" y="13">*.askew.go</text>
+    <text class="glob" x="45" y="28">*.asite.go</text>
+    <line x1="0" y1="37" x2="90" y2="37" />
+    <text class="descr" x="45" y="46">generated</text>
+    <text class="descr" x="45" y="61">code</text>
+  </g>
+
+  <line class="arr" x1="260" y1="122" x2="289" y2="148" />
+  <line class="arr" x1="80" y1="165" x2="281" y2="165" />
+
+  <g transform="translate(280,140)">
+    <ellipse cx="30" cy="25" rx="30" ry="25" />
+    <text x="30" y="26">GopherJS</text>
+  </g>
+
+  <line class="arr" x1="150" y1="67" x2="381" y2="67" />
+
+  <g transform="translate(380,55)" class="generated">
+    <rect width="70" height="20" />
+    <text x="35" y="12">index.html</text>
+  </g>
+
+  <line class="arr" x1="340" y1="165" x2="380" y2="165" />
+
+  <g transform="translate(380,153)" class="generated">
+    <rect width="70" height="20" />
+    <text x="35" y="12">main.js</text>
+  </g>
+
+  <g transform="translate(365, 30)">
+    <rect width="100" height="160" stroke-width="1pt" stroke-dasharray="2,5" />
+    <text x="50" y="82">Website</text>
+  </g>
+</svg>

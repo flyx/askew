@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <meta name="author" content="Felix Krause">
+  <title>Askew – Bound Values</title>
+  <link rel="stylesheet" type="text/css" href="../../static/style.css">
+</head>
+<body>
+
+  
+  <nav>
+    <ul>
+      <li>
+        <a href="../../"
+          class="main"
+          >Askew</a>
+      </li>
+      <li>
+        <a href="../../doc/concepts/">Documentation</a>
+      </li>
+      
+        <li>
+          <a href="../../doc/concepts/"
+            class="doc">Concepts</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/components/"
+            class="doc">Components</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/boundvalues/"
+            class="doc active">Bound Values</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/generator/"
+            class="doc">The Code Generator</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/debugging/"
+            class="doc">Debugging</a>
+        </li>
+      
+      <li>
+        <a href="https://github.com/flyx/askew" style="display:flex;">
+          <img src="../../static/gh-logo.png" style="width: 1em; height: 1em; filter: invert(1); margin-right: .5em;"> Repo
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <main>
+    <h1 id="bound-values">Bound Values</h1>
+<p>Bound values bind DOM values to Go values.
+The occur in various places as <code>&lt;bval&gt;</code> and have the following syntax:</p>
+<pre><code>&lt;args&gt; ::= &lt;name&gt; ( &quot;,&quot; &lt;name&gt; )*
+&lt;bval&gt; ::= &lt;id&gt; &quot;(&quot; [ &lt;args&gt; ] &quot;)&quot;
+</code></pre>
+<p>The <code>&lt;id&gt;</code> selects the kind of the bound value.
+All availalbe kinds are specified in the following sections.
+In <code>&lt;args&gt;</code> a list of arguments in the form of names are given.
+Their interpretation depends on the bound value&rsquo;s kind.</p>
+<h2 id="self"><code>self</code></h2>
+<p>Self takes no arguments, its syntax is always <code>self()</code>.
+It binds the DOM node of the current element.
+Its Go type will be guessed to be <code>js.Value</code> and must not be set to anything else.</p>
+<p><code>self()</code> is mainly a fallback that allows you to do things that are not possible with Askew otherwise.
+For example, you can use it to dynamically add and remove event handlers from a node.
+If you want to access or modify properties of the node, you should use a bound value kind that provides direct access to that property instead, if one is available.</p>
+<h2 id="dataset"><code>dataset</code></h2>
+<p>This binds an item in the current element&rsquo;s <em>dataset</em> property.
+You must give exactly one argument which must be the name of the item in the dataset.</p>
+<p>The following example defines two buttons in a component that call the same handler when clicked, but each will provide its own ID as parameter:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;Buttons&quot;&gt;
+  &lt;a:handlers&gt;
+    click(id string)
+  &lt;/a:handlers&gt;
+  &lt;button a:capture=&quot;click:click(id=dataset(id)&quot;
+          data-id=&quot;button1&quot;&gt;Button 1&lt;/button&gt;
+  &lt;button a:capture=&quot;click:click(id=dataset(id))&quot;
+          data-id=&quot;button2&quot;&gt;Button 2&lt;/button&gt;
+&lt;/a:component&gt;
+</code></pre>
+<h2 id="prop"><code>prop</code></h2>
+<p>This binds a property of the curent DOM node.
+You must give exactly one argument which must be the name of the property.</p>
+<p>We already saw an example of this bound value in the previous chapter.</p>
+<h2 id="style"><code>style</code></h2>
+<p>This binds a value in the <code>style</code> property of the current DOM node.
+You must give exactly one argument which must be the name of the style value.</p>
+<p>The following example defines a component that renders colored text, where the color is given as parameter:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;ColoredText&quot; params=&quot;color string&quot;&gt;
+  &lt;span a:assign=&quot;style(color) = color&quot;&gt;My text&lt;/span&gt;
+&lt;/a:component&gt;
+</code></pre>
+<h2 id="class"><code>class</code></h2>
+<p>This binds a part of the <code>classList</code> of the current DOM node.
+You must give at least one class name as argument, but can give multiple.
+This bound value is used to switch classes on a certain element on and off.</p>
+<p>If you give one argument, this bound value will be default map to a <strong><code>bool</code></strong> value.
+Setting it to <strong><code>true</code></strong> will add the class with the given name to the <code>classList</code>, setting it to <strong><code>false</code></strong> will remove it.</p>
+<p>If you give multiple arguments, the value will by default map to an <strong><code>int</code></strong> value.
+Setting it to <code>0</code> will remove all named classes from the list, setting it to <code>1</code> will add the first class to the list removing all others, and so on.</p>
+<h2 id="form"><code>form</code></h2>
+<p>This binds a form element of the current form.
+You must give exactly one name as argument, which must be the name of a form element.
+This bound value may occur on a <code>&lt;form&gt;</code> element or any element that is contained in a <code>&lt;form&gt;</code> and always refers to that form.</p>
+<p>The form&rsquo;s <code>elements</code> DOM property is used to access the element.
+If the form element is a radio button group, the value will be default map to a <strong><code>string</code></strong> value.
+Retrieving the value will give you the value of the currently selected radio button, setting it will check the radio button with the given value.</p>
+<p>If the form element is not a radio button, the value will also map to a <strong><code>string</code></strong> by default.
+However, now it directly sets and retrieves the <code>value</code> property of the linked form element.</p>
+<h2 id="event"><code>event</code></h2>
+<p>This bound value may only be used inside <code>a:capture</code>.
+It gives access to the JavaScript element that has been captured as <code>js.Value</code> and cannot use a different type.</p>
+
+  </main>
+
+</body>
+</html>

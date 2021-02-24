@@ -1,0 +1,303 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <meta name="author" content="Felix Krause">
+  <title>Askew – Components</title>
+  <link rel="stylesheet" type="text/css" href="../../static/style.css">
+</head>
+<body>
+
+  
+  <nav>
+    <ul>
+      <li>
+        <a href="../../"
+          class="main"
+          >Askew</a>
+      </li>
+      <li>
+        <a href="../../doc/concepts/">Documentation</a>
+      </li>
+      
+        <li>
+          <a href="../../doc/concepts/"
+            class="doc">Concepts</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/components/"
+            class="doc active">Components</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/boundvalues/"
+            class="doc">Bound Values</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/generator/"
+            class="doc">The Code Generator</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/debugging/"
+            class="doc">Debugging</a>
+        </li>
+      
+      <li>
+        <a href="https://github.com/flyx/askew" style="display:flex;">
+          <img src="../../static/gh-logo.png" style="width: 1em; height: 1em; filter: invert(1); margin-right: .5em;"> Repo
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <main>
+    <h1 id="components">Components</h1>
+<p>Components are Askew&rsquo;s most important structure.
+They are defined in <code>.askew</code> files, and each component defined there will generate a <code>struct</code> type in the generated Go code which implements <code>runtime.Component</code>.</p>
+<h2 id="name-and-visibility">Name and Visibility</h2>
+<p>A component is defined with a <code>&lt;a:component&gt;</code> element at top level:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;MyComponent&quot;&gt;
+  &lt;p&gt;Hello, World!&lt;/p&gt;
+&lt;/a:component&gt;
+</code></pre>
+<p>It must have a <code>name</code> attribute, whose value must be a valid Go identifier.
+This value will be the name of the generated <code>struct</code> type.
+Lowercase names will make the component only be usable within the current package.
+The name must not collide with any other names, regardless of whether they are defined via Askew or in your Go code.</p>
+<p>By default, Askew will generate two additional types for a component with name <code>&lt;name&gt;</code>:
+<code>&lt;name&gt;List</code> and <code>Optional&lt;name&gt;</code>.
+These are used when embedding the component with the <code>list</code> or <code>optional</code> attributes, they are not standalone components.
+Their names also must not collide with any other names.</p>
+<p>You can disable the generation of these additional types by supplying a parameter <code>usage</code>:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;MyComponent&quot; usage=&quot;list&quot;&gt;
+  &lt;p&gt;Hello, World!&lt;/p&gt;
+&lt;/a:component&gt;
+</code></pre>
+<p>In this case, the types <code>MyComponent</code> and <code>MyComponentList</code> will be created, but not <code>OptionalMyComponent</code>.
+You can leave <code>usage</code> empty to only generate the main type.
+In the value, you can either give <code>list</code> or <code>optional</code> or both, separated by a space character.</p>
+<p>Be aware that if you restrict usage, you cannot embed this component elsewhere with a <em>list</em> or <em>optional</em> embed (depending on what you allow).
+This option should generally be avoided unless you absolutely need to disable the additional types due to name clashes.</p>
+<h2 id="parameters-and-construction">Parameters and Construction</h2>
+<p>A component can have <em>parameters</em>.
+Parameters are values given when creating a component instance and can be used to initialize the component&rsquo;s HTML.
+Parameters are given via the attribute <em>params</em> and have the same syntax as Go <strong><code>func</code></strong> params:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;foo&quot; params=&quot;name, dayDescr string&quot;&gt;
+  &lt;p&gt;Hello, &lt;a:text expr=&quot;name&quot;&gt;&lt;/a:text&gt;!&lt;/p&gt;
+  &lt;p&gt;Have a &lt;a:text expr=&quot;dayDescr&quot;&gt;&lt;a:text&gt; day.&lt;/p&gt;
+&lt;/a:component&gt;
+</code></pre>
+<p>In this example, <code>&lt;a:text&gt;</code> is used to insert the value of the given Go expression as text when initializing the component.</p>
+<p>For every component, a method <code>askewInit</code> will be created.
+It will take the parameters defined in <code>params</code> (or none, if it wasn&rsquo;t given) and return nothing.
+This is considered an internal function that must be called from the component&rsquo;s <em>init</em> or <em>new</em> func.</p>
+<p>Askew expects every component to have both an <em>init</em> and a <em>new</em> func.
+The <em>init</em> func is always a method with the name <code>Init</code> and must not return anything.
+The <em>new</em> func must be a standalone function with the name <code>new&lt;c-name&gt;</code> for private and <code>New&lt;c-name&gt;</code> for public components and must return a pointer to the component struct.
+<code>&lt;c-name&gt;</code> stands for the capitalized component&rsquo;s name, i.e. the first letter is converted into uppercase.</p>
+<p>Both the <em>new</em> and the <em>init</em> funcs must call <code>askewInit</code>.
+The <em>init</em> func is called by Askew for direct <code>&lt;a:embed&gt;</code>s.
+The <em>new</em> func is called by Askew for <code>&lt;a:construct&gt;</code>s inside list or optional embeds.</p>
+<p>You can either let Askew autogenerate the funcs or write them yourself.
+Autogenerating them will have them take the same parameters as <code>askewInit</code>.
+An autogenerated <em>new</em> func will create a component with the <strong><code>new</code></strong> keyword and call <code>askewInit</code> on it.
+An autogenerated <em>init</em> func will call <code>askewInit</code> on the subject.
+You tell Askew to autogenerate the <em>new</em> and <em>init</em> func by giving the valueless attribute <code>gen-new-init</code> on the component:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;foo&quot; params=&quot;name string&quot; gen-new-init&gt;
+  &lt;p&gt;Hello, &lt;a:text expr=&quot;name&quot;&gt;&lt;/a:text&gt;!&lt;/p&gt;
+&lt;/a:component&gt;
+&lt;!-- the following initialization functions will be generated:
+func newFoo(name string) {
+  ret := new(foo)
+  ret.askewInit(name)
+}
+func (o *foo) init(name string) {
+  o.askewInit(name)
+}
+func (o *foo) askewInit(name string) {…} // always generated
+--&gt;
+
+&lt;a:component name=&quot;bar&quot;&gt;
+  &lt;!-- Renders the paragraph with &quot;Hello, World!&quot; --&gt;
+  &lt;a:embed name=&quot;f&quot; type=&quot;foo&quot; args=&quot;`World`&quot;&gt;&lt;/a:embed&gt;
+&lt;/a:component&gt;
+</code></pre>
+<p>If you need to do additonal initialization or calculate the arguments for <code>askewInit</code> internally, instead of autogenerating the functions, you can write them yourself.
+You are free to choose different parameters for your functions, as long as you can supply proper arguments to <code>askewInit</code>, which you must call in those functions.
+If Askew calls your funcs via <code>&lt;a:embed&gt;</code> or <code>&lt;a:construct&gt;</code>, the <code>args</code> given there need to fit the parameters of your <em>init</em> / <em>new</em> funcs.</p>
+<p>The following example manually defines <em>new</em>/<em>init</em> funcs for the component <code>greeter</code> and calls them in <code>bar</code>:</p>
+<pre><code class="language-html">&lt;!-- html code --&gt;
+&lt;a:component name=&quot;greeter&quot; params=&quot;name string&quot;&gt;
+  &lt;p&gt;Hello, &lt;a:text expr=&quot;name&quot;&gt;&lt;/a:text&gt;!&lt;/p&gt;
+&lt;/a:component&gt;
+
+&lt;a:component name=&quot;bar&quot; gen-new-init&gt;
+  &lt;!-- calls user-defined Init() and results in &quot;Hello, Dr. Evil!&quot; --&gt;
+  &lt;a:embed type=&quot;greeter&quot; args=&quot;true, `Evil`&quot;&gt;&lt;/a:embed&gt;
+&lt;/a:component&gt;
+</code></pre>
+<pre><code class="language-go">// go code
+
+func newGreeter(isDr bool, name string) *greeter {
+  ret := new(greeter)
+  ret.Init(isDr, name)
+  return ret
+}
+
+func (o *greeter) Init(isDr bool, name string) {
+  if isDr {
+    o.askewInit(&quot;Dr. &quot; + name)
+  } else {
+    o.askewInit(name)
+  }
+}
+</code></pre>
+<p>Mind that in generated code, the subject of methods is always named <em>o</em>.
+While Go does not forbid you to name it differently in your methods, GopherJS seems to be confused when you use a different name, so you should always name the subject <em>o</em>.</p>
+<p>Sometimes, you need to keep the value of parameters around for the lifetime of the object.
+There is a shorthand notation to do this: Simply put <strong><code>var</code></strong> in front of the parameter name.
+The semantic of this is that a field with that name will be generated in the component&rsquo;s <strong><code>struct</code></strong> type and the value of the parameter will be assigned to it in <code>askewInit</code>.</p>
+<p>The following example stores the parameter <code>id</code> inside the generated <code>MyButton</code> struct:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;MyButton&quot; params=&quot;var id string&quot; gen-new-init&gt;
+  &lt;button&gt;Click me!&lt;/button&gt;
+&lt;/a:component&gt;
+</code></pre>
+<h2 id="assignments">Assignments</h2>
+<p>When instantiating a component, you&rsquo;d usually want to do something with the values of the parameters.
+We have already seen <code>&lt;a:text&gt;</code>, which is a special case for creating text nodes.
+<code>&lt;a:text&gt;</code> takes a single attribute, <code>expr</code>, and is replaced by the value of the given Go expression on instantiation.</p>
+<p>For setting property values in the DOM, you use <code>a:assign</code>, which is an Askew-specific attribute.
+You can put it on any HTML element inside a component.
+It takes a value with the following syntax:</p>
+<pre><code>&lt;assignments&gt; ::= &lt;bval&gt; &quot;=&quot; &lt;expr&gt; (&quot;,&quot; &lt;bval&gt; &quot;=&quot; &lt;expr&gt;)*
+</code></pre>
+<p><code>&lt;bval&gt;</code> is a <em>bound value</em>.
+Bound values are Askew&rsquo;s primary interface between DOM values and Go code.
+The are described in detail in the next chapter.</p>
+<p><code>&lt;expr&gt;</code> is a Go expression that can reference the component&rsquo;s parameters.
+You can give multiple assignments by separating them with commas.</p>
+<p>Let&rsquo;s look at how to use <code>a:assign</code> to assign the default value of a text input:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;MyInput&quot; params=&quot;defaultValue string&quot;&gt;
+  &lt;input type=&quot;text&quot; a:assign=&quot;prop(value) = defaultValue&quot;&gt;
+&lt;/a:component&gt;
+</code></pre>
+<p>Here, we bind the DOM property <em>value</em> of the current element, and then we assign the parameter value of <em>defaultValue</em> to it.</p>
+<h2 id="bindings">Bindings</h2>
+<p>While assignments allow you to set bound values at instantiation, <em>bindings</em> allow you access to a bound value for the whole lifetime of a component instance.
+You define bindings with Askew&rsquo;s <code>a:bindings</code> attribute.
+They have the following syntax:</p>
+<pre><code>&lt;target&gt;   ::= &lt;name&gt; | &quot;(&quot; &lt;name&gt; &lt;type&gt; &quot;)&quot;
+&lt;binding&gt;  ::= &lt;bval&gt; &quot;:&quot; &lt;target&gt; [ &quot;=&quot; &lt;expr&gt; ]
+&lt;bindings&gt; ::= &lt;binding&gt; ( &quot;,&quot; &lt;binding&gt; )*
+</code></pre>
+<p>You specify a <code>&lt;bval&gt;</code> to define the DOM value you want to bind.
+Then you specify either a simple name or a name/type tuple.
+The name will become a field of the generated <strong><code>struct</code></strong>.
+With the type, you specify the Go type of the value you want to set/retrieve from this binding.
+If you don&rsquo;t specify the type, Askew will guess it, but it is pretty dumb and mostly ends up with <code>string</code>.
+Optionally, you can define an initial value with <code>&lt;expr&gt;</code> that will be assigned at instantiation just like with <code>a:assign</code>.</p>
+<p>We will now take the previous example with the input value but instead of using <code>a:assign</code>, we will use <code>a:bindings</code> as we later might want to query what the user has actually entered:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;MyInput&quot;&gt;
+  &lt;input type=&quot;text&quot; a:bindings=&quot;prop(value):value&quot;&gt;
+&lt;/a:component&gt;
+</code></pre>
+<p>To see how accessing the binding works, we&rsquo;ll write a constructor that sets the initial value:</p>
+<pre><code class="language-go">func NewMyInput(defaultValue string) *MyInput {
+  ret := new(MyInput)
+  ret.Init(defaultValue)
+  return ret
+}
+
+func (o *MyInput) Init(defaultValue string) {
+  o.askewInit()
+  o.value.Set(defaultValue)
+}
+</code></pre>
+<p>A binding will always have a <code>Get</code> and a <code>Set</code> method.
+<code>Get</code> will return the value with the given or guessed type, <code>Set</code> will take the new value of that type as argument.
+Since JavaScript is dynamically typed, there is no single true type for some bindings.
+For example, a <code>prop(zIndex)</code> may be bound as <strong><code>int</code></strong> which will work as long as the DOM property is actually an integer. However, the DOM allows you to set it to <code>auto</code>, which cannot be mapped to an <strong><code>int</code></strong>.
+It is your responsibility to select the appropriate type so that every value that can ever occur in your app can be handled.
+Askew will panic if the current bound value cannot be mapped to the target Go type.</p>
+<p>The names you give to your bindings must be unique in the component.
+You can give multiple bindings in <code>a:bindings</code> by separating them with a comma.
+In your code, you can only use the bindings after you called <code>askewInit</code>.</p>
+<h2 id="captures">Captures</h2>
+<p>Askew allows you to define <em>handlers</em> that will be called when certain DOM events occur.
+A component can declare its handlers with an element <code>&lt;a:handlers&gt;</code>.
+Its text content has the same syntax as the content of a Go <strong><code>interface</code></strong>.
+You must define the handlers you declare on the component in your Go code as Askew does not know what the handlers should do and therefore will not generate code for them.
+You declare the handlers in the component so that Askew knows how many parameters they have an what the type of each parameter is.</p>
+<p>Besides <code>&lt;a:handlers&gt;</code>, a component may also define handlers with <code>&lt;a:controller&gt;</code>, which uses the same syntax.
+Such handlers are not part of the component.
+Instead, if <code>&lt;a:controller&gt;</code> exists, a <em>controller</em> interface for the component will be generated that contains the function declarations in <code>&lt;a:controller&gt;</code>.
+The generated <strong><code>struct</code></strong> will have a field named <code>Controller</code> of that interface type.
+Whenever a handler of the controller should be called, the generated code will check whether the <code>Controller</code> field is currently <strong><code>nil</code></strong> and if not, call the method on it.
+This way, a component can emit events to someone else.</p>
+<p>After you defined your handlers, you need to define which events are to be handled by those handlers.
+For this, you specify that certain events ought to be <em>captured</em>.
+You do that with <code>a:capture</code> on the element that issues the event.
+The syntax is as follows:</p>
+<pre><code>&lt;mapping&gt;  ::= &lt;name&gt; &quot;=&quot; &lt;bval&gt;
+&lt;mappings&gt; ::= &quot;(&quot; [ &lt;mapping&gt; ( &quot;,&quot; mapping )* ] &quot;)&quot;
+&lt;tags&gt;     ::= &quot;{&quot; [ &lt;tag&gt; ( &quot;,&quot; tag )* ] &quot;}&quot;
+&lt;capture&gt;  ::= &lt;eventid&gt; &quot;:&quot; &lt;handler&gt; [ &lt;mappings&gt; ] [ &lt;tags&gt; ]
+&lt;captures&gt; ::= &lt;capture&gt; ( &quot;,&quot; &lt;capture&gt; )*
+</code></pre>
+<p>A capture begins with the <code>&lt;eventid&gt;</code>, i.e. the DOM name of the event you want to capture.
+Then after the colon, you need to specify a <code>&lt;handler&gt;</code> that should be called when the event is captured.
+This must be the name of a handler you declared with <code>&lt;a:handlers&gt;</code> or <code>&lt;a:controller&gt;</code>.
+With <code>&lt;mappings&gt;</code>, you can bind values to the parameters of the handler.
+The <code>&lt;name&gt;</code> must be a parameter of the handler.
+If you do not supply a binding for a parameter, Askew will try to fetch it from the item&rsquo;s <code>dataset</code>.</p>
+<p><code>&lt;tags&gt;</code> specify the behavior of the capture.
+There is currently only one tag available, <code>preventDefault</code>.
+It takes an optional parameter, which can be:</p>
+<ul>
+<li><code>preventDefault(true)</code> (the default if given without parameter)</li>
+<li><code>preventDefault(false)</code></li>
+<li><code>preventDefault(ask)</code></li>
+</ul>
+<p><code>true</code> means that the event&rsquo;s default action should be prevented.
+<code>false</code> means it shouldn&rsquo;t.
+<code>ask</code> means that the event&rsquo;s default action should be prevented if and only if the handler returns <code>false</code>.
+This requires the handler to return a <code>bool</code> (otherwise it shouldn&rsquo;t return anything).
+If the <code>preventDefault</code> tag is not given but the handler returns <code>bool</code>, the capture behaves like <code>preventDefault(ask)</code>.</p>
+<p>The following example defines a handler that will be called when a form is submitted:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;MyForm&quot;&gt;
+  &lt;a:handlers&gt;
+    submit(name string)
+  &lt;/a:handlers&gt;
+  &lt;form a:capture=&quot;submit:submit(name=form(name)) {preventDefault}&quot;&gt;
+    &lt;input type=&quot;text&quot; name=&quot;name&quot;&gt;
+    &lt;button type=&quot;submit&quot;&gt;Submit&lt;/button&gt;
+  &lt;/form&gt;
+&lt;/a:component&gt;
+</code></pre>
+<h2 id="data">Data</h2>
+<p>You may need your component to contain additional data.
+This can be done with the <code>&lt;a:data&gt;</code> element, which uses the following syntax:</p>
+<pre><code>&lt;field&gt;  ::= &lt;name&gt; ( &quot;,&quot; &lt;name&gt; )* &lt;type&gt; [ &quot;=&quot; &lt;expr&gt; ]
+&lt;fields&gt; ::= &lt;field&gt; ( &quot;\n&quot; &lt;field&gt;)*
+</code></pre>
+<p>Each name given will become a field of the component&rsquo;s generated <strong><code>struct</code></strong> type.
+The fields will have the given Go type.
+If <code>&lt;expr&gt;</code> is given, each field will be initialized with the given expression in <code>askewInit</code>.
+You can reference the component&rsquo;s parameters in those expressions.</p>
+<p>The following example declares a field <code>s</code> of type <strong><code>string</code></strong> and a field <code>i</code> of type <strong><code>int</code></strong>:</p>
+<pre><code class="language-html">&lt;a:component name=&quot;MyComponent&quot;&gt;
+  &lt;a:data&gt;
+    s string
+    i int = 42
+  &lt;/a:data&gt;
+&lt;/a:component&gt;
+</code></pre>
+<p><code>i</code> will be initialized with <code>42</code> in <code>askewInit</code>.</p>
+
+  </main>
+
+</body>
+</html>

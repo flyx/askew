@@ -1,0 +1,120 @@
+html {
+  background-color: black;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  max-width: 920px;
+  min-height: 100vh;
+  margin: 0 auto;
+  background-color: #1a1a1d;
+  color: #d7d7d7;
+  font-family: sans-serif;
+  tab-size: 2;
+}
+
+@media only screen and (min-width: 600px) {
+  body {
+    flex-direction: row;
+  }
+
+  nav {
+    flex-basis: 170px;
+    flex-grow: 0;
+    flex-shrink: 1;
+  }
+
+  main {
+    flex-basis: 750px;
+    flex-grow: 1;
+    flex-shrink: 2;
+  }
+}
+
+nav {
+  background-color: #354350;
+}
+
+nav > ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  min-width: 120px;
+}
+
+nav > ul > li > a {
+  display: block;
+  margin: 0;
+  padding: .75em;
+  padding-right: 2em;
+}
+
+nav > ul > li > a.main {
+  font-variant: small-caps;
+  font-weight: bold;
+  text-align: center;
+  font-size: larger;
+  padding-left: 2em;
+}
+
+nav > ul > li > a.active {
+  background-color: #1a1a1d;
+}
+
+nav > ul > li > a.doc {
+  padding-left: 2em;
+}
+
+nav > ul > li > a:hover {
+  background-color: #6f4222;
+}
+
+main {
+  padding: .75em;
+}
+
+a {
+  color: white !important;
+  text-decoration: none !important;
+}
+
+h1 {
+  margin: .25em;
+  text-align: center;
+  font-size: larger;
+  font-weight: bold;
+}
+
+h2 {
+  margin: .25em;
+  font-size: large;
+  font-weight: bold;
+}
+
+h3 {
+  margin: .25em;
+  font-size: normal;
+  font-weight: bold;
+}
+
+p {
+  overflow-x: scroll;
+}
+
+hr {
+  margin: 0 25%;
+}
+
+pre {
+  max-width: 100%;
+}
+
+pre > code {
+  overflow-x: scroll;
+  margin: 1em;
+  background-color: #354350;
+  border-radius: .5em;
+  padding: .5em;
+  display: block;
+}
