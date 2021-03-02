@@ -23,7 +23,7 @@ package {{.PackageName}}
 
 import (
 	"syscall/js"
-	"github.com/flyx/askew/runtime"
+	askew "github.com/flyx/askew/runtime"
 	{{- range $alias, $path := .Imports }}
 	{{FormatImport $alias $path}}{{ end }}
 )

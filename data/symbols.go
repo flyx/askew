@@ -83,13 +83,13 @@ func (s *Symbols) split(id string) (pkg *Package, symName string, aliasName stri
 		return
 	}
 	relPath, err := filepath.Rel(s.ImportPath, pkgPath)
-	if err != nil {
+	if err != nil || strings.HasPrefix(relPath, "..") {
 		err = OutsideModuleErr{pkgPath}
 		return
 	}
 	retPkg, ok := s.Packages[relPath]
 	if !ok {
-		err = fmt.Errorf("cannot use controls from import path '%s' which is unknown (has it been excluded?)", pkgPath)
+		err = fmt.Errorf("cannot use controls from import path '%s' (relpath='%s') which is unknown (has it been excluded?)", pkgPath, relPath)
 		return
 	}
 	return retPkg, id[last+1:], aliasName, nil

@@ -18,6 +18,8 @@ const (
 	ArrayType
 	// MapType is a map
 	MapType
+	// ChanType is a chan
+	ChanType
 	// PointerType is a pointer
 	PointerType
 )
@@ -49,6 +51,8 @@ func (pt ParamType) String() string {
 		return "[]" + pt.ValueType.String()
 	case MapType:
 		return "map[" + pt.KeyType.String() + "]" + pt.ValueType.String()
+	case ChanType:
+		return "chan " + pt.ValueType.String()
 	case PointerType:
 		return "*" + pt.ValueType.String()
 	default:

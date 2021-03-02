@@ -142,7 +142,7 @@ name <- < [[A-Z_]]+ > {
 	p.names = append(p.names, buffer[begin:end])
 }
 
-type <- qname / sname / array / map / pointer
+type <- qname / sname / array / map / chan / pointer
 
 sname <- < [[A-Z_]]+ > {
 	switch name := buffer[begin:end]; name {
@@ -172,6 +172,10 @@ array <- "[]" type {
 
 map <- "map[" isp* keytype isp* "]" type {
 	p.valuetype = &data.ParamType{Kind: data.MapType, KeyType: p.keytype, ValueType: p.valuetype}
+}
+
+chan <- "chan" isp+ type {
+	p.valuetype = &data.ParamType{Kind: data.ChanType, ValueType: p.valuetype}
 }
 
 keytype <- type {
