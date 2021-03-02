@@ -142,7 +142,7 @@ name <- < [[A-Z_]]+ > {
 	p.names = append(p.names, buffer[begin:end])
 }
 
-type <- qname / sname / array / map / chan / pointer
+type <- chan / qname / sname / array / map / pointer
 
 sname <- < [[A-Z_]]+ > {
 	switch name := buffer[begin:end]; name {
