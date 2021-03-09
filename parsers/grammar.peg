@@ -7,6 +7,7 @@ import "github.com/flyx/askew/data"
 type GeneralParser Peg {
 	eventHandling data.EventHandling
 	expr, tagname, handlername string
+	paramnames []string
 	names []string
 	keytype, valuetype *data.ParamType
 	fields   []*data.Field
@@ -142,7 +143,7 @@ name <- < [[A-Z_]]+ > {
 	p.names = append(p.names, buffer[begin:end])
 }
 
-type <- chan / qname / sname / array / map / pointer
+type <- chan / func / qname / sname / array / map / pointer
 
 sname <- < [[A-Z_]]+ > {
 	switch name := buffer[begin:end]; name {
@@ -176,6 +177,12 @@ map <- "map[" isp* keytype isp* "]" type {
 
 chan <- "chan" isp+ type {
 	p.valuetype = &data.ParamType{Kind: data.ChanType, ValueType: p.valuetype}
+}
+
+func <- "func" isp* "(" isp* (param isp* ("," isp* param)*)? ")" isp* type? {
+	p.valuetype = &data.ParamType{Kind: data.FuncType, ValueType: p.valuetype,
+		Params: p.params}
+	p.params = nil
 }
 
 keytype <- type {
@@ -278,15 +285,21 @@ handler <- handlername "(" isp* (param isp* ("," isp* param isp*)* )? ")" (isp* 
 	p.params = nil
 }
 
-param <- tagname isp+ type {
+paramname <- < identifier > {
+	p.paramnames = append(p.paramnames, buffer[begin:end])
+}
+
+param <- paramname isp+ type {
+	name := p.paramnames[len(p.paramnames)-1]
+	p.paramnames = p.paramnames[:len(p.paramnames)-1]
 	for _, para := range p.params {
-		if para.Name == p.tagname {
+		if para.Name == name {
 			p.err = errors.New("duplicate param name: " + para.Name)
 			return
 		}
 	}
 
-	p.params = append(p.params, data.Param{Name: p.tagname, Type: p.valuetype})
+	p.params = append(p.params, data.Param{Name: name, Type: p.valuetype})
 	p.valuetype = nil
 }
 

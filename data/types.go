@@ -1,5 +1,7 @@
 package data
 
+import "strings"
+
 // TypeKind is the kind of a type.
 type TypeKind int
 
@@ -20,6 +22,8 @@ const (
 	MapType
 	// ChanType is a chan
 	ChanType
+	// FuncType is a func
+	FuncType
 	// PointerType is a pointer
 	PointerType
 )
@@ -31,8 +35,10 @@ type ParamType struct {
 	Name string
 	// used when Kind == MapType
 	KeyType *ParamType
-	// used when Kind in [ArrayType, MapType, PointerType]
+	// used when Kind in [ArrayType, MapType, PointerType, FuncType (return type)]
 	ValueType *ParamType
+	// used when Kind == FuncType
+	Params []Param
 }
 
 func (pt ParamType) String() string {
@@ -53,6 +59,20 @@ func (pt ParamType) String() string {
 		return "map[" + pt.KeyType.String() + "]" + pt.ValueType.String()
 	case ChanType:
 		return "chan " + pt.ValueType.String()
+	case FuncType:
+		var sb strings.Builder
+		sb.WriteString("func(")
+		for _, p := range pt.Params {
+			sb.WriteString(p.Name)
+			sb.WriteByte(' ')
+			sb.WriteString(p.Type.String())
+			sb.WriteByte(',')
+		}
+		sb.WriteString(") ")
+		if pt.ValueType != nil {
+			sb.WriteString(pt.ValueType.String())
+		}
+		return sb.String()
 	case PointerType:
 		return "*" + pt.ValueType.String()
 	default:
