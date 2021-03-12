@@ -23,7 +23,7 @@ func (p *unitProcessor) processUnitContent(
 	var indexList []int
 	w := walker.Walker{
 		Text:      &aTextProcessor{&unit.Block, &indexList},
-		Embed:     &embedProcessor{p.syms, &indexList},
+		Embed:     &embedProcessor{p.syms, &indexList, nil},
 		IndexList: &indexList}
 	if component != nil {
 		w.Data = &aDataProcessor{component, &indexList}

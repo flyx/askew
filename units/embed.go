@@ -11,8 +11,9 @@ import (
 )
 
 type embedProcessor struct {
-	syms      *data.Symbols
-	indexList *[]int
+	syms            *data.Symbols
+	indexList       *[]int
+	parentIndexList []int
 }
 
 // resolves the type of an embedded component.
@@ -24,7 +25,7 @@ func resolveEmbed(n *html.Node, syms *data.Symbols,
 		return data.Embed{}, nil, "", err
 	}
 
-	e = data.Embed{Kind: data.DirectEmbed, Path: append([]int(nil), indexList...),
+	e = data.Embed{Kind: data.DirectEmbed, Path: indexList,
 		Field: attrs.Name, Control: attrs.Control}
 	if e.Field == "" {
 		return data.Embed{}, nil, "", errors.New(": attribute `name` missing")
@@ -90,7 +91,10 @@ func resolveEmbed(n *html.Node, syms *data.Symbols,
 // Process implements Walker.NodeHandler.
 func (ep *embedProcessor) Process(n *html.Node) (descend bool,
 	replacement *html.Node, err error) {
-	e, target, newName, err := resolveEmbed(n, ep.syms, *ep.indexList)
+	path := make([]int, 0, len(ep.parentIndexList)+len(*ep.indexList))
+	path = append(path, ep.parentIndexList...)
+	path = append(path, *ep.indexList...)
+	e, target, newName, err := resolveEmbed(n, ep.syms, path)
 	if err != nil {
 		return false, nil, err
 	}

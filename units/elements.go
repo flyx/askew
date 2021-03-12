@@ -279,7 +279,7 @@ func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, at
 
 		w := walker.Walker{
 			TextNode: walker.Allow{}, Text: &aTextProcessor{&block.Block, &indexList},
-			Embed:       &embedProcessor{seh.syms, &indexList},
+			Embed:       &embedProcessor{seh.syms, &indexList, block.Path},
 			StdElements: cp,
 			IndexList:   &indexList}
 		n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
