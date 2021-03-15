@@ -2,7 +2,6 @@ package attributes
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/flyx/askew/data"
@@ -10,8 +9,12 @@ import (
 	"github.com/flyx/net/html"
 )
 
-func invalidAttribute(name string) error {
-	return errors.New(": element does not allow attribute `a:" + name + "`")
+type invalidAttribute struct {
+	name string
+}
+
+func (i invalidAttribute) Error() string {
+	return ": element does not allow attribute `" + i.name + "`"
 }
 
 // Collector collects askew attributes (attributes with `a:` prefix).
@@ -43,7 +46,7 @@ func (t *Component) collect(name, val string) error {
 		t.Usage = strings.Fields(val)
 		return nil
 	}
-	return invalidAttribute(name)
+	return invalidAttribute{name}
 }
 
 // Site lists the attributes of a site
@@ -67,7 +70,7 @@ func (s *Site) collect(name, val string) error {
 		return ErrRemoveAttribute
 	default:
 		if strings.HasPrefix(name, "a:") {
-			return fmt.Errorf(": unknown askew attribute on <a:site>: %s", name)
+			return invalidAttribute{name}
 		}
 	}
 	return nil
@@ -97,6 +100,7 @@ type Embed struct {
 	List, Optional bool
 	T, Name        string
 	Args           data.Arguments
+	Value          string
 	Control        bool
 }
 
@@ -115,14 +119,26 @@ func (e *Embed) collect(name, val string) error {
 		e.Name = val
 		return nil
 	case "args":
+		if e.Value != "" {
+			return errors.New(": embed cannot have both args and value attributes")
+		}
 		var err error
 		e.Args, err = parsers.AnalyseArguments(val)
 		return err
+	case "value":
+		if e.Args.Count != -1 {
+			return errors.New(": embed cannot have both args and value attributes")
+		}
+		if val == "" {
+			return errors.New(": value attribute must not be empty")
+		}
+		e.Value = val
+		return nil
 	case "control":
 		e.Control = true
 		return nil
 	}
-	return invalidAttribute(name)
+	return invalidAttribute{name}
 }
 
 // General collects attributes that may occur on any element.
@@ -167,7 +183,7 @@ func (g *General) collect(name, val string) error {
 			return errors.New(": invalid assign: " + err.Error())
 		}
 	default:
-		return invalidAttribute(name)
+		return invalidAttribute{name}
 	}
 	return nil
 }
@@ -196,6 +212,10 @@ func ExtractAskewAttribs(n *html.Node, target Collector) error {
 		}
 		seen[key] = struct{}{}
 		if err := target.collect(key, attr.Val); err != nil {
+			if ia, ok := err.(invalidAttribute); ok {
+				ia.name = "a:" + ia.name
+				return ia
+			}
 			return err
 		}
 	}

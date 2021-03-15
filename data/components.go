@@ -51,8 +51,9 @@ type ConstructorCall struct {
 
 // Embed describes a <a:embed> node.
 type Embed struct {
-	// is a constructor call if Kind == DirectEmbed.
+	// is a constructor call if Kind == DirectEmbed && Value == "".
 	Args             Arguments
+	Value            string
 	Kind             EmbedKind
 	Path             []int
 	Field, Ns, T     string

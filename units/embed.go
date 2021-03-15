@@ -21,8 +21,12 @@ type embedProcessor struct {
 func resolveEmbed(n *html.Node, syms *data.Symbols,
 	indexList []int) (e data.Embed, target *data.Component, newName string, err error) {
 	var attrs attributes.Embed
+	attrs.Args.Count = -1
 	if err := attributes.Collect(n, &attrs); err != nil {
 		return data.Embed{}, nil, "", err
+	}
+	if attrs.Args.Count == -1 && attrs.Value == "" {
+		attrs.Args.Count = 0
 	}
 
 	e = data.Embed{Kind: data.DirectEmbed, Path: indexList,
@@ -41,12 +45,16 @@ func resolveEmbed(n *html.Node, syms *data.Symbols,
 	}
 	if attrs.T == "" {
 		if e.Kind == data.DirectEmbed {
-			return data.Embed{}, nil, "", errors.New(": attribute `type` missing (may only be omitted for optional or list embeds)")
+			attrs.T = "askew.Component"
+		} else {
+			if attrs.Args.Count != 0 {
+				return data.Embed{}, nil, "", errors.New(": embed with `list` or `optional` cannot have `args`")
+			}
+			if attrs.Value != "" {
+				return data.Embed{}, nil, "", errors.New(": embed with `list` or `optional` cannot have `value`")
+			}
+			return e, nil, "", nil
 		}
-		if attrs.Args.Count != 0 {
-			return data.Embed{}, nil, "", errors.New(": embed with `list` or `optional` cannot have `args`")
-		}
-		return e, nil, "", nil
 	}
 	target, e.T, e.Ns, err = syms.ResolveComponent(attrs.T)
 	canCheckArgNumber := false
@@ -69,7 +77,7 @@ func resolveEmbed(n *html.Node, syms *data.Symbols,
 			return data.Embed{}, nil, "", errors.New(": embed with `list` or `optional` cannot have `args`")
 		}
 	} else {
-		e.Args = attrs.Args
+		e.Args, e.Value = attrs.Args, attrs.Value
 		if canCheckArgNumber {
 			if len(target.Parameters) != e.Args.Count {
 				return data.Embed{}, nil, "", fmt.Errorf(

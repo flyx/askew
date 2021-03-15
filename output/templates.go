@@ -23,7 +23,6 @@ package {{.PackageName}}
 
 import (
 	"syscall/js"
-	askew "github.com/flyx/askew/runtime"
 	{{- range $alias, $path := .Imports }}
 	{{FormatImport $alias $path}}{{ end }}
 )
@@ -316,7 +315,11 @@ func (o *{{.Name}}) askewInit({{GenComponentParams .Parameters}}) {
 	{
 		container := o.αcd.Walk({{PathItems .Path 1}})
 		{{- if eq .Kind 0}}
+		{{- if .Value}}
+		o.{{.Field}} = {{.Value}}
+		{{- else}}
 		o.{{.Field}}.Init({{.Args.Raw}})
+		{{- end}}
 		o.{{.Field}}.InsertInto(container, container.Get("childNodes").Index({{Last .Path}}))
 		{{- if .Control}}
 		o.{{.Field}}.Controller = o

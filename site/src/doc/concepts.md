@@ -117,9 +117,13 @@ This element allows the following attributes:
 
    Embeds that are not *optional* or a *list* (see below) will be constructed at initialization time.
    This can only be done for *real* components so any embed of an *abstract* component must be either *optional* or a *list*.
- * *args*: If the embed is not *optional* nor a *list*, the component will be constructed at initialization time using its constructor (see next chapter).
+ * *value*: If given, must be a Go expression that evaluates to a value implementing `askew.Component` and assignable to the *type* of the embed.
+   The embed will be initialized by assigning this expression to it.
+   May not be used on *optional* or *list* embeds, and may not be present at the same time as *args*.
+ * *args*: If the embed is not *optional* nor a *list* and doesn't have a *value* attribute, the embed will be a component that will be constructed at initialization time using its constructor (see next chapter).
    If that constructor takes arguments, they must be specified via this parameter.
    The arguments have standard Go syntax and are comma-separated; it is recommended to use backticks for string literals to avoid HTML escape sequences.
+   This attribute may not be present on *optional* or *list* embeds.
  * *optional*: Valueless attribute. If given, the embed is *optional*, i.e. you may place a component there any time and remove or replace it again any time.
  * *list*: Valueless attribute, may not be given at the same time as *optional*.
    If given, the embed is a *list*, i.e. you can put any number of components of the given type in there and remove them again.

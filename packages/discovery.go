@@ -162,6 +162,18 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 						path, pkg.Name)
 				}
 			}
+			if askewFile.File.Imports == nil {
+				askewFile.File.Imports = make(map[string]string)
+			}
+			if url, ok := askewFile.File.Imports["askew"]; ok {
+				if url != "github.com/flyx/askew/runtime" {
+					return fmt.Errorf(
+						"%s: if the alias `askew` is given in imports, it must link to \"github.com/flyx/askew/runtime\"",
+						path)
+				}
+			} else {
+				askewFile.File.Imports["askew"] = "github.com/flyx/askew/runtime"
+			}
 			pkg.Files = append(pkg.Files, askewFile)
 		} else {
 			if pkg.Site != nil {
