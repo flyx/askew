@@ -7,6 +7,8 @@ import (
 	"syscall/js"
 )
 
+func (o *row) foo() {}
+
 // SetTitle is called when input A changes.
 func (o *MacroTest) SetTitle(value string) bool {
 	o.Title.Set(value)

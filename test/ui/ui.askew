@@ -82,6 +82,15 @@
 	</td>
 </a:component>
 
+<a:component name="row" params="colspan int" gen-new-init>
+	<a:handlers>
+		foo()
+	</a:handlers>
+	<tr>
+		<td a:assign="prop(colSpan)=colspan">This is a long row</td>
+	</tr>
+</a:component>
+
 <a:component name="OneTwoThree" params="additional []string, last bool" gen-new-init>
   <table>
 	  <tr>
@@ -90,9 +99,10 @@
 				<a:construct args="`two`"></a:construct>
 				<a:construct args="`three`"></a:construct>
 				<a:construct a:for="_, s := range additional" args="s"></a:construct>
-				<a:construct a:if="last" args="`last`"></a:component>
+				<a:construct a:if="last" args="`last`"></a:construct>
 			</a:embed>
 		</tr>
+		<a:embed name="SecondRow" type="row" args="3 + len(additional)"></a:embed>
 	</table>
 </a:component>
 

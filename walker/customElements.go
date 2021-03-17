@@ -13,7 +13,7 @@ var AskewElements = []html.CustomElement{
 	{Name: "a:include", DisableFosterParenting: true, ProcessLike: atom.Template},
 	{Name: "a:slot", DisableFosterParenting: true, ProcessLike: atom.Template},
 	{Name: "a:controller", ProcessLike: atom.Template},
-	{Name: "a:handler", ProcessLike: atom.Template},
+	{Name: "a:handlers", ProcessLike: atom.Template},
 	{Name: "a:data", ProcessLike: atom.Template},
 	{Name: "a:package", ProcessLike: atom.Template},
 	{Name: "a:import", ProcessLike: atom.Template},
