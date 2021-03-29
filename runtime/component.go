@@ -39,6 +39,8 @@ func (cd *ComponentData) Init(frag js.Value) {
 func (cd *ComponentData) DoInsert(parent js.Value, before js.Value) {
 	if !equals(cd.first, js.Undefined()) {
 		panic("DoInsert called on ComponentData that is already in inserted state")
+	} else if equals(cd.fragment, js.Undefined()) {
+		panic("DoInsert called on Component Data that has been destroyed")
 	}
 	cd.first = cd.fragment.Get("firstChild")
 	cd.last = cd.fragment.Get("lastChild")
@@ -64,7 +66,7 @@ func (cd *ComponentData) DoExtract() {
 		}
 		cur = next
 	}
-	cd.first, cd.last = js.Value{}, js.Value{}
+	cd.first, cd.last = js.Undefined(), js.Undefined()
 }
 
 // DoDestroy removes the component from the DOM if it is currently inserted.
@@ -83,7 +85,7 @@ func (cd *ComponentData) DoDestroy() {
 			cur = next
 		}
 	}
-	cd.fragment = js.Value{}
+	cd.fragment, cd.first, cd.last = js.Undefined(), js.Undefined(), js.Undefined()
 }
 
 // Walk descends into the DocumentFragment's children using the given list of indexes.
