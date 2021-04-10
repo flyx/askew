@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +11,7 @@ import (
 	"github.com/flyx/askew/packages"
 
 	"github.com/pborman/getopt/v2"
+	"gopkg.in/yaml.v3"
 )
 
 func main() {
@@ -20,6 +23,7 @@ func main() {
 			"relative to the directory given at command line, or to cwd if no directory is given.")
 	backendOpt := getopt.StringLong(
 		"backend", 'b', "gopherjs", "backend to use; either `gopherjs` (default) or `wasm`")
+	data := getopt.StringLong("data", 'd', "", "path to a data file to use for *.askew.tmpl / *.asite.tmpl files")
 	getopt.Parse()
 	var err error
 	outputDirPath, err := filepath.Abs(*outputOpt)
@@ -65,7 +69,20 @@ func main() {
 		panic("unknown backend: `" + *backendOpt + "`")
 	}
 
-	base, err := packages.Discover(*excludes)
+	var loadedData interface{}
+	if *data != "" {
+		raw, err := ioutil.ReadFile(*data)
+		if err != nil {
+			fmt.Printf("[error] %v\n", err.Error())
+			os.Exit(1)
+		}
+		if err = yaml.Unmarshal(raw, &loadedData); err != nil {
+			fmt.Printf("[error] %v\n", err.Error())
+			os.Exit(1)
+		}
+	}
+
+	base, err := packages.Discover(*excludes, loadedData)
 	if err != nil {
 		os.Stdout.WriteString("[error] " + err.Error() + "\n")
 		os.Exit(1)

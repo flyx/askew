@@ -82,45 +82,54 @@ func (pw *PackageWriter) WriteSite(f *data.ASiteFile, outputPath string,
 		return errors.New("site misses <body> node")
 	}
 
+	var firstAdded *html.Node
+
 	switch backend {
 	case GopherJSBackend:
-		node.NextSibling = &html.Node{
+		firstAdded = &html.Node{
 			Type:        html.ElementNode,
 			Data:        "script",
 			DataAtom:    atom.Script,
 			Attr:        []html.Attribute{{Key: "src", Val: f.JSPath}, {Key: "charset", Val: "UTF-8"}},
-			PrevSibling: node,
-			Parent:      node.Parent,
+			Parent:      node,
 			NextSibling: nil,
 		}
 	case WasmBackend:
-		node.NextSibling = &html.Node{
-			Type:        html.ElementNode,
-			Data:        "script",
-			DataAtom:    atom.Script,
-			Attr:        []html.Attribute{{Key: "src", Val: f.WASMExecPath}, {Key: "charset", Val: "UTF-8"}},
-			PrevSibling: node,
-			Parent:      node.Parent,
+		firstAdded = &html.Node{
+			Type:     html.ElementNode,
+			Data:     "script",
+			DataAtom: atom.Script,
+			Attr:     []html.Attribute{{Key: "src", Val: f.WASMExecPath}, {Key: "charset", Val: "UTF-8"}},
+			Parent:   node,
 		}
 
 		var b strings.Builder
 		wasmInit.Execute(&b, f.WASMPath)
 
-		wasmExec := node.NextSibling
-		wasmExec.NextSibling = &html.Node{
+		firstAdded.NextSibling = &html.Node{
 			Type:        html.ElementNode,
 			Data:        "script",
 			DataAtom:    atom.Script,
-			PrevSibling: wasmExec,
-			Parent:      node.Parent,
+			PrevSibling: firstAdded,
+			Parent:      node,
 		}
-		wasm := wasmExec.NextSibling
+		wasm := firstAdded.NextSibling
 		wasm.FirstChild = &html.Node{
 			Type:   html.TextNode,
 			Data:   b.String(),
 			Parent: wasm,
 		}
 		wasm.LastChild = wasm.FirstChild
+	}
+	if node.LastChild != nil {
+		node.LastChild.NextSibling = firstAdded
+		firstAdded.PrevSibling = node.LastChild
+	} else {
+		node.FirstChild = firstAdded
+	}
+	node.LastChild = firstAdded
+	for node.LastChild.NextSibling != nil {
+		node.LastChild = node.LastChild.NextSibling
 	}
 
 	htmlFile, err := os.Create(filepath.Join(outputPath, f.HTMLFile))

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -55,7 +56,9 @@ type suffix int
 
 const (
 	dotAskew suffix = iota
+	dotAskewTmpl
 	dotAsite
+	dotAsiteTmpl
 	dotOther
 )
 
@@ -65,8 +68,14 @@ func fileKind(name string) suffix {
 	if strings.HasSuffix(lower, ".askew") {
 		return dotAskew
 	}
+	if strings.HasSuffix(lower, ".askew.tmpl") {
+		return dotAskewTmpl
+	}
 	if strings.HasSuffix(lower, ".asite") {
 		return dotAsite
+	}
+	if strings.HasSuffix(lower, ".asite.tmpl") {
+		return dotAsiteTmpl
 	}
 	return dotOther
 }
@@ -92,7 +101,7 @@ func descend(start *html.Node, path []atom.Atom) (*html.Node, error) {
 // Discover searches for a go.mod in the cwd, then walks through the file system
 // to discover .askew files.
 // For each file, the imports are parsed.
-func Discover(excludes []string) (*data.BaseDir, error) {
+func Discover(excludes []string, tmplData interface{}) (*data.BaseDir, error) {
 	var err error
 	ret := &data.BaseDir{}
 	ret.ImportPath, err = findBasePath()
@@ -128,12 +137,30 @@ func Discover(excludes []string) (*data.BaseDir, error) {
 			ret.Packages[relPath] = pkg
 		}
 
-		contents, err := ioutil.ReadFile(path)
-		if err != nil {
-			return err
+		var contents []byte
+
+		var baseName string
+		if kind == dotAskewTmpl || kind == dotAsiteTmpl {
+			var tmpl *template.Template
+			tmpl, err = template.New(filepath.Base(path)).ParseFiles(path)
+			if err != nil {
+				return err
+			}
+			var writer bytes.Buffer
+			if err = tmpl.Execute(&writer, tmplData); err != nil {
+				return err
+			}
+			contents = writer.Bytes()
+			kind--
+			baseName = info.Name()[:len(info.Name())-11]
+		} else {
+			contents, err = ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			baseName = info.Name()[:len(info.Name())-6]
 		}
 
-		baseName := info.Name()[:len(info.Name())-6]
 		if kind == dotAskew {
 			askewFile := &data.AskewFile{File: data.File{BaseName: baseName, Path: path}}
 			askewFile.Content, err = html.ParseFragmentWithOptions(
