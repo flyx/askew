@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <meta name="author" content="Felix Krause">
+  <title>Askew – Macros</title>
+  <link rel="stylesheet" type="text/css" href="../../static/style.css">
+</head>
+<body>
+
+  
+  <nav>
+    <ul>
+      <li>
+        <a href="../../"
+          class="main"
+          >Askew</a>
+      </li>
+      <li>
+        <a href="../../doc/concepts/">Documentation</a>
+      </li>
+      
+        <li>
+          <a href="../../doc/concepts/"
+            class="doc">Concepts</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/components/"
+            class="doc">Components</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/conditionals/"
+            class="doc">Conditionals and Loops</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/boundvalues/"
+            class="doc">Bound Values</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/macros/"
+            class="doc active">Macros</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/generator/"
+            class="doc">The Code Generator</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/debugging/"
+            class="doc">Debugging</a>
+        </li>
+      
+      <li>
+        <a href="https://github.com/flyx/askew" style="display:flex;">
+          <img src="../../static/gh-logo.png" style="width: 1em; height: 1em; filter: invert(1); margin-right: .5em;"> Repo
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <main>
+    <h1 id="macros">Macros</h1>
+<p>Sometimes you replicate parts of your HTML structure in different components.
+Askew&rsquo;s <em>macros</em> are a tool to avoid duplicate code by placing it in a macro and including that macro in different places.</p>
+<p>Inclusions of macros are replaced with the macro content before any other processing takes places.
+You can include macros from a different package, but you can only include macros defined in the same module.
+The reason for this is that Askew needs access to the macro&rsquo;s source, which it doesn&rsquo;t have if the macro is defined in a different module.</p>
+<p>Macros don&rsquo;t produce any Go code.</p>
+<h2 id="defining-macros">Defining Macros</h2>
+<p>A macro is defined with <code>&lt;a:macro&gt;</code>.
+The element requires an attribute <code>name</code> which is the identifier of the macro and must be unique for all macros in the same package.
+The content of a macro is an HTML subtree, Askew elements and attributes may be used in it.
+Names referred to in Askew elements, for example a component parameter name, are only resolved after macro inclusion took place, so you can refer parameters the macro can&rsquo;t see, as long as they exist at the place the macro is included:</p>
+<pre><code class="language-html">&lt;a:macro name=&quot;myMacro&quot;&gt;
+	&lt;!-- handler submit() unknown, must be available where
+	     macro is included. --&gt;
+	&lt;form a:capture=&quot;submit:submit()&quot;&gt;
+	  &lt;!-- variable labelText also must be available on inclusion --&gt;
+		&lt;label&gt;&lt;a:text expr=&quot;labelText&quot;&gt;&lt;/a:text&gt;&lt;/label&gt;
+	&lt;/form&gt;
+&lt;/a:macro&gt;
+</code></pre>
+<p>A macro can contain one ore more <code>&lt;a:slot&gt;</code> elements.
+Such elements also require a <code>name</code> attribute which is their identifier and must be unique inside the macro.
+An <code>&lt;a:slot&gt;</code> will be replaced by content defined on the inclusion site, so it acts like a parameter.
+The <code>&lt;a:slot&gt;</code> element may contain content which will be its default value if no other content is given at the inclusion site:</p>
+<pre><code class="language-html">&lt;a:macro name=&quot;hello&quot;&gt;
+  Hello, &lt;a:slot name=&quot;who&quot;&gt;World!&lt;/a:slot&gt;
+&lt;/a:macro&gt;
+</code></pre>
+<h2 id="including-macros">Including Macros</h2>
+<p>Macros are included via <code>&lt;a:include&gt;</code>.
+This element must have a name which identifies the macro to include.
+The name may contain a package name if the macro is defined in a different package.</p>
+<p><code>&lt;a:include&gt;</code> may contain elements, where each element must have an attribute <code>a:slot</code> whose value is the name of a slot of the target macro.
+That slot will be replaced by this element on inclusion:</p>
+<pre><code class="language-html">&lt;a:include name=&quot;hello&quot;&gt;
+  &lt;span a:slot=&quot;who&quot;&gt;Karl Koch!&lt;/a:slot&gt;
+&lt;/a:include&gt;
+</code></pre>
+<p>Currently, only single elements can be given as a replacement for a slot.</p>
+
+  </main>
+
+</body>
+</html>

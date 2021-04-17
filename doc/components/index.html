@@ -32,8 +32,18 @@
         </li>
       
         <li>
+          <a href="../../doc/conditionals/"
+            class="doc">Conditionals and Loops</a>
+        </li>
+      
+        <li>
           <a href="../../doc/boundvalues/"
             class="doc">Bound Values</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/macros/"
+            class="doc">Macros</a>
         </li>
       
         <li>
@@ -56,7 +66,7 @@
   <main>
     <h1 id="components">Components</h1>
 <p>Components are Askew&rsquo;s most important structure.
-They are defined in <code>.askew</code> files, and each component defined there will generate a <code>struct</code> type in the generated Go code which implements <code>runtime.Component</code>.</p>
+They are defined in <code>.askew</code> files, and each component defined there will generate a <code>struct</code> type in the generated Go code which implements <code>askew.Component</code>.</p>
 <h2 id="name-and-visibility">Name and Visibility</h2>
 <p>A component is defined with a <code>&lt;a:component&gt;</code> element at top level:</p>
 <pre><code class="language-html">&lt;a:component name=&quot;MyComponent&quot;&gt;

@@ -32,8 +32,18 @@
         </li>
       
         <li>
+          <a href="../../doc/conditionals/"
+            class="doc">Conditionals and Loops</a>
+        </li>
+      
+        <li>
           <a href="../../doc/boundvalues/"
             class="doc active">Bound Values</a>
+        </li>
+      
+        <li>
+          <a href="../../doc/macros/"
+            class="doc">Macros</a>
         </li>
       
         <li>
@@ -117,6 +127,11 @@ However, now it directly sets and retrieves the <code>value</code> property of t
 <h2 id="event"><code>event</code></h2>
 <p>This bound value may only be used inside <code>a:capture</code>.
 It gives access to the JavaScript element that has been captured as <code>js.Value</code> and cannot use a different type.</p>
+<h2 id="go"><code>go</code></h2>
+<p>This bound value may only be used inisde <code>a:capture</code>.
+With <code>go(…)</code>, you can give an arbitrary Go expression in <code>…</code> as argument for a handler call.
+You can access the current component&rsquo;s object with <code>o</code>.
+So if you want to give the current value of a data field <code>foo</code> as argument to a handler, you would write <code>go(o.foo)</code>.</p>
 
   </main>
 
