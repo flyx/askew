@@ -19,7 +19,7 @@ const (
 
 // BoundParam is a capture callback parameter that is bound to a value.
 type BoundParam struct {
-	Param string
+	Param
 	Value BoundValue
 }
 

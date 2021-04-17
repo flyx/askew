@@ -24,9 +24,10 @@ func NewBoundProperty(
 		node: d.Walk(path...), pName: pName}
 }
 
-// Init initializes the bound property with the given node and property name.
-func (bp *BoundProperty) Init(node js.Value, pName string) {
-	bp.node, bp.pName = node, pName
+// BoundPropertyAt returns a BoundProperty for the given node and the given
+// property name.
+func BoundPropertyAt(node js.Value, pName string) *BoundProperty {
+	return &BoundProperty{node: node, pName: pName}
 }
 
 func (bp *BoundProperty) get() js.Value {
@@ -52,9 +53,10 @@ func NewBoundStyle(
 		node: d.Walk(path...), sName: sName}
 }
 
-// Init initializes the bound style with the given node and style name.
-func (bs *BoundStyle) Init(node js.Value, sName string) {
-	bs.node, bs.sName = node, sName
+// BoundStyleAt returns a BoundStyle for the given node and the given style
+// item name.
+func BoundStyleAt(node js.Value, sName string) *BoundStyle {
+	return &BoundStyle{node: node, sName: sName}
 }
 
 func (bs *BoundStyle) get() js.Value {
@@ -78,9 +80,10 @@ func NewBoundDataset(
 	return &BoundDataset{node: d.Walk(path...), dName: dName}
 }
 
-// Init initializes the object with the given node and dataset item name.
-func (ba *BoundDataset) Init(node js.Value, dName string) {
-	ba.node, ba.dName = node, dName
+// BoundDatasetAt returns a bound dataset for the given node and the given
+// dataset item name.
+func BoundDatasetAt(node js.Value, dName string) *BoundDataset {
+	return &BoundDataset{node: node, dName: dName}
 }
 
 func (ba *BoundDataset) get() js.Value {
@@ -118,9 +121,10 @@ func NewBoundClasses(d *ComponentData, classNames []string, path ...int) *BoundC
 	return &BoundClasses{node: d.Walk(path...), classNames: classNames}
 }
 
-// Init initializes the BoundClass with the given node and class name.
-func (bc *BoundClasses) Init(node js.Value, classNames []string) {
-	bc.node, bc.classNames = node, classNames
+// BoundClassesAt returns a BoundClasses for the given node and the given
+// list of class names.
+func BoundClassesAt(node js.Value, classNames []string) *BoundClasses {
+	return &BoundClasses{node: node, classNames: classNames}
 }
 
 func (bc *BoundClasses) get() js.Value {
@@ -165,14 +169,13 @@ type BoundFormValue struct {
 // NewBoundFormValue creates a BoundFormValue for the from at the given path.
 // radio must be true iff the input with the given name has type=radio.
 func NewBoundFormValue(d *ComponentData, name string, radio bool, path ...int) *BoundFormValue {
-	ret := new(BoundFormValue)
-	ret.Init(d.Walk(path...), name, radio)
-	return ret
+	return BoundFormValueAt(d.Walk(path...), name, radio)
 }
 
-// Init initializes the BoundFormValue with the given form and element name.
-func (bfv *BoundFormValue) Init(form js.Value, name string, radio bool) {
-	bfv.form, bfv.name, bfv.radio = form, name, radio
+// BoundFormValueAt returns a BoundFormValue for the given node and given form
+// input name. radio hints at whether the input is a radio button.
+func BoundFormValueAt(form js.Value, name string, radio bool) *BoundFormValue {
+	return &BoundFormValue{form: form, name: name, radio: radio}
 }
 
 func (bfv *BoundFormValue) get() js.Value {
@@ -222,14 +225,14 @@ type BoundEventValue struct {
 	val js.Value
 }
 
-// Init initializes the BoundEventValue to return the given event's property
-// with the given name, or the event itself if propName == ""
-func (bev *BoundEventValue) Init(e js.Value, propName string) {
+// BoundEventValueAt returns a BoundEventValue for the given event.
+// If propName is not empty, it binds the event's property with the given name,
+// else it binds the event itself.
+func BoundEventValueAt(e js.Value, propName string) *BoundEventValue {
 	if propName == "" {
-		bev.val = e
-	} else {
-		bev.val = e.Get(propName)
+		return &BoundEventValue{val: e}
 	}
+	return &BoundEventValue{val: e.Get(propName)}
 }
 
 func (bev *BoundEventValue) get() js.Value {
@@ -252,9 +255,9 @@ func NewBoundSelf(d *ComponentData, path ...int) *BoundSelf {
 	return &BoundSelf{node: d.Walk(path...)}
 }
 
-// Init initializes the BoundSelf with the given node.
-func (bs *BoundSelf) Init(node js.Value) {
-	bs.node = node
+// BoundSelfAt returns a BoundSelf with the given node as target.
+func BoundSelfAt(node js.Value) *BoundSelf {
+	return &BoundSelf{node: node}
 }
 
 func (bs *BoundSelf) get() js.Value {

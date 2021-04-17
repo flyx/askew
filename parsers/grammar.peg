@@ -6,7 +6,7 @@ import "github.com/flyx/askew/data"
 
 type GeneralParser Peg {
 	eventHandling data.EventHandling
-	expr, tagname, handlername string
+	expr, tagname, handlername, eventName string
 	paramnames []string
 	names []string
 	keytype, valuetype *data.ParamType
@@ -14,6 +14,7 @@ type GeneralParser Peg {
 	bv data.BoundValue
 	goVal data.GoValue
 	paramMappings map[string]data.BoundValue
+	paramIndex int
 	params []data.Param
 	isVar bool
 	err error
@@ -56,7 +57,7 @@ assignment <- isp* bound isp* "=" isp* expr {
 	p.bv.IDs = nil
 }
 
-bound <- (self / dataset / prop / style / class / form / event)
+bound <- (self / dataset / prop / style / class / goExpr / form / event)
 
 self <- "self" isp* "(" isp* ")" {
 	p.bv.Kind = data.BoundSelf
@@ -80,6 +81,11 @@ class <- "class" isp* "(" isp* htmlid isp* ("," isp* htmlid isp*)* ")" {
 
 form <- "form" isp* "(" isp* htmlid isp* ")" {
 	p.bv.Kind = data.BoundFormValue
+}
+
+goExpr <- "go" isp* "(" isp* expr isp* ")" {
+	p.bv.Kind = data.BoundExpr
+	p.bv.IDs = append(p.bv.IDs, p.expr)
 }
 
 event <- "event" isp* "(" isp* jsid? isp* ")" {
@@ -197,7 +203,7 @@ captures <- isp* capture isp* ("," isp* capture isp*)* !.
 
 capture <- eventid isp* ":" handlername isp* mappings isp* tags {
 	p.eventMappings = append(p.eventMappings, data.UnboundEventMapping{
-		Event: p.expr, Handler: p.handlername, ParamMappings: p.paramMappings,
+		Event: p.eventName, Handler: p.handlername, ParamMappings: p.paramMappings,
 		Handling: p.eventHandling})
 	p.eventHandling = data.AutoPreventDefault
 	p.expr = ""
@@ -209,17 +215,33 @@ handlername <- < identifier > {
 }
 
 eventid <- < [a-z]+ > {
-	p.expr = buffer[begin:end]
+	p.eventName = buffer[begin:end]
 }
 
-mappings <- ( "(" (isp* mapping isp* ("," isp* mapping isp*)*)? ")")?
+mappings <- ( mappingstart (isp* mapping isp* ("," isp* mapping isp*)*)? ")")?
 
-mapping <- mappingname isp* "=" isp* bound {
-	if _, ok := p.paramMappings[p.tagname]; ok {
-		p.err = errors.New("duplicate param: " + p.tagname)
-		return
+mappingstart <- "(" {
+	p.paramIndex = 0
+	p.tagname = ""
+}
+
+mapping <- (mappingname isp* "=" isp*)? bound {
+	if p.tagname == "" {
+		if p.paramIndex == -1 {
+			p.err = errors.New("unnamed parameter mapping after named one")
+			return
+		}
+		p.tagname = fmt.Sprintf("~%v", p.paramIndex)
+		p.paramIndex++
+	} else {
+		if _, ok := p.paramMappings[p.tagname]; ok {
+			p.err = errors.New("duplicate param: " + p.tagname)
+			return
+		}
+		p.paramIndex = -1
 	}
 	p.paramMappings[p.tagname] = p.bv
+	p.tagname = ""
 	p.bv.IDs = nil
 }
 

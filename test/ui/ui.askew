@@ -73,12 +73,12 @@
   <a:embed name="Button" type="HerpBtn" control></a:embed>
 </a:component>
 
-<a:component name="ottButton" params="caption string" gen-new-init>
+<a:component name="ottButton" params="caption string, var message string" gen-new-init>
   <a:controller>
 	  click(caption string)
   </a:controller>
 	<td>
-		<button a:capture="click:click(caption=prop(textContent))" a:assign="prop(textContent)=caption"></button>
+		<button a:capture="click:click(go(o.message)) {preventDefault}" a:assign="prop(textContent)=caption"></button>
 	</td>
 </a:component>
 
@@ -95,11 +95,11 @@
   <table>
 	  <tr>
 			<a:embed name="Buttons" type="ottButton" list control>
-				<a:construct args="`one`"></a:construct>
-				<a:construct args="`two`"></a:construct>
-				<a:construct args="`three`"></a:construct>
-				<a:construct a:for="_, s := range additional" args="s"></a:construct>
-				<a:construct a:if="last" args="`last`"></a:construct>
+				<a:construct args="`one`, `first`"></a:construct>
+				<a:construct args="`two`, `second`"></a:construct>
+				<a:construct args="`three`, `third`"></a:construct>
+				<a:construct a:for="_, s := range additional" args="s, s"></a:construct>
+				<a:construct a:if="last" args="`last`, `final`"></a:construct>
 			</a:embed>
 		</tr>
 		<a:embed name="SecondRow" type="row" args="3 + len(additional)"></a:embed>

@@ -18,6 +18,8 @@ func nameForBound(b data.BoundKind) string {
 		return "BoundStlye"
 	case data.BoundClass:
 		return "BoundClass"
+	case data.BoundExpr:
+		return "BoundExpr"
 	case data.BoundFormValue:
 		return "BoundFormValue"
 	case data.BoundEventValue:

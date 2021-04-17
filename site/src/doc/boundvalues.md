@@ -94,3 +94,9 @@ However, now it directly sets and retrieves the `value` property of the linked f
 This bound value may only be used inside `a:capture`.
 It gives access to the JavaScript element that has been captured as `js.Value` and cannot use a different type.
 
+## `go`
+
+This bound value may only be used inisde `a:capture`.
+With `go(…)`, you can give an arbitrary Go expression in `…` as argument for a handler call.
+You can access the current component's object with `o`.
+So if you want to give the current value of a data field `foo` as argument to a handler, you would write `go(o.foo)`.

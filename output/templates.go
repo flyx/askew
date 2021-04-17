@@ -3,6 +3,7 @@ package output
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -55,7 +56,34 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 	"GenArgs": func(params []data.BoundParam) string {
 		items := make([]string, 0, len(params))
 		for _, p := range params {
-			items = append(items, fmt.Sprintf("&p%s", p.Param))
+			if p.Value.Kind == data.BoundExpr {
+				items = append(items, p.Value.IDs[0])
+			} else {
+				var b strings.Builder
+				b.WriteString("(&")
+				b.WriteString(wrapperForType(*p.Type))
+				b.WriteString("{BoundValue: askew.")
+				b.WriteString(nameForBound(p.Value.Kind))
+				b.WriteString("At(")
+				switch p.Value.Kind {
+				case data.BoundFormValue:
+					b.WriteString(`self.Call("closest", "form"), "`)
+					b.WriteString(p.Value.ID())
+					b.WriteString(`", `)
+					b.WriteString(strconv.FormatBool(p.Value.IsRadio))
+				case data.BoundEventValue:
+					b.WriteString(`arguments[0], "`)
+					b.WriteString(p.Value.ID())
+					b.WriteByte('"')
+				default:
+					b.WriteString(`self, "`)
+					b.WriteString(p.Value.ID())
+					b.WriteByte('"')
+				}
+				b.WriteString(")}).Get()")
+
+				items = append(items, b.String())
+			}
 		}
 		return strings.Join(items, ", ")
 	},
@@ -83,12 +111,15 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 	"IsEventValue": func(bk data.BoundKind) bool {
 		return bk == data.BoundEventValue
 	},
+	"IsExpr": func(bk data.BoundKind) bool {
+		return bk == data.BoundExpr
+	},
 	"IsSelfValue": func(bk data.BoundKind) bool {
 		return bk == data.BoundSelf
 	},
 	"NeedsSelf": func(params []data.BoundParam) bool {
 		for _, p := range params {
-			if p.Value.Kind != data.BoundEventValue {
+			if p.Value.Kind != data.BoundEventValue && p.Value.Kind != data.BoundExpr {
 				return true
 			}
 		}
@@ -109,20 +140,6 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 		default:
 			panic("unknown BoundKind")
 		}
-	},
-	"GenCallParams": func(params []data.Param) string {
-		items := make([]string, 0, len(params))
-		for _, p := range params {
-			items = append(items, p.Name+" askew.BoundValue")
-		}
-		return strings.Join(items, ", ")
-	},
-	"GenTypedArgs": func(params []data.Param) string {
-		items := make([]string, 0, len(params))
-		for _, p := range params {
-			items = append(items, fmt.Sprintf("_%s.Get()", p.Name))
-		}
-		return strings.Join(items, ", ")
 	},
 	"GenComponentParams": func(params []data.ComponentParam) string {
 		items := make([]string, 0, len(params))
@@ -148,19 +165,19 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
   {{- range .Assignments}}
 	{
 		{{- if IsFormValue .Target.Kind}}
-		var tmp askew.BoundFormValue
-		tmp.Init(askew.WalkPath(block, {{PathItems .Path .Target.FormDepth}}), "{{.Target.ID}}", {{.Target.IsRadio}})
+		tmp := askew.BoundFormValueAt(
+			askew.WalkPath(block, {{PathItems .Path .Target.FormDepth}}), "{{.Target.ID}}", {{.Target.IsRadio}})
 		{{- else if IsClassValue .Target.Kind}}
-		var tmp askew.BoundClasses
-		tmp.Init(askew.WalkPath(block, {{PathItems .Path .Target.FormDepth}}), []string{ {{ClassNames .Target.IDs}} })
+		tmp := askew.BoundClassesAt(
+			askew.WalkPath(block, {{PathItems .Path .Target.FormDepth}}), []string{ {{ClassNames .Target.IDs}} })
 		{{- else if IsSelfValue .Target.Kind}}
-		var tmp askew.BoundSelf
-		tmp.Init(askew.WalkPath(block, {{PathItems .Path 0}}))
+		tmp := askew.BoundSelfAt(
+			askew.WalkPath(block, {{PathItems .Path 0}}))
 		{{- else}}
-		var tmp askew.{{TypeForKind .Target.Kind}}
-		tmp.Init(askew.WalkPath(block, {{PathItems .Path 0}}), "{{.Target.ID}}")
+		tmp := askew.{{TypeForKind .Target.Kind}}At(
+			askew.WalkPath(block, {{PathItems .Path 0}}), "{{.Target.ID}}")
 		{{- end}}
-		askew.Assign(&tmp, {{.Expression}})
+		askew.Assign(tmp, {{.Expression}})
 	}
 	{{- end}}
 
@@ -189,6 +206,23 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 		}
 	}
 	{{- end}}
+	{{- end}}
+{{- end}}
+
+{{define "doCall" -}}
+	o.{{if .FromController}}Controller.{{end}}{{.Handler}}({{GenArgs .ParamMappings}})
+{{- end}}
+
+{{define "callHandler"}}
+	{{- if eq .Handling 0}}
+		{{template "doCall" .}}
+		arguments[0].Call("preventDefault")
+	{{- else if eq .Handling 2}}
+		if {{template "doCall" .}} {
+			arguments[0].Call("preventDefault")
+		}
+	{{- else }}
+		{{template "doCall" .}}
 	{{- end}}
 {{- end}}
 
@@ -284,26 +318,7 @@ func (o *{{.Name}}) askewInit({{GenComponentParams .Parameters}}) {
 				{{- if NeedsSelf .ParamMappings}}
 				self := arguments[0].Get("currentTarget")
 				{{- end}}
-				{{- range .ParamMappings}}
-				var p{{.Param}} askew.{{NameForBound .Value.Kind}}
-				{{- if IsFormValue .Value.Kind}}
-				p{{.Param}}.Init(self.Call("closest", "form"), "{{.Value.ID}}", {{.Value.IsRadio}})
-				{{- else if IsEventValue .Value.Kind}}
-				p{{.Param}}.Init(arguments[0], "{{.Value.ID}}")
-				{{- else}}
-				p{{.Param}}.Init(self, "{{.Value.ID}}")
-				{{- end}}
-				{{- end}}
-				{{- if eq .Handling 0}}
-				o.αcall{{.Handler}}({{GenArgs .ParamMappings}})
-				arguments[0].Call("preventDefault")
-				{{- else if eq .Handling 2}}
-				if o.αcall{{.Handler}}({{GenArgs .ParamMappings}}) {
-					arguments[0].Call("preventDefault")
-				}
-				{{- else }}
-				o.αcall{{.Handler}}({{GenArgs .ParamMappings}})
-				{{- end}}
+				{{template "callHandler" .}}
 				return nil
 			})
 			src.Call("addEventListener", "{{.Event}}", wrapper)
@@ -397,29 +412,6 @@ func (o *{{.Name}}) Destroy() {
 	{{- end}}
 	o.αcd.DoDestroy()
 }
-
-{{$cName := .Name}}
-{{- range $hName, $h := .Handlers}}
-func (o *{{$cName}}) αcall{{$hName}}({{GenCallParams $h.Params}}) {{if IsBool $h.Returns}}bool{{end}} {
-	{{- range $h.Params}}
-	_{{.Name}} := {{TWrapper .Type .Name}}
-	{{- end}}
-	{{if IsBool $h.Returns}}return {{end}}o.{{$hName}}({{GenTypedArgs $h.Params}})
-}
-{{- end}}
-{{- range $hName, $m := .Controller}}
-{{- if $m.CanCapture}}
-func (o *{{$cName}}) αcall{{$hName}}({{GenCallParams $m.Params}}) {{if IsBool $m.Returns}}bool{{end}} {
-	if o.Controller == nil {
-		return{{if IsBool $m.Returns}} false{{end}}
-	}
-	{{- range $m.Params}}
-	_{{.Name}} := {{TWrapper .Type .Name}}
-	{{- end}}
-	{{if IsBool $m.Returns}}return {{end}}o.Controller.{{$hName}}({{GenTypedArgs $m.Params}})
-}
-{{- end}}
-{{- end}}
 
 {{- end}}`))
 

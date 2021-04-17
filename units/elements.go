@@ -2,6 +2,7 @@ package units
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/flyx/askew/attributes"
@@ -125,14 +126,26 @@ func (eh *elementHandler) mapCaptures(n *html.Node, v []data.UnboundEventMapping
 			notMapped[pName] = struct{}{}
 		}
 		mapped := make([]data.BoundParam, 0, len(h.Params))
-		for _, p := range h.Params {
+		for pIndex, p := range h.Params {
 			bVal, ok := unmapped.ParamMappings[p.Name]
+			ikey := fmt.Sprintf("~%v", pIndex)
+			biVal, iok := unmapped.ParamMappings[ikey]
+			if ok && iok {
+				return fmt.Errorf("param %v cannot be bound both named and unnamed", p)
+			}
 			if !ok {
-				mapped = append(mapped, data.BoundParam{
-					Param: p.Name, Value: data.BoundValue{
-						Kind: data.BoundDataset, IDs: []string{p.Name}}})
+				bVal, ok = biVal, iok
+				if iok {
+					delete(notMapped, ikey)
+				}
 			} else {
 				delete(notMapped, p.Name)
+			}
+			if !ok {
+				mapped = append(mapped, data.BoundParam{
+					Param: p, Value: data.BoundValue{
+						Kind: data.BoundDataset, IDs: []string{p.Name}}})
+			} else {
 				if bVal.Kind == data.BoundFormValue {
 					if formDepth == -1 {
 						return errors.New(": illegal form() binding outside of <form> element")
@@ -143,7 +156,7 @@ func (eh *elementHandler) mapCaptures(n *html.Node, v []data.UnboundEventMapping
 						return errors.New(": unknown form value name: `" + bVal.ID() + "`")
 					}
 				}
-				mapped = append(mapped, data.BoundParam{Param: p.Name, Value: bVal})
+				mapped = append(mapped, data.BoundParam{Param: p, Value: bVal})
 			}
 		}
 		for unknown := range notMapped {
@@ -232,13 +245,6 @@ func (seh *stdElementHandler) processAssignments(arr []data.Assignment, path []i
 	return nil
 }
 
-func (seh *stdElementHandler) formDepth() int {
-	if seh.curFormPos == -1 {
-		return -1
-	}
-	return len(*seh.indexList) - seh.curFormPos
-}
-
 func (seh *stdElementHandler) updateCurForm(n *html.Node) error {
 	if len(*seh.indexList) <= seh.curFormPos {
 		seh.curFormPos = -1
@@ -283,6 +289,9 @@ func (seh *stdElementHandler) handleControlBlocksAndAssignments(n *html.Node, at
 			StdElements: cp,
 			IndexList:   &indexList}
 		n.FirstChild, n.LastChild, err = w.WalkChildren(n, &walker.Siblings{Cur: n.FirstChild})
+		if err != nil {
+			return false, err
+		}
 
 		// reverse contained control blocks so that they are processed back to front,
 		// ensuring that their paths are correct.

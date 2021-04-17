@@ -37,7 +37,7 @@ func writeFormatted(goCode string, file string) {
 		panic("failed to format Go code")
 	}
 
-	if err := ioutil.WriteFile(file, []byte(stdout.String()), os.ModePerm); err != nil {
+	if err := ioutil.WriteFile(file, stdout.Bytes(), os.ModePerm); err != nil {
 		panic("failed to write file '" + file + "': " + err.Error())
 	}
 }

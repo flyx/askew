@@ -17,6 +17,8 @@ const (
 	//
 	// The value is equal to the referenced element's `value` property.
 	BoundFormValue
+	// BoundExpr is a bound Go expression. This can only be used in captures.
+	BoundExpr
 	// BoundEventValue is a reference to the JavaScript event that has been
 	// received, or one of its fields. It can only be used in a:capture.
 	BoundEventValue
