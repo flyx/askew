@@ -70,14 +70,6 @@ type Handler struct {
 // ControllerMethod is a method of a controller declared with <a:controller>.
 type ControllerMethod struct {
 	Handler
-	// CaptureError contains the error to be yielded if this method is used for
-	// capturing events. It is nil if this method can be used to capture events.
-	CaptureError error
-}
-
-// CanCapture returns true iff this method can be used to capture events.
-func (cm ControllerMethod) CanCapture() bool {
-	return cm.CaptureError == nil
 }
 
 // Capture describe a `a:capture` attribute.
