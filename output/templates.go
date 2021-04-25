@@ -215,14 +215,14 @@ var component = template.Must(template.New("component").Funcs(template.FuncMap{
 
 {{define "callHandler"}}
 	{{- if eq .Handling 0}}
-		{{template "doCall" .}}
+		go {{template "doCall" .}}
 		arguments[0].Call("preventDefault")
 	{{- else if eq .Handling 2}}
 		if {{template "doCall" .}} {
 			arguments[0].Call("preventDefault")
 		}
 	{{- else }}
-		{{template "doCall" .}}
+		go {{template "doCall" .}}
 	{{- end}}
 {{- end}}
 
@@ -600,7 +600,18 @@ func init() {
 
 var wasmInit = template.Must(template.New("wasmInit").Parse(`
 const go = new Go();
-WebAssembly.instantiateStreaming(fetch("{{.}}"), go.importObject).then((result) => {
-	go.run(result.instance);
-});
+if (typeof WebAssembly.instantiateStreaming === 'function') {
+	WebAssembly.instantiateStreaming(fetch("{{.}}"), go.importObject).then((result) => {
+		go.run(result.instance);
+	});
+} else {
+	(async () => {
+		const resp = await fetch("{{.}}");
+		const buffer = await resp.arrayBuffer();
+		const module = await WebAssembly.compile(buffer);
+		WebAssembly.instantiate(module, go.importObject).then((instance) => {
+			go.run(instance);
+		});
+	})();
+}
 `))
