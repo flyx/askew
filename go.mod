@@ -5,8 +5,7 @@ go 1.12
 require (
 	github.com/flyx/net v0.1.1
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00
-	github.com/pborman/getopt v0.0.0-20190409184431-ee0cd42419d3
-	github.com/pborman/getopt/v2 v2.1.0 // indirect
+	github.com/pborman/getopt/v2 v2.1.0
 	github.com/piranha/gostatic v0.0.0-20210209094842-51f60750f05e // indirect
 	github.com/pointlander/compress v1.1.0 // indirect
 	github.com/pointlander/jetset v1.0.0 // indirect
